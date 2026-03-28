@@ -1,0 +1,14 @@
+rule "Battery Monitor - Daily Check"
+when
+    Time cron "0 0 19 * * ?" // Run daily at 19:00
+then
+    logInfo("BatteryMonitor", "Starting battery check...")
+
+    val String scriptPath = "/etc/openhab/Scripts/battery-monitor/battery_monitor.py"
+    val String pythonCmd = "/etc/openhab/Scripts/battery-monitor/venv/bin/python"
+
+    var result = executeCommandLine(Duration.ofSeconds(60), pythonCmd, scriptPath, "--notify", "--verbose");
+
+    logInfo("BatteryMonitor", "Battery check completed")
+    logInfo("BatteryMonitor", result)
+end
