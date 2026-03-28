@@ -1,3 +1,3 @@
 //Type   	            ItemID                                      Llabel                               Icon                Groups                                         Tags       Channel
 String                  Corridor_Message                            "Vorraum Nachricht"                    <if:material-symbols:display-settings-outline> (gStrasshof)         ["Point"]  {channel = "mqtt:topic:mqtt_Matrix:Matrix"}
-String                  Corridor_Warning                            "Vorraum Warnung  "                    <if:material-symbols:display-settings-outline> (gStrasshof)         ["Point"]  {channel = "mqtt:topic:mqtt_Matrix:MatrixWarning"}
+String                  Corridor_Warning                            "Vorraum Warnung"                    <if:material-symbols:display-settings-outline> (gStrasshof)         ["Point"]  {channel = "mqtt:topic:mqtt_Matrix:MatrixWarning"}

@@ -3,7 +3,7 @@ when
     Item Bathroom_DewPoint changed
 then
     val tempnow = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
-    val tempold = (Bathroom_Last_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
+    val tempold = (Bathroom_DewPoint_Previous.state as QuantityType<Number>).toUnit("°C").doubleValue
     logInfo("bathroom_airing", "Showercheck current dew point:" + tempnow + " previous dew point: " + tempold)
     if (tempnow >= tempold && Bathroom_DewPoint_Alert.state==ON) {
         logInfo("bathroom_airing", "Someone is showering")
@@ -24,7 +24,7 @@ then
     logInfo("bathroom_airing", "Trigger: dewpointalert changed")
     //val tempnow = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
     // check if bathroomwindow is locked or gekippt
-    if (Bathroom_Alarm_Gekippt.state == OFF && Bathroom_Alarm_Locked.state==OFF){
+    if (Bathroom_Alarm_Tilted.state == OFF && Bathroom_Alarm_Locked.state==OFF){
         if (Bathroom_DewPoint_Alert.state == ON && Bathroom_Someone_Showering.state == OFF) {
             logInfo("bathroom_airing", "Trigger: turn airing on")
             Bathroom_Airing_Open_Request.sendCommand(ON)
@@ -62,7 +62,7 @@ when
 then
     logInfo("bathroom_airing_button", "Trigger: bathroom airing button")
     // check if bathroomwindow is locked or gekippt
-    if (Bathroom_Alarm_Gekippt.state == OFF && Bathroom_Alarm_Locked.state==OFF){
+    if (Bathroom_Alarm_Tilted.state == OFF && Bathroom_Alarm_Locked.state==OFF){
         if (Bathroom_Open_Window.state == ON) {
             logInfo("bathroom_airing_button", "Trigger: turn airing on")
             Bathroom_Airing_Open_Request.sendCommand(ON)
@@ -87,20 +87,20 @@ when
 then
     logInfo("bathroom_airing_action", "Trigger: bathroom airing Request changed")
     // check if bathroomwindow is locked or gekippt
-    if (Bathroom_Alarm_Gekippt.state == OFF && Bathroom_Alarm_Locked.state==OFF){
+    if (Bathroom_Alarm_Tilted.state == OFF && Bathroom_Alarm_Locked.state==OFF){
         if (Bathroom_Airing_Open_Request.state == ON) {
             logInfo("bathroom_airing_action", "Open Window; Close Switch OFF, Open Switch ON. Reset Timer")
             Bathroom_Airing_Close_Switch.sendCommand(OFF)
             Bathroom_Airing_Open_Switch.sendCommand(ON)
             Bathroom_Airing_Close_Request.sendCommand(OFF)
-            Bathroom_Motor_on.postUpdate(now.toLocalDateTime.toString())
+            Bathroom_Motor_On.postUpdate(now.toLocalDateTime.toString())
         }
         else if (Bathroom_Airing_Close_Request.state == ON ){
             logInfo("bathroom_airing_action", "Close Window Close Switch ON, Open Switch OFF. Reset Timer")
             Bathroom_Airing_Open_Switch.sendCommand(OFF)
             Bathroom_Airing_Close_Switch.sendCommand(ON)
             Bathroom_Airing_Open_Request.sendCommand(OFF)
-            Bathroom_Motor_on.postUpdate(now.toLocalDateTime.toString())
+            Bathroom_Motor_On.postUpdate(now.toLocalDateTime.toString())
         } 
     }
     else{
@@ -114,12 +114,12 @@ when
     Item Bathroom_Airing_Close_Power changed
 then
     logInfo("bathroom_airing", "CheckMotors")
-    if (Bathroom_Motor_on.state instanceof DateTimeType ) {
+    if (Bathroom_Motor_On.state instanceof DateTimeType ) {
 
         val poweropen      = (Bathroom_Airing_Open_Power.state as QuantityType<Number>).toUnit("W").doubleValue
         val powerclose     = (Bathroom_Airing_Close_Power.state as QuantityType<Number>).toUnit("W").doubleValue
-        //val ZonedDateTime last = (Bathroom_Motor_on.state as DateTimeType).zonedDateTime
-        val ZonedDateTime last = (Bathroom_Motor_on.state as DateTimeType).getInstant.atZone(ZoneId.systemDefault())
+        //val ZonedDateTime last = (Bathroom_Motor_On.state as DateTimeType).zonedDateTime
+        val ZonedDateTime last = (Bathroom_Motor_On.state as DateTimeType).getInstant.atZone(ZoneId.systemDefault())
         val ZonedDateTime now  = ZonedDateTime.now()
         val ageSecs      = java.time.Duration.between(last, now).seconds
 
@@ -129,13 +129,13 @@ then
         if (Bathroom_Airing_Open_Switch.state==ON && poweropen <= 1.1 && ageSecs > 4){
             logInfo("bathroom_airing", "Trigger: power off motor open")
             Bathroom_Airing_Open_Switch.sendCommand(OFF)
-            Bathroom_Motor_on.postUpdate(now.toLocalDateTime.toString())
+            Bathroom_Motor_On.postUpdate(now.toLocalDateTime.toString())
             //Bathroom_Airing_Open_Request.sendCommand(OFF)
         }
         else if (Bathroom_Airing_Close_Switch.state==ON && powerclose <= 1.1 && ageSecs > 4){
             logInfo("bathroom_airing", "Trigger: power off motor close")
             Bathroom_Airing_Close_Switch.sendCommand(OFF)
-            Bathroom_Motor_on.postUpdate(now.toLocalDateTime.toString())
+            Bathroom_Motor_On.postUpdate(now.toLocalDateTime.toString())
             //Bathroom_Airing_Close_Request.sendCommand(OFF)
         }
     }

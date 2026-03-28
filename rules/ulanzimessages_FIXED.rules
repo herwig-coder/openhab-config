@@ -1,16 +1,16 @@
 rule "ulanzistrompreis"
 when
-    Item currentnet changed
+    Item Awattar_Price_CurrentNet changed
 then
     logInfo("ulanzistrompreis", "Trigger: strompreis changed")
 
     // NULL guard - CRITICAL
-    if (currentnet.state == NULL || currentnet.state == UNDEF) {
-        logWarn("ulanzistrompreis", "currentnet is NULL/UNDEF, skipping")
+    if (Awattar_Price_CurrentNet.state == NULL || Awattar_Price_CurrentNet.state == UNDEF) {
+        logWarn("ulanzistrompreis", "Awattar_Price_CurrentNet is NULL/UNDEF, skipping")
         return;
     }
 
-    val netprice = (currentnet.state as QuantityType<Number>).doubleValue
+    val netprice = (Awattar_Price_CurrentNet.state as QuantityType<Number>).doubleValue
     logInfo("ulanzistrompreis", "Awattar Preis netto: {} ct/kWh", String.format("%.2f",netprice))
     // include 3% exchange fee. 1.5 ct Awattar fee + 0.78 net cost + 0.1 ct net loss cost
     //2025
@@ -22,7 +22,7 @@ then
     // 0.8 ct Ökostromfürderbeitrag 0.74 + 0.04
     val grossprice = (netprice * 1.03 + 1.5 + 8.2 + 0.45 + 1.5 + 0.8) * 1.2
     logInfo("ulanzistrompreis", "Awattar Preis gesamt: {} ct/kWh", String.format("%.2f",grossprice))
-    totalprice.postUpdate(grossprice)
+    Awattar_Price_Total.postUpdate(grossprice)
 
     //default yellow
     var color = "#FFDE21"
@@ -38,7 +38,7 @@ then
     val message = "{\"text\": \"" + String.format("%.2f",grossprice) + "\", \"color\":\"" + color + "\" ,\"icon\":\"53070\"}"
     logInfo("ulanzistrompreis", "send to Ulanzi: {}", message)
     logInfo("ulanzi_strom", "Composed the following message: " + message)
-    Ulanzi_01_strom.sendCommand(message)
+    Ulanzi_PowerPrice.sendCommand(message)
 end
 
 
@@ -81,16 +81,16 @@ then
         //JSON {"msg","color":"#00FF00","icon":"32097"} Lametric icon for open window
         msg = "{\"text\":\"" + msg + "\",\"color\":\"" + color + "\",\"icon\":\"32097\"}"
         logInfo("ulanzi_airing", "send to Ulanzi: {}", msg)
-        Ulanzi_01_toair.sendCommand(msg)
+        Ulanzi_VentilationAlert.sendCommand(msg)
     }
     else {
-        Ulanzi_01_toair.sendCommand("")
+        Ulanzi_VentilationAlert.sendCommand("")
     }
 end
 
 rule "ulanzi_muellmessage"
 when
-    Item NextCollectionDate changed
+    Item Garbage_NextCollection changed
     //Time cron "1 0 * ? * * *"
 then
     // get value in Java ZonedDateTime
@@ -98,14 +98,14 @@ then
     logInfo("ulanzi_muell", "Trigger every 1 hour and 1 second: " + currenttime)
 
     // NULL guard - CRITICAL
-    if (NextCollectionDate.state == NULL || NextCollectionDate.state == UNDEF) {
-        logWarn("ulanzi_muell", "NextCollectionDate is NULL/UNDEF, skipping")
+    if (Garbage_NextCollection.state == NULL || Garbage_NextCollection.state == UNDEF) {
+        logWarn("ulanzi_muell", "Garbage_NextCollection is NULL/UNDEF, skipping")
         return;
     }
 
     // get value in Java ZonedDateTime
     var muellmessage = ""
-    val collectiondate = (NextCollectionDate.state as DateTimeType).getZonedDateTime(ZoneId.systemDefault())
+    val collectiondate = (Garbage_NextCollection.state as DateTimeType).getZonedDateTime(ZoneId.systemDefault())
     logInfo("ulanzi_muell", "Next CollectionDate: " + collectiondate)
     // get remaining hours in Type Duration
     val Duration timeuntilcollection = Duration.between(currenttime, collectiondate)
@@ -127,68 +127,68 @@ then
         logInfo("ulanzi_muell", "Message" + muellmessage)
     }
 
-    // NULL guard for Item0_Collection
-    if (Item0_Collection.state != NULL && Item0_Collection.state != UNDEF) {
-        if (Item0_Collection.state.equals("Restmüll")) {
+    // NULL guard for Garbage_Collection_Item0
+    if (Garbage_Collection_Item0.state != NULL && Garbage_Collection_Item0.state != UNDEF) {
+        if (Garbage_Collection_Item0.state.equals("Restmüll")) {
             muellmessage = muellmessage + "Restmuell"
-            logInfo("ulanzi_muell", "Changed " + Item0_Collection.state + " to Restmuell")
+            logInfo("ulanzi_muell", "Changed " + Garbage_Collection_Item0.state + " to Restmuell")
         }
         else {
-            muellmessage = muellmessage + Item0_Collection.state
+            muellmessage = muellmessage + Garbage_Collection_Item0.state
         }
     }
 
-    // NULL guard for Item1_Collection
-    if (Item1_Collection.state != NULL && Item1_Collection.state != UNDEF &&
-        NextCollectionDate1.state != NULL && NextCollectionDate1.state != UNDEF &&
-        NextCollectionDate.state == NextCollectionDate1.state) {
-        if (Item1_Collection.state.equals("Restmüll")) {
+    // NULL guard for Garbage_Collection_Item1
+    if (Garbage_Collection_Item1.state != NULL && Garbage_Collection_Item1.state != UNDEF &&
+        Garbage_NextCollection_1.state != NULL && Garbage_NextCollection_1.state != UNDEF &&
+        Garbage_NextCollection.state == Garbage_NextCollection_1.state) {
+        if (Garbage_Collection_Item1.state.equals("Restmüll")) {
             muellmessage = muellmessage + ", Restmuell"
-            logInfo("ulanzi_muell", "Changed " + Item1_Collection.state + " to Restmuell")
+            logInfo("ulanzi_muell", "Changed " + Garbage_Collection_Item1.state + " to Restmuell")
         }
         else {
-            muellmessage = muellmessage + ", " + Item1_Collection.state
+            muellmessage = muellmessage + ", " + Garbage_Collection_Item1.state
         }
     }
 
-    // NULL guard for Item2_Collection
-    if (Item2_Collection.state != NULL && Item2_Collection.state != UNDEF &&
-        NextCollectionDate2.state != NULL && NextCollectionDate2.state != UNDEF &&
-        NextCollectionDate.state == NextCollectionDate2.state) {
-        if (Item2_Collection.state.equals("Restmüll")) {
+    // NULL guard for Garbage_Collection_Item2
+    if (Garbage_Collection_Item2.state != NULL && Garbage_Collection_Item2.state != UNDEF &&
+        Garbage_NextCollection_2.state != NULL && Garbage_NextCollection_2.state != UNDEF &&
+        Garbage_NextCollection.state == Garbage_NextCollection_2.state) {
+        if (Garbage_Collection_Item2.state.equals("Restmüll")) {
             muellmessage = muellmessage + ", Restmuell"
-            logInfo("ulanzi_muell", "Changed " + Item2_Collection.state + " to Restmuell")
+            logInfo("ulanzi_muell", "Changed " + Garbage_Collection_Item2.state + " to Restmuell")
         }
         else {
-            muellmessage = muellmessage + ", " + Item2_Collection.state
+            muellmessage = muellmessage + ", " + Garbage_Collection_Item2.state
         }
     }
 
-    // NULL guard for Item3_Collection
-    if (Item3_Collection.state != NULL && Item3_Collection.state != UNDEF &&
-        NextCollectionDate3.state != NULL && NextCollectionDate3.state != UNDEF &&
-        NextCollectionDate.state == NextCollectionDate3.state) {
-        if (Item3_Collection.state.equals("Restmüll")) {
+    // NULL guard for Garbage_Collection_Item3
+    if (Garbage_Collection_Item3.state != NULL && Garbage_Collection_Item3.state != UNDEF &&
+        Garbage_NextCollection_3.state != NULL && Garbage_NextCollection_3.state != UNDEF &&
+        Garbage_NextCollection.state == Garbage_NextCollection_3.state) {
+        if (Garbage_Collection_Item3.state.equals("Restmüll")) {
             muellmessage = muellmessage + ", Restmuell"
-            logInfo("ulanzi_muell", "Changed " + Item3_Collection.state + " to Restmuell")
+            logInfo("ulanzi_muell", "Changed " + Garbage_Collection_Item3.state + " to Restmuell")
         }
         else {
-            muellmessage = muellmessage + ", " + Item3_Collection.state
+            muellmessage = muellmessage + ", " + Garbage_Collection_Item3.state
         }
     }
 
     if (muellmessage != "") {
         logInfo("ulanzi_muell", "Composed the following message: " + muellmessage)
         Corridor_Message.sendCommand(muellmessage)
-        Collection_Message.sendCommand(muellmessage)
+        Garbage_Collection_Message.sendCommand(muellmessage)
         // Send message to Ulanzi {"text":"%s","color": "#00FF00" }
         val color = "#00FF00"
-        Ulanzi_01_muell.sendCommand("{\"text\":\"" + muellmessage + "\",\"color\":\"" + color + "\",\"icon\":\"53860\"}")
+        Ulanzi_GarbageAlert.sendCommand("{\"text\":\"" + muellmessage + "\",\"color\":\"" + color + "\",\"icon\":\"53860\"}")
     }
     else {
         // clear ulanzi
-        Ulanzi_01_muell.sendCommand("")
-        Collection_Message.sendCommand(muellmessage)
+        Ulanzi_GarbageAlert.sendCommand("")
+        Garbage_Collection_Message.sendCommand(muellmessage)
     }
 end
 
@@ -198,7 +198,7 @@ when
     Time cron "0 20 7 ? * MON-FRI *"
 then
     logInfo("ulanzi_train", "Traincheck on.")
-    Ulanzi_01_traincheck.sendCommand(ON)
+    Ulanzi_TrainCheck.sendCommand(ON)
 end
 
 rule "ulanzi_train check off"
@@ -206,23 +206,23 @@ when
     Time cron "0 50 7 ? * MON-FRI *"
 then
     logInfo("ulanzi_train", "Traincheck off.")
-    Ulanzi_01_traincheck.sendCommand(OFF)
-    Ulanzi_01_train.sendCommand("")
+    Ulanzi_TrainCheck.sendCommand(OFF)
+    Ulanzi_Train.sendCommand("")
 end
 
 rule "ulanzi_train message"
 when
     Item TrainStatus_Text changed or
     Item TrainDelay_Minutes changed or
-    Item Ulanzi_01_traincheck changed
+    Item Ulanzi_TrainCheck changed
 then
     // NULL guard for traincheck
-    if (Ulanzi_01_traincheck.state == NULL || Ulanzi_01_traincheck.state == UNDEF) {
-        logWarn("ulanzi_train", "Ulanzi_01_traincheck is NULL/UNDEF")
+    if (Ulanzi_TrainCheck.state == NULL || Ulanzi_TrainCheck.state == UNDEF) {
+        logWarn("ulanzi_train", "Ulanzi_TrainCheck is NULL/UNDEF")
         return;
     }
 
-    if (Ulanzi_01_traincheck.state == ON) {
+    if (Ulanzi_TrainCheck.state == ON) {
         logInfo("ulanzi_train", "Trainmessage update.")
 
         // NULL guards for train data
@@ -241,7 +241,7 @@ then
             val trainmessage = String.format("Zug %02d:%02d on time.", departuretime.getHour(), departuretime.getMinute())
 
             val color = "#00FF00"
-            Ulanzi_01_train.sendCommand("{\"text\":\"" + trainmessage  + "\",\"color\":\"" + color + "\",\"icon\":\"12738\"}")
+            Ulanzi_Train.sendCommand("{\"text\":\"" + trainmessage  + "\",\"color\":\"" + color + "\",\"icon\":\"12738\"}")
             logInfo("ulanzi_train", "Trainmessage: " + trainmessage)
         }
         else {
@@ -255,7 +255,7 @@ then
             //val trainmessage = "Zug " + departuretime.getHour() + ":" + departuretime.getMinute() + " is " + TrainDelay_Minutes.state() + " min late."
 
             val color = "#FF0000"
-            Ulanzi_01_train.sendCommand("{\"text\":\"" + trainmessage  + "\",\"color\":\"" + color + "\",\"icon\":\"12738\"}")
+            Ulanzi_Train.sendCommand("{\"text\":\"" + trainmessage  + "\",\"color\":\"" + color + "\",\"icon\":\"12738\"}")
             logInfo("ulanzi_train", "Trainmessage: " + trainmessage)
         }
     }
@@ -266,13 +266,13 @@ rule "ulanzi_reset"
 when
     Time cron "1 3 1 ? * * *"
 then
-    val status = Ulanzi_01_status.state
+    val status = Ulanzi_Status.state
     logInfo("ulanzi_status", "Ulanzi status: " + status)
-    if (Ulanzi_01_status.state == NULL) {
+    if (Ulanzi_Status.state == NULL) {
         logInfo("ulanzi_status", "Resetting Ulanzi")
         logInfo("ulanzi_status", "Ulanzi Reboot")
-        Ulanzi_01_reboot.sendCommand("")
+        Ulanzi_Reboot.sendCommand("")
         logInfo("ulanzi_status", "Ulanzi reset settings")
-        Ulanzi_01_settings.sendCommand("{ \"ATIME\": \"8\", \"ABRI\" : true, \"TEMP\": false, \"HUM\": false }")
+        Ulanzi_Settings.sendCommand("{ \"ATIME\": \"8\", \"ABRI\" : true, \"TEMP\": false, \"HUM\": false }")
     }
 end

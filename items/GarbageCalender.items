@@ -1,10 +1,10 @@
 // items for eventfilter for garbage collection
-DateTime NextCollectionDate      "Müllkalender nächste Abholung"             <calendar> { channel="icalendar:eventfilter:nextcollection:result_0#begin" }
-DateTime NextCollectionDate1     "Müllkalender nächste Abholung 1"           <calendar> { channel="icalendar:eventfilter:nextcollection:result_1#begin" }
-DateTime NextCollectionDate2     "Müllkalender nächste Abholung 2"           <calendar> { channel="icalendar:eventfilter:nextcollection:result_2#begin" }
-DateTime NextCollectionDate3     "Müllkalender nächste Abholung 3"           <calendar> { channel="icalendar:eventfilter:nextcollection:result_3#begin" }
-String   Item0_Collection        "Müllkalender Item 1"                       <calendar> { channel="icalendar:eventfilter:nextcollection:result_0#title" }
-String   Item1_Collection        "Müllkalender Item 2"                       <calendar> { channel="icalendar:eventfilter:nextcollection:result_1#title" }
-String   Item2_Collection        "Müllkalender Item 3"                       <calendar> { channel="icalendar:eventfilter:nextcollection:result_2#title" }
-String   Item3_Collection        "Müllkalender Item 4"                       <calendar> { channel="icalendar:eventfilter:nextcollection:result_3#title" }
-String   Collection_Message      "Müllkalender Nachricht"
+DateTime Garbage_NextCollection      "Müllkalender nächste Abholung"             <calendar> { channel="icalendar:eventfilter:nextcollection:result_0#begin" }
+DateTime Garbage_NextCollection_1    "Müllkalender nächste Abholung 1"           <calendar> { channel="icalendar:eventfilter:nextcollection:result_1#begin" }
+DateTime Garbage_NextCollection_2    "Müllkalender nächste Abholung 2"           <calendar> { channel="icalendar:eventfilter:nextcollection:result_2#begin" }
+DateTime Garbage_NextCollection_3    "Müllkalender nächste Abholung 3"           <calendar> { channel="icalendar:eventfilter:nextcollection:result_3#begin" }
+String   Garbage_Collection_Item0    "Müllkalender Item 1"                       <calendar> { channel="icalendar:eventfilter:nextcollection:result_0#title" }
+String   Garbage_Collection_Item1    "Müllkalender Item 2"                       <calendar> { channel="icalendar:eventfilter:nextcollection:result_1#title" }
+String   Garbage_Collection_Item2    "Müllkalender Item 3"                       <calendar> { channel="icalendar:eventfilter:nextcollection:result_2#title" }
+String   Garbage_Collection_Item3    "Müllkalender Item 4"                       <calendar> { channel="icalendar:eventfilter:nextcollection:result_3#title" }
+String   Garbage_Collection_Message  "Müllkalender Nachricht"

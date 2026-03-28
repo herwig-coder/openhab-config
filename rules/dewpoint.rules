@@ -31,7 +31,7 @@ then
         logInfo("Bathroom_Dewpoint", "Calculated Dewpoint: {} °C", dewpoint)
 
         // Update the Bathroom_Dewpoint item
-        Bathroom_Last_DewPoint.postUpdate(Bathroom_DewPoint.state)
+        Bathroom_DewPoint_Previous.postUpdate(Bathroom_DewPoint.state)
         Bathroom_DewPoint.postUpdate(dewpoint)
     } 
     else {

@@ -13,7 +13,7 @@ Group    gPool              "Pool"                <if:ic:sharp-pool>            
 //FrontYard
 Group    gCarport            "Carport"            <if:bxs:car-garage>           (gFrontYard)     ["Carport"]                                {widgetOrder="60"}
 Group    gGarage             "Garage"             <if:game-icons:home-garage>   (gFrontYard)     ["Garage"]                                 {widgetOrder="70"}
-Group    gTerrasseEntrance   "Eingang und Terrasse"  <if:hugeicons:patio>       (gFrontYard)     ["Location","Eingang und Terasse"]         {widgetOrder="80"}
+Group    gTerrasseEntrance   "Eingang und Terrasse"  <if:hugeicons:patio>       (gFrontYard)     ["Location","Eingang und Terrasse"]        {widgetOrder="80"}
 
 // Backyard
 
@@ -46,10 +46,10 @@ Group    gSwimmingpool      "Schwimmbecken"       <if:mdi:pool>                 
 
 //Bleiburg
 Group    gBleiburg      "Bleiburg"                                                              ["Location","Bleiburg"]
-Group    gBLivingRoom   "Bleiburg Living Room"                                  (gBleiburg)     ["LivingRoom"]
-Group    gBKitchen      "Bleiburg Kitchen"        <kitchen>                     (gBleiburg)     ["Kitchen"]
-Group    gBBedroom      "Bleiburg Bedroom"        <bedroom>                     (gBleiburg)     ["Bedroom"]
+Group    gBLivingRoom   "Bleiburg Wohnzimmer"                                   (gBleiburg)     ["LivingRoom"]
+Group    gBKitchen      "Bleiburg Küche"          <kitchen>                     (gBleiburg)     ["Kitchen"]
+Group    gBBedroom      "Bleiburg Schlafzimmer"   <bedroom>                     (gBleiburg)     ["Bedroom"]
 Group    gBWC           "Bleiburg WC"                                           (gBleiburg)     ["Bathroom"]
-Group    gBBathroom     "Bleiburg Bathroom"       <bathroom>                    (gBleiburg)     ["Bathroom"]
-Group    gBCorridor     "Bleiburg Corridor"                                     (gBleiburg)     ["Corridor"]
-Group    gBOutdoor      "Bleiburg Outdoor"                                                      ["Outdoor"]
+Group    gBBathroom     "Bleiburg Bad"            <bathroom>                    (gBleiburg)     ["Bathroom"]
+Group    gBCorridor     "Bleiburg Vorraum"                                      (gBleiburg)     ["Corridor"]
+Group    gBOutdoor      "Bleiburg Außenbereich"                                                 ["Outdoor"]

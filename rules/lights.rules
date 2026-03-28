@@ -2,18 +2,18 @@
 rule "Ambient Light"
 when 
     //Time cron "0 08 20 * * *" or
-    Item LocalSun_SunPhaseName changed
+    Item Strasshof_SunPhase changed
 then
    logInfo("AmbientLight", "Trigger: SunPhase Changed")
-    // Test Ambient_Light_On.sendCommand(ON)
-    if (LocalSun_SunPhaseName.state == "SUN_SET") {
+    // Test Strasshof_AmbientLight_On.sendCommand(ON)
+    if (Strasshof_SunPhase.state == "SUN_SET") {
         logInfo("AmbientLight", "Sunset - switch on ambient light")
-        Ambient_Light_On.sendCommand(ON)
+        Strasshof_AmbientLight_On.sendCommand(ON)
     } 
     else {
-      if (LocalSun_SunPhaseName.state == "SUN_RISE") {
+      if (Strasshof_SunPhase.state == "SUN_RISE") {
         logInfo("AmbientLight", "Sunset - switch off ambient light")
-        Ambient_Light_On.sendCommand(OFF)
+        Strasshof_AmbientLight_On.sendCommand(OFF)
     } 
     }
 end
@@ -25,11 +25,11 @@ when
 
 then
    logInfo("MidnightOff", "Trigger: Midnight Lights off")
-    // Test Ambient_Light_On.sendCommand(ON)
+    // Test Strasshof_AmbientLight_On.sendCommand(ON)
     WC_Light.sendCommand(OFF)
     Corridor_Light.sendCommand(OFF)
     Corridor_Picture_Light.sendCommand(OFF)
-    Small_Corridor_Light.sendCommand(OFF)
+    SmallCorridor_Light.sendCommand(OFF)
 end
 
 // Feuchtealarm
@@ -56,8 +56,8 @@ when
 
 then
    logInfo("Aquarium", "Trigger: Aquarium Lights on")
-    // Test Ambient_Light_On.sendCommand(ON)
-    Switch_Aquarium.sendCommand(ON)
+    // Test Strasshof_AmbientLight_On.sendCommand(ON)
+    ChildrenBedroom_Aquarium.sendCommand(ON)
     
 end
 
@@ -68,7 +68,7 @@ when
 
 then
    logInfo("Aquarium", "Trigger: Aquarium Lights off")
-    // Test Ambient_Light_On.sendCommand(ON)
-    Switch_Aquarium.sendCommand(OFF)
+    // Test Strasshof_AmbientLight_On.sendCommand(ON)
+    ChildrenBedroom_Aquarium.sendCommand(OFF)
     
 end

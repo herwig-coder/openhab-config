@@ -1,8 +1,8 @@
-Number:Dimensionless currentnet "Current Exchnage net price [%2.2f ct/kWh]"     <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#market-net" }
-Number:Dimensionless currentgross "Current Exchnage gross price [%2.2f ct/kWh]" <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#market-gross" }
-Number:Dimensionless totalnet "Current Awattar net price [%2.2f ct/kWh]"        <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#total-net" }
-Number:Dimensionless totalgross "Current Awattar gross price [%2.2f ct/kWh]"    <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#total-gross" }
-Number:Dimensionless totalprice "Strompreis [%2.2f ct/kWh]"                     <if:f7:money-euro-circle> (gStrasshof) ["Point"] {alexa="Other"}
+Number:Dimensionless Awattar_Price_CurrentNet   "Aktueller Börsenstrompreis netto [%2.2f ct/kWh]"   <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#market-net" }
+Number:Dimensionless Awattar_Price_CurrentGross "Aktueller Börsenstrompreis brutto [%2.2f ct/kWh]" <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#market-gross" }
+Number:Dimensionless Awattar_Price_TotalNet     "Aktueller Awattar Preis netto [%2.2f ct/kWh]"      <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#total-net" }
+Number:Dimensionless Awattar_Price_TotalGross   "Aktueller Awattar Preis brutto [%2.2f ct/kWh]"     <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#total-gross" }
+Number:Dimensionless Awattar_Price_Total        "Strompreis [%2.2f ct/kWh]"                         <if:f7:money-euro-circle> (gStrasshof) ["Point"] {alexa="Other"}
 
 Number:Dimensionless today00 "Electricity Today 00-01 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today00#total-gross" }
 Number:Dimensionless today01 "Electricity Today 01-02 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today01#total-gross" }
@@ -54,11 +54,11 @@ Number:Dimensionless tomorrow21 "Electricity Tomorrow 21-22 [%2.2f ct/kWh]"  <if
 Number:Dimensionless tomorrow22 "Electricity Tomorrow 22-23 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow22#total-gross" }
 Number:Dimensionless tomorrow23 "Electricity Tomorrow 23-00 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow23#total-gross" }
 
-DateTime CarStart "Start car loader [%1$tH:%1$tM]"                          <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:start" }
-DateTime CarEnd "End car loader [%1$tH:%1$tM]"                              <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:end" }
-String CarCountdown "Countdown for car loader [%s]"                         <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:countdown" }
-String CarHours "Hours for car loader [%s]"                                 <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:hours" }
-Switch CarActive                                                            <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:active" }
+DateTime Awattar_Car_LoadStart  "Auto laden Start [%1$tH:%1$tM]"     <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:start" }
+DateTime Awattar_Car_LoadEnd    "Auto laden Ende [%1$tH:%1$tM]"      <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:end" }
+String   Awattar_Car_Countdown  "Auto laden Countdown [%s]"          <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:countdown" }
+String   Awattar_Car_Hours      "Auto laden Stunden [%s]"            <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:hours" }
+Switch   Awattar_Car_Active                                          <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:active" }
 
 //Switch WaterActive { channel="awattar:bestprice:bridge1:water:active" }
 //Switch HeatpumpActive { channel="awattar:bestprice:bridge1:heatpump:active" }

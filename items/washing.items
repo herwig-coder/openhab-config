@@ -1,2 +1,2 @@
 // items for eventfilter for wahing
-DateTime lastWash      "Letztes mal gewaschen"
+DateTime Washing_LastWash      "Letztes mal gewaschen"

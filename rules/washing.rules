@@ -7,10 +7,10 @@ when
     Time cron "0 20 7 * * ?"
 then
     logInfo("WashingTime", "Trigger: Washing Reminder")
-    if (lastWash.state instanceof DateTimeType ) {
+    if (Washing_LastWash.state instanceof DateTimeType ) {
 
-        //val ZonedDateTime last = (lastWash.state as DateTimeType).zonedDateTime
-        val ZonedDateTime last = (lastWash.state as DateTimeType).getInstant.atZone(ZoneId.systemDefault())
+        //val ZonedDateTime last = (Washing_LastWash.state as DateTimeType).zonedDateTime
+        val ZonedDateTime last = (Washing_LastWash.state as DateTimeType).getInstant.atZone(ZoneId.systemDefault())
         val ZonedDateTime now  = ZonedDateTime.now()
 
         val long days = java.time.Duration.between(last, now).toDays()
@@ -37,10 +37,10 @@ when
     Time cron "0 /10 * * * ?"
 then
     logInfo("WashHangTime", "Trigger: Check hang clothes")
-    if (lastWash.state instanceof DateTimeType ) {
+    if (Washing_LastWash.state instanceof DateTimeType ) {
 
-        //val ZonedDateTime last = (lastWash.state as DateTimeType).zonedDateTime
-        val ZonedDateTime last = (lastWash.state as DateTimeType).getInstant.atZone(ZoneId.systemDefault())
+        //val ZonedDateTime last = (Washing_LastWash.state as DateTimeType).zonedDateTime
+        val ZonedDateTime last = (Washing_LastWash.state as DateTimeType).getInstant.atZone(ZoneId.systemDefault())
         val ZonedDateTime now  = ZonedDateTime.now()
 
         val long minutes = java.time.Duration.between(last, now).toMinutes()
@@ -63,13 +63,13 @@ end
 ////////////////////////////////////////////////////////
 rule "WashresetLast"
 when
-    Item Gosund_02_Power_consumption changed
+    Item Bathroom_SmartPlug_Power changed
 then
     logInfo("WashresetLast", "Trigger: Washing machine is running")
-    val power = (Gosund_02_Power_consumption.state as QuantityType<Number>).toUnit("kW").doubleValue
+    val power = (Bathroom_SmartPlug_Power.state as QuantityType<Number>).toUnit("kW").doubleValue
     logInfo("WashresetLast", "Power Consumption {}", power)
     if (power > 0.01) {
-        lastWash.postUpdate(now.toLocalDateTime.toString())
+        Washing_LastWash.postUpdate(now.toLocalDateTime.toString())
         logInfo("WashresetLast", "lastwash UPDATED")
     }
     

@@ -1,30 +1,30 @@
 //Type                ItemID                                 Label                                           Icon                                Groups                                 Tags                            Channel
 //Bewegungsmelder
-Number:Illuminance    MotionSensor_Passage_Brightness        "Poolhaus Bewegungsmelder Passage Helligkeit"   <mdi:house-floor-g>                 (gPoolHouse)                            ["Point","Illuminance"]         { unit="lx", channel="shelly:shellyblumotion:38398f86e983:sensors#lux"}
-Switch                MotionSensor_Passage                   "Poolhaus Bewegungsmelder Passage"              <mdi:house-floor-g>                 (gPoolHouse)                            ["Switch"]                      {channel="shelly:shellyblumotion:38398f86e983:sensors#motion"}
-Number:Dimensionless  MotionSensor_Passage_Battery           "Poolhaus Bewegungsmelder Batterie"             <if:mdi:battery-10>                 (gPoolHouse, gBattery)                  ["Battery"]                     { unit="%",  channel="shelly:shellyblumotion:38398f86e983:battery#batteryLevel" }
+Number:Illuminance    Poolhouse_Passage_Brightness           "Poolhaus Bewegungsmelder Passage Helligkeit"   <mdi:house-floor-g>                 (gPoolHouse)                            ["Point","Illuminance"]         { unit="lx", channel="shelly:shellyblumotion:38398f86e983:sensors#lux"}
+Switch                Poolhouse_Passage_Motion               "Poolhaus Bewegungsmelder Passage"              <mdi:house-floor-g>                 (gPoolHouse)                            ["Switch"]                      {channel="shelly:shellyblumotion:38398f86e983:sensors#motion"}
+Number:Dimensionless  Poolhouse_Passage_Battery              "Poolhaus Bewegungsmelder Batterie"             <if:mdi:battery-10>                 (gPoolHouse, gBattery)                  ["Battery"]                     { unit="%",  channel="shelly:shellyblumotion:38398f86e983:battery#batteryLevel" }
 
 //Leuchtstreifen
-Color                 Strip_Gartenhaus_Passage_Light_Color   "Poolhaus Passage Strip Farbe"                  <mdi:house-floor-g>                 (gPoolHouse, Light)                     ["Light"]                       { unit="%",  channel="shelly:shellyplusrgbwpm:30c9225758d0:color#hsb" }
+Color                 Poolhouse_Passage_LightStrip_Color     "Poolhaus Passage Strip Farbe"                  <mdi:house-floor-g>                 (gPoolHouse, Light)                     ["Light"]                       { unit="%",  channel="shelly:shellyplusrgbwpm:30c9225758d0:color#hsb" }
 //Not working
-//Dimmer                Strip_Gartenhaus_Passage_Light_Dimmer  "Poolhaus Passage Strip Dimmer"                 <mdi:house-floor-g>                 (gPoolHouse, Light)                      ["Point","Light"]                   {channel="shelly:shellyplusrgbwpm:30c9225758d0:white#brightness"}
+//Dimmer              Strip_Gartenhaus_Passage_Light_Dimmer  "Poolhaus Passage Strip Dimmer"                 <mdi:house-floor-g>                 (gPoolHouse, Light)                      ["Point","Light"]                   {channel="shelly:shellyplusrgbwpm:30c9225758d0:white#brightness"}
 
 //Tisch
-Dimmer                Gartenhaus_Light_Dimmer                "Poolhaus Tisch Licht Dimmer"                   <mdi:house-floor-g>                 (gPoolHouse, Light)                     ["Light"]                       {channel="shelly:shellydimmer2:40915158dd6e:relay#brightness"}
+Dimmer                Poolhouse_Light_Dimmer                 "Poolhaus Tisch Licht Dimmer"                   <mdi:house-floor-g>                 (gPoolHouse, Light)                     ["Light"]                       {channel="shelly:shellydimmer2:40915158dd6e:relay#brightness"}
 
 
 //Carport
 Switch                Carport_Automatic_Switch              "Carport Licht Automatikbetrieb"                 <switch>                            (gCarport)                              ["Switch"]                      {channel="shelly:shellyplus2pm-relay:a0dd6c28a1bc:relay1#output"}
 Number:Power          Carport_Automatic_Power               "Carport Licht Automatik Leistung"               <if:mingcute:high-voltage-power-line> (gCarport)                            ["Power"]                       { unit="W",channel="shelly:shellyplus2pm-relay:a0dd6c28a1bc:meter1#currentWatts"}
 Switch                Carport_Manual_Switch                 "Carport Licht Manuell"                          <switch>                            (gCarport)                              ["Switch"]                      {channel="shelly:shellyplus2pm-relay:a0dd6c28a1bc:relay2#output"}
-Number:Power          Carport_Manuall_Power                 "Carport Licht Manuell Leistung"                 <if:mingcute:high-voltage-power-line> (gCarport)                            ["Power"]                       { unit="W",channel="shelly:shellyplus2pm-relay:a0dd6c28a1bc:meter2#currentWatts"}
+Number:Power          Carport_Manual_Power                  "Carport Licht Manuell Leistung"                 <if:mingcute:high-voltage-power-line> (gCarport)                            ["Power"]                       { unit="W",channel="shelly:shellyplus2pm-relay:a0dd6c28a1bc:meter2#currentWatts"}
 Number:Energy         Carport_Light_Energy                  "Energieverbrauch Carport Licht"                 <if:mdi:energy-from-grid>            (gCarport)                             ["Energy"]                      { unit="kWh",channel="shelly:shellyplus2pm-relay:a0dd6c28a1bc:device#totalKWH"}
 
 
 //Bad Fenster Alarm
 Switch                Bathroom_Alarm_Locked                 "Bad Fenster verriegelt"                         <contact>                            (gBathroom)                            ["Switch"]                      {channel="shelly:shellyplusi4dc:80f3dae5ca54:status1#input"}
-Switch                Bathroom_Alarm_Gekippt                "Bad Fenster gekippt"                            <contact>                            (gBathroom)                            ["Switch"]                      {channel="shelly:shellyplusi4dc:80f3dae5ca54:status2#input"}
-Switch                Bathroom_Alarm_Open                   "Bad Fenster offen"                              <contact>                            (gBathroom)                            ["Switch"]                      
+Switch                Bathroom_Alarm_Tilted                 "Bad Fenster gekippt"                            <contact>                            (gBathroom)                            ["Switch"]                      {channel="shelly:shellyplusi4dc:80f3dae5ca54:status2#input"}
+Switch                Bathroom_Alarm_Open                   "Bad Fenster offen"                              <contact>                            (gBathroom)                            ["Switch"]
 Switch                Bathroom_Alarm_Sabotage               "Bad Fenster Sabotage"                           <contact>                            (gBathroom)                            ["Switch"]                      {channel="shelly:shellyplusi4dc:80f3dae5ca54:status4#input"}
 Switch                Bathroom_Alarm_Helper                 "Bad Fenster Helper"                             <contact>                                                                   ["Switch"]                      {channel="shelly:shellyplusi4dc:80f3dae5ca54:status3#input"}
 
@@ -35,17 +35,18 @@ Number:Power          Bathroom_Airing_Open_Power            "Bad Fenster öffnen
 Switch                Bathroom_Airing_Close_Switch          "Bad Fenster schliessen"                         <switch>                             (gBathroom)                            ["Switch"]                      {channel="shelly:shellyplus2pm-relay:a0dd6c286d10:relay2#output"}
 Number:Power          Bathroom_Airing_Close_Power           "Bad Fenster schliessen Leistung"                <if:mingcute:high-voltage-power-line>(gBathroom)                            ["Power"]                       { unit="W",channel="shelly:shellyplus2pm-relay:a0dd6c286d10:meter2#currentWatts"}
 Number:Energy         Bathroom_Airing_Energy                "Bad Fenster Energie"                            <if:mdi:energy-from-grid>            (gBathroom)                            ["Energy"]                      { unit="kWh",channel="shelly:shellyplus2pm-relay:a0dd6c286d10:device#totalKWH"}
-Switch                Bathroom_Airing_Open_Request          "Bad Fenster öffnen Anforderung"                 <switch>                             (gBathroom)                            ["Switch"]                      
+Switch                Bathroom_Airing_Open_Request          "Bad Fenster öffnen Anforderung"                 <switch>                             (gBathroom)                            ["Switch"]
 Switch                Bathroom_Airing_Close_Request         "Bad Fenster schliessen Anforderung"             <switch>                             (gBathroom)                            ["Switch"]
-DateTime              Bathroom_Motor_on                     "Motor eingeschalten"                            <Time>                                                                      ["Point"]
+DateTime              Bathroom_Motor_On                     "Motor eingeschaltet"                            <Time>                                                                      ["Point"]
+
 
 //Esszimmer
-Switch                DiningRoom_Switch_Lights_Kitchen      "Esszimmer Schalter Küchenlicht"                 <switch>                             (gDiningRoom)                            ["Switch"]                 {channel="shelly:shellyplusi4:48f6ee8442dc:status4#input"}
-Switch                DiningRoom_Switch_Lights_Dining       "Esszimmer Schalter Esstisch"                    <switch>                             (gDiningRoom)                            ["Switch"]                 {channel="shelly:shellyplusi4:48f6ee8442dc:status2#input"}
+Switch                DiningRoom_Button_LightKitchen        "Esszimmer Schalter Küchenlicht"                 <switch>                             (gDiningRoom)                            ["Switch"]                 {channel="shelly:shellyplusi4:48f6ee8442dc:status4#input"}
+Switch                DiningRoom_Button_LightDining         "Esszimmer Schalter Esstisch"                    <switch>                             (gDiningRoom)                            ["Switch"]                 {channel="shelly:shellyplusi4:48f6ee8442dc:status2#input"}
 
 String                DiningRoom_Button_Scene_Privacy       "Esszimmer Schalter Privacy"                                                          (gDiningRoom)                                                       {channel="shelly:shellyplusi4:48f6ee8442dc:status1#lastEvent"}
-String                DiningRoom_Button_Scene_Morning_Sun   "Esszimmer Schalter MorgenSonne"                                                      (gDiningRoom)                                                       {channel="shelly:shellyplusi4:48f6ee8442dc:status3#lastEvent"}
-String                DiningRoom_Button_Raffstore_Ausgang_Auf "Esszimmer Schalter Raffstore Ausgang Auf"                                          (gDiningRoom)                                                       {channel="shelly:shellyplusi4:48f6ee916118:status4#lastEvent"}
-String                DiningRoom_Button_Raffstore_Ausgang_Zu "Esszimmer Schalter Raffstore Ausgang Zu"                                            (gDiningRoom)                                                       {channel="shelly:shellyplusi4:48f6ee916118:status2#lastEvent"}
-String                DiningRoom_Button_Raffstore_Seiten_Auf "Esszimmer Schalter Raffstore Seiten Auf"                                            (gDiningRoom)                                                       {channel="shelly:shellyplusi4:48f6ee916118:status3#lastEvent"}
-String                DiningRoom_Button_Raffstore_Seiten_Zu  "Esszimmer Schalter Raffstore Seiten Zu"                                             (gDiningRoom)                                                       {channel="shelly:shellyplusi4:48f6ee916118:status1#lastEvent"}
+String                DiningRoom_Button_Scene_MorningSun    "Esszimmer Schalter Morgensonne"                                                      (gDiningRoom)                                                       {channel="shelly:shellyplusi4:48f6ee8442dc:status3#lastEvent"}
+String                DiningRoom_Button_Rollershutter_ExitUp   "Esszimmer Schalter Raffstore Ausgang Auf"                                         (gDiningRoom)                                                       {channel="shelly:shellyplusi4:48f6ee916118:status4#lastEvent"}
+String                DiningRoom_Button_Rollershutter_ExitDown "Esszimmer Schalter Raffstore Ausgang Zu"                                          (gDiningRoom)                                                       {channel="shelly:shellyplusi4:48f6ee916118:status2#lastEvent"}
+String                DiningRoom_Button_Rollershutter_SidesUp  "Esszimmer Schalter Raffstore Seiten Auf"                                          (gDiningRoom)                                                       {channel="shelly:shellyplusi4:48f6ee916118:status3#lastEvent"}
+String                DiningRoom_Button_Rollershutter_SidesDown "Esszimmer Schalter Raffstore Seiten Zu"                                          (gDiningRoom)                                                       {channel="shelly:shellyplusi4:48f6ee916118:status1#lastEvent"}

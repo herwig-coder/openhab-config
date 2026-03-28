@@ -1,12 +1,12 @@
 // Bewegung Gartenhaus Passage
 rule "Bewegung Gartenhaus Passage"
 when
-    Item MotionSensor_Passage changed
+    Item Poolhouse_Passage_Motion changed
 then
     logInfo ("Bewegung Gartenhaus", "Trigger: Motion Changed at Gartenhaus Passage")
-    val illuminance = (MotionSensor_Passage_Brightness.state as QuantityType<Number>).toUnit("lx").doubleValue
+    val illuminance = (Poolhouse_Passage_Brightness.state as QuantityType<Number>).toUnit("lx").doubleValue
     var LEDhue= 183
-    if (MotionSensor_Passage.state == ON ){
+    if (Poolhouse_Passage_Motion.state == ON ){
         logInfo ("Bewegung Gartenhaus", "Motion Detected")
         if (illuminance > 100) {
             logInfo ("Bewegung Gartenhaus", "Brightness {} lx higher than 100 lx - do nothing. Hue is {}.",illuminance, LEDhue)
@@ -14,36 +14,36 @@ then
         else {
             logInfo ("Bewegung Gartenhaus", "Brightness {} lx lower than 100 lx - turn on light. Hue is {}.",illuminance, LEDhue)
             // turn item on
-            Strip_Gartenhaus_Passage_Light_Color.sendCommand(new HSBType(new DecimalType(LEDhue), new PercentType(100), new PercentType(100)).toString)
+            Poolhouse_Passage_LightStrip_Color.sendCommand(new HSBType(new DecimalType(LEDhue), new PercentType(100), new PercentType(100)).toString)
             // Workaround to change color since otherwise the update does not go through
             //LEDhue += 1
-            //Strip_Gartenhaus_Passage_Light_Color.sendCommand(new HSBType(new DecimalType(LEDhue), Strip_Gartenhaus_Passage_Light_Color.getStateAs(HSBType).saturation, Strip_Gartenhaus_Passage_Light_Color.getStateAs(HSBType).brightness).toString)
+            //Poolhouse_Passage_LightStrip_Color.sendCommand(new HSBType(new DecimalType(LEDhue), Poolhouse_Passage_LightStrip_Color.getStateAs(HSBType).saturation, Poolhouse_Passage_LightStrip_Color.getStateAs(HSBType).brightness).toString)
         }
     }
     else {
        logInfo ("Bewegung Gartenhaus", "No more motion detected - turning off")
        // turn item off
-       Strip_Gartenhaus_Passage_Light_Color.sendCommand(new HSBType(new DecimalType(LEDhue), Strip_Gartenhaus_Passage_Light_Color.getStateAs(HSBType).saturation, new PercentType(0)).toString)
+       Poolhouse_Passage_LightStrip_Color.sendCommand(new HSBType(new DecimalType(LEDhue), Poolhouse_Passage_LightStrip_Color.getStateAs(HSBType).saturation, new PercentType(0)).toString)
        // Workaround to change color since otherwise the update does not go through
        //LEDhue -= 1
-       //Strip_Gartenhaus_Passage_Light_Color.sendCommand(new HSBType(new DecimalType(LEDhue), Strip_Gartenhaus_Passage_Light_Color.getStateAs(HSBType).saturation,  new PercentType(0)).toString)
+       //Poolhouse_Passage_LightStrip_Color.sendCommand(new HSBType(new DecimalType(LEDhue), Poolhouse_Passage_LightStrip_Color.getStateAs(HSBType).saturation,  new PercentType(0)).toString)
     }
 end
 
 // Lichtschalter Küche Gedrückt
 rule "Lichtschalter Küche"
 when
-    Item DiningRoom_Switch_Lights_Kitchen changed
+    Item DiningRoom_Button_LightKitchen changed
 then
     logInfo ("Lichtschalter Küche", "Trigger: Changed Lichtschalter Küche")
-        if (DiningRoom_Switch_Lights_Kitchen.state == ON) {
-        if (Kitchen_Working_Light.state == OFF ){
+        if (DiningRoom_Button_LightKitchen.state == ON) {
+        if (Kitchen_Light_Working.state == OFF ){
             logInfo ("Lichtschalter Küche", "Licht ein")
-            Kitchen_Working_Light.sendCommand(ON)
+            Kitchen_Light_Working.sendCommand(ON)
         }
         else {
         logInfo ("Lichtschalter Küche", "Licht aus")
-        Kitchen_Working_Light.sendCommand(OFF)
+        Kitchen_Light_Working.sendCommand(OFF)
         }
     }
 end
@@ -51,35 +51,35 @@ end
 // Lichtschalter Esszimmer Gedrückt
 rule "Lichtschalter Esszimmer"
 when
-    Item DiningRoom_Switch_Lights_Dining changed
+    Item DiningRoom_Button_LightDining changed
 then
     logInfo ("Lichtschalter Esszimmer", "Trigger: Changed Lichtschalter Esszimmer")
-        if (DiningRoom_Switch_Lights_Dining.state == ON) {
-        if (Kitchen_Dining_Light.state == OFF ){
+        if (DiningRoom_Button_LightDining.state == ON) {
+        if (Kitchen_Light_Dining.state == OFF ){
             logInfo ("Lichtschalter Esszimmer", "Licht ein")
-            Kitchen_Dining_Light.sendCommand(ON)
+            Kitchen_Light_Dining.sendCommand(ON)
         }
         else {
         logInfo ("Lichtschalter Esszimmer", "Licht aus")
-        Kitchen_Dining_Light.sendCommand(OFF)
+        Kitchen_Light_Dining.sendCommand(OFF)
         }
     }
 end
 
 
-// Privacy Esszimmer Gedrückt
-rule "Privacy Esszimmer"
+// Strasshof_Privacy Esszimmer Gedrückt
+rule "Strasshof_Privacy Esszimmer"
 when
     Channel "shelly:shellyplusi4:48f6ee8442dc:status3#button" triggered SHORT_PRESSED
 then
-    logInfo ("Privacy Esszimmer", "Trigger: Changed Privacy Esszimmer")
-    if (Privacy.state == OFF ){
-        logInfo ("Privacy Esszimmer", "Privacy ein")
-        Privacy.sendCommand(ON)
+    logInfo ("Strasshof_Privacy Esszimmer", "Trigger: Changed Strasshof_Privacy Esszimmer")
+    if (Strasshof_Privacy.state == OFF ){
+        logInfo ("Strasshof_Privacy Esszimmer", "Strasshof_Privacy ein")
+        Strasshof_Privacy.sendCommand(ON)
     }
     else {
-    logInfo ("Privacy Esszimmer", "Privacy aus")
-    Privacy.sendCommand(OFF)
+    logInfo ("Strasshof_Privacy Esszimmer", "Strasshof_Privacy aus")
+    Strasshof_Privacy.sendCommand(OFF)
     }
 end
 
@@ -89,13 +89,13 @@ when
     Channel "shelly:shellyplusi4:48f6ee8442dc:status1#button" triggered SHORT_PRESSED
 then
     logInfo ("Morgensonne Esszimmer", "Trigger: Changed Morgensonne Esszimmer")
-    if (Rollershutter_Kitchen_LowSun.state == OFF ){
-        logInfo ("Morgensonne Esszimmer", "Privacy ein")
-        Rollershutter_Kitchen_LowSun.sendCommand(ON)
+    if (Kitchen_Rollershutter_SunProtect.state == OFF ){
+        logInfo ("Morgensonne Esszimmer", "Strasshof_Privacy ein")
+        Kitchen_Rollershutter_SunProtect.sendCommand(ON)
     }
     else {
-    logInfo ("Morgensonne Esszimmer", "Privacy aus")
-    Rollershutter_Kitchen_LowSun.sendCommand(OFF)
+    logInfo ("Morgensonne Esszimmer", "Strasshof_Privacy aus")
+    Kitchen_Rollershutter_SunProtect.sendCommand(OFF)
     }       
 end
 
@@ -104,8 +104,8 @@ when
     Channel "shelly:shellyplusi4:48f6ee916118:status3#button" triggered LONG_PRESSED
 then
     logInfo ("Esszimmer Seiten Auf", "Trigger: Esszimmer Seitenteile auf")
-    EZ_Sides_Left_Rollershutter.sendCommand(0)     
-    EZ_Sides_Right_Rollershutter.sendCommand(0)  
+    DiningRoom_Rollershutter_SidesLeft.sendCommand(0)     
+    DiningRoom_Rollershutter_SidesRight.sendCommand(0)  
 end
 
 rule "Esszimmer Seitenteile zu"
@@ -113,8 +113,8 @@ when
     Channel "shelly:shellyplusi4:48f6ee916118:status1#button" triggered LONG_PRESSED
 then
     logInfo ("Esszimmer Seiten Auf", "Trigger: Esszimmer Seitenteile zu")
-    EZ_Sides_Left_Rollershutter.sendCommand(100)     
-    EZ_Sides_Right_Rollershutter.sendCommand(100)     
+    DiningRoom_Rollershutter_SidesLeft.sendCommand(100)     
+    DiningRoom_Rollershutter_SidesRight.sendCommand(100)     
 end
 
 rule "Esszimmer Seitenteile Blende auf"
@@ -122,20 +122,20 @@ when
     Channel "shelly:shellyplusi4:48f6ee916118:status3#button" triggered SHORT_PRESSED
 then
     logInfo ("Esszimmer Seiten Auf", "Trigger: Esszimmer Seitenteile Blende auf")
-    var leftTiltValue = (EZ_Sides_Left_Rollershutter_tilt.state as DecimalType).intValue
-    var rightRiltValue = (EZ_Sides_Right_Rollershutter_tilt.state as DecimalType).intValue
+    var leftTiltValue = (DiningRoom_Rollershutter_SidesLeft_Tilt.state as DecimalType).intValue
+    var rightRiltValue = (DiningRoom_Rollershutter_SidesRight_Tilt.state as DecimalType).intValue
     // Stop movement
-    EZ_Sides_Right_Rollershutter.sendCommand((EZ_Sides_Right_Rollershutter.state as DecimalType).intValue) 
-    EZ_Sides_Left_Rollershutter.sendCommand((EZ_Sides_Left_Rollershutter.state as DecimalType).intValue)
+    DiningRoom_Rollershutter_SidesRight.sendCommand((DiningRoom_Rollershutter_SidesRight.state as DecimalType).intValue) 
+    DiningRoom_Rollershutter_SidesLeft.sendCommand((DiningRoom_Rollershutter_SidesLeft.state as DecimalType).intValue)
     if (leftTiltValue > 0 )
     {
         val value = leftTiltValue - 10
-        EZ_Sides_Left_Rollershutter_tilt.sendCommand(value)     
+        DiningRoom_Rollershutter_SidesLeft_Tilt.sendCommand(value)     
     }
     if (rightRiltValue > 0 )
     {
         val value = rightRiltValue - 10
-        EZ_Sides_Right_Rollershutter_tilt.sendCommand(value)     
+        DiningRoom_Rollershutter_SidesRight_Tilt.sendCommand(value)     
     }
 end
 
@@ -146,20 +146,20 @@ when
     Channel "shelly:shellyplusi4:48f6ee916118:status1#button" triggered SHORT_PRESSED
 then
     logInfo ("Esszimmer Seiten Auf", "Trigger: Esszimmer Seitenteile Blende zu")
-    var leftTiltValue = (EZ_Sides_Left_Rollershutter_tilt.state as DecimalType).intValue
-    var rightRiltValue = (EZ_Sides_Right_Rollershutter_tilt.state as DecimalType).intValue
+    var leftTiltValue = (DiningRoom_Rollershutter_SidesLeft_Tilt.state as DecimalType).intValue
+    var rightRiltValue = (DiningRoom_Rollershutter_SidesRight_Tilt.state as DecimalType).intValue
     // Stop movement
-    EZ_Sides_Right_Rollershutter.sendCommand((EZ_Sides_Right_Rollershutter.state as DecimalType).intValue) 
-    EZ_Sides_Left_Rollershutter.sendCommand((EZ_Sides_Left_Rollershutter.state as DecimalType).intValue)   
+    DiningRoom_Rollershutter_SidesRight.sendCommand((DiningRoom_Rollershutter_SidesRight.state as DecimalType).intValue) 
+    DiningRoom_Rollershutter_SidesLeft.sendCommand((DiningRoom_Rollershutter_SidesLeft.state as DecimalType).intValue)   
     if (leftTiltValue < 100 )
     {
         val value = leftTiltValue + 10
-        EZ_Sides_Left_Rollershutter_tilt.sendCommand(value)     
+        DiningRoom_Rollershutter_SidesLeft_Tilt.sendCommand(value)     
     }
     if (rightRiltValue < 100 )
     {
         val value = rightRiltValue + 10
-        EZ_Sides_Right_Rollershutter_tilt.sendCommand(value)     
+        DiningRoom_Rollershutter_SidesRight_Tilt.sendCommand(value)     
     }
 end
 
@@ -170,7 +170,7 @@ when
     Channel "shelly:shellyplusi4:48f6ee916118:status4#button" triggered LONG_PRESSED
 then
     logInfo ("Esszimmer Ausgang Auf", "Trigger: Esszimmer Ausgang auf")
-    EZ_Exit_Rollershutter.sendCommand(0)     
+    DiningRoom_Rollershutter_Exit.sendCommand(0)     
 end
 
 rule "Esszimmer Ausgang zu"
@@ -178,7 +178,7 @@ when
     Channel "shelly:shellyplusi4:48f6ee916118:status2#button" triggered LONG_PRESSED
 then
     logInfo ("Esszimmer Ausgang Auf", "Trigger: Esszimmer Ausgang zu")
-    EZ_Exit_Rollershutter.sendCommand(100)     
+    DiningRoom_Rollershutter_Exit.sendCommand(100)     
 end
 
 rule "Esszimmer Ausgang Blende auf"
@@ -186,14 +186,14 @@ when
     Channel "shelly:shellyplusi4:48f6ee916118:status4#button" triggered SHORT_PRESSED
 then
     logInfo ("Esszimmer Ausgang Auf", "Trigger: Esszimmer Ausgang Blende auf")
-    var tiltValue = (EZ_Exit_Rollershutter_tilt.state as DecimalType).intValue
+    var tiltValue = (DiningRoom_Rollershutter_Exit_Tilt.state as DecimalType).intValue
     // Stop movement
-    EZ_Exit_Rollershutter.sendCommand((EZ_Exit_Rollershutter.state as DecimalType).intValue)
+    DiningRoom_Rollershutter_Exit.sendCommand((DiningRoom_Rollershutter_Exit.state as DecimalType).intValue)
     if (tiltValue > 0 )
     {
         val value = tiltValue - 10
         logInfo ("Esszimmer Ausgang Auf", "Old Value {}, new Value {}.", tiltValue, value)
-        EZ_Exit_Rollershutter_tilt.sendCommand(value)     
+        DiningRoom_Rollershutter_Exit_Tilt.sendCommand(value)     
     }
 
 end
@@ -204,14 +204,14 @@ when
     Channel "shelly:shellyplusi4:48f6ee916118:status2#button" triggered SHORT_PRESSED
 then
     logInfo ("Esszimmer Ausgang Auf", "Trigger: Esszimmer Ausgang Blende zu")
-    var tiltValue = (EZ_Exit_Rollershutter_tilt.state as DecimalType).intValue
+    var tiltValue = (DiningRoom_Rollershutter_Exit_Tilt.state as DecimalType).intValue
     // Stop movement
-    EZ_Exit_Rollershutter.sendCommand((EZ_Exit_Rollershutter.state as DecimalType).intValue)
+    DiningRoom_Rollershutter_Exit.sendCommand((DiningRoom_Rollershutter_Exit.state as DecimalType).intValue)
     if (tiltValue < 100 )
     {
         val value = tiltValue + 10
         logInfo ("Esszimmer Ausgang Auf", "Old Value {}, new Value {}.", tiltValue, value)
-        EZ_Exit_Rollershutter_tilt.sendCommand(value)     
+        DiningRoom_Rollershutter_Exit_Tilt.sendCommand(value)     
     }
 
 end

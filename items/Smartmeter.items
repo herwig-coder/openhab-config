@@ -2,26 +2,26 @@
 // items for Netz NOE smart meter https://www.michaelreitbauer.at/kaifa-ma309-auslesen-smart-meter-evn/
 
 // Group for organizing Smart Meter items
-Group                       gSmartMeter                                 "Smart Meter"                     <if:mingcute:high-voltage-power-line>    (gStrasshof)      ["Equipment"]
+Group                       gSmartMeter                     "Smart Meter"                     <if:mingcute:high-voltage-power-line>    (gStrasshof)      ["Equipment"]
 
 // Voltage parameters
-Number:ElectricPotential    mqtt_SmartMeterNetzNOE_SpannungL1           "Spannung L1"                     <if:mdi:current-ac>                      (gSmartMeter)    ["Voltage"]      {unit="V", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:SpannungL1", stateDescription=""[pattern="%.1f V"]}
-Number:ElectricPotential    mqtt_SmartMeterNetzNOE_SpannungL2           "Spannung L2"                     <if:mdi:current-ac>                      (gSmartMeter)    ["Voltage"]      {unit="V", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:SpannungL2", stateDescription=""[pattern="%.1f V"]}
-Number:ElectricPotential    mqtt_SmartMeterNetzNOE_SpannungL3           "Spannung L3"                     <if:mdi:current-ac>                      (gSmartMeter)    ["Voltage"]      {unit="V", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:SpannungL3", stateDescription=""[pattern="%.1f V"]}
+Number:ElectricPotential    SmartMeter_Voltage_L1           "Spannung L1"                     <if:mdi:current-ac>                      (gSmartMeter)    ["Voltage"]      {unit="V", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:SpannungL1", stateDescription=""[pattern="%.1f V"]}
+Number:ElectricPotential    SmartMeter_Voltage_L2           "Spannung L2"                     <if:mdi:current-ac>                      (gSmartMeter)    ["Voltage"]      {unit="V", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:SpannungL2", stateDescription=""[pattern="%.1f V"]}
+Number:ElectricPotential    SmartMeter_Voltage_L3           "Spannung L3"                     <if:mdi:current-ac>                      (gSmartMeter)    ["Voltage"]      {unit="V", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:SpannungL3", stateDescription=""[pattern="%.1f V"]}
 
 // Current parameters
-Number:ElectricCurrent      mqtt_SmartMeterNetzNOE_StromL1              "Strom L1"                        <if:mdi:current-ac>                      (gSmartMeter)    ["Current"]      {unit="A", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:StromL1", stateDescription=""[pattern="%.2f A"]}
-Number:ElectricCurrent      mqtt_SmartMeterNetzNOE_StromL2              "Strom L2"                        <if:mdi:current-ac>                      (gSmartMeter)    ["Current"]      {unit="A", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:StromL2", stateDescription=""[pattern="%.2f A"]}
-Number:ElectricCurrent      mqtt_SmartMeterNetzNOE_StromL3              "Strom L3"                        <if:mdi:current-ac>                      (gSmartMeter)    ["Current"]      {unit="A", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:StromL3", stateDescription=""[pattern="%.2f A"]}
+Number:ElectricCurrent      SmartMeter_Current_L1           "Strom L1"                        <if:mdi:current-ac>                      (gSmartMeter)    ["Current"]      {unit="A", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:StromL1", stateDescription=""[pattern="%.2f A"]}
+Number:ElectricCurrent      SmartMeter_Current_L2           "Strom L2"                        <if:mdi:current-ac>                      (gSmartMeter)    ["Current"]      {unit="A", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:StromL2", stateDescription=""[pattern="%.2f A"]}
+Number:ElectricCurrent      SmartMeter_Current_L3           "Strom L3"                        <if:mdi:current-ac>                      (gSmartMeter)    ["Current"]      {unit="A", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:StromL3", stateDescription=""[pattern="%.2f A"]}
 
 // Power parameters
-Number:Power                mqtt_SmartMeterNetzNOE_MomentanleistungP    "Momentanleistung P Bezug"        <if:mdi:energy-from-grid>                (gSmartMeter)    ["Power"]        {unit="W", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:MomentanleistungP", stateDescription=""[pattern="%.3f kW"]}
-Number:Power                mqtt_SmartMeterNetzNOE_MomentanleistungN    "Momentanleistung N Lieferung"    <if:mdi:electricity-to-grid>             (gSmartMeter)    ["Power"]        {unit="W", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:MomentanleistungN", stateDescription=""[pattern="%.3f kW"]}
-Number:Power                mqtt_SmartMeterNetzNOE_Momentanleistung     "Momentanleistung"                <if:mingcute:high-voltage-power-line>    (gSmartMeter)    ["Power"]        {unit="W", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:Momentanleistung", stateDescription=""[pattern="%.3f kW"]}
+Number:Power                SmartMeter_Power_Import         "Momentanleistung P Bezug"        <if:mdi:energy-from-grid>                (gSmartMeter)    ["Power"]        {unit="W", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:MomentanleistungP", stateDescription=""[pattern="%.3f kW"]}
+Number:Power                SmartMeter_Power_Export         "Momentanleistung N Lieferung"    <if:mdi:electricity-to-grid>             (gSmartMeter)    ["Power"]        {unit="W", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:MomentanleistungN", stateDescription=""[pattern="%.3f kW"]}
+Number:Power                SmartMeter_Power                "Momentanleistung"                <if:mingcute:high-voltage-power-line>    (gSmartMeter)    ["Power"]        {unit="W", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:Momentanleistung", stateDescription=""[pattern="%.3f kW"]}
 
 // Power totals
-Number:Energy               mqtt_SmartMeterNetzNOE_WirkenergieP         "Wirkenergie P bezogen"           <if:mdi:energy-from-grid>                (gSmartMeter)    ["Energy"]       {unit="Wh", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:WirkenergieP", stateDescription=""[pattern="%.1f kWh"]}
-Number:Energy               mqtt_SmartMeterNetzNOE_WirkenergieN         "Wirkenergie N geliefert"         <if:mdi:electricity-to-grid>             (gSmartMeter)    ["Energy"]       {unit="Wh", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:WirkenergieN", stateDescription=""[pattern="%.1f kWh"]}
+Number:Energy               SmartMeter_Energy_Import        "Wirkenergie P bezogen"           <if:mdi:energy-from-grid>                (gSmartMeter)    ["Energy"]       {unit="Wh", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:WirkenergieP", stateDescription=""[pattern="%.1f kWh"]}
+Number:Energy               SmartMeter_Energy_Export        "Wirkenergie N geliefert"         <if:mdi:electricity-to-grid>             (gSmartMeter)    ["Energy"]       {unit="Wh", channel="mqtt:topic:mqtt_SmartMeterNetzNOE:WirkenergieN", stateDescription=""[pattern="%.1f kWh"]}
 
 // Leistungsfaktor
-Number:Dimensionless        mqtt_SmartMeterNetzNOE_Leistungsfaktor      "Leistungsfaktor"                 <if:mdi:cosine-wave>                     (gSmartMeter)                     {channel="mqtt:topic:mqtt_SmartMeterNetzNOE:Leistungsfaktor"}
+Number:Dimensionless        SmartMeter_PowerFactor          "Leistungsfaktor"                 <if:mdi:cosine-wave>                     (gSmartMeter)                     {channel="mqtt:topic:mqtt_SmartMeterNetzNOE:Leistungsfaktor"}
