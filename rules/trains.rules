@@ -12,9 +12,9 @@ import java.time.format.DateTimeFormatter
 // CONFIGURATION - UPDATE THESE PATHS FOR YOUR SYSTEM
 // ============================================================================
 
-// Script deployed to server by deploy.sh → /opt/openhab-scripts/train-tracker/
-val String SCRIPT_PATH = "/opt/openhab-scripts/train-tracker/venv/bin/python"
-val String TRACKER_SCRIPT = "/opt/openhab-scripts/train-tracker/train_tracker.py"
+// Scripts live inside the git repo at /etc/openhab/Scripts/train-tracker/
+val String SCRIPT_PATH = "/etc/openhab/Scripts/train-tracker/venv/bin/python"
+val String TRACKER_SCRIPT = "/etc/openhab/Scripts/train-tracker/train_tracker.py"
 
 val String NOTIFICATION_EMAIL = "herwig.kaltenhauser@gmx.at"  // For sendNotification
 

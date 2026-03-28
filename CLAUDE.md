@@ -6,14 +6,14 @@ Protocols: KNX, MQTT, Z-Wave, BLE. Cloud: OpenWeatherMap, Awattar, ÖBB HAFAS, T
 ## Directory Structure
 
 ```
-Config/                         ← git repo root
+Config/                         ← git repo root (cloned to /etc/openhab on server)
 ├── items/                      # OpenHAB item definitions (.items)
 ├── rules/                      # Automation logic (.rules — Xtend/DSL)
 ├── things/                     # Device/bridge configuration (.things)
-├── scripts/
+├── Scripts/
 │   ├── battery-monitor/        # Python: detect dead batteries via REST API + persistence
 │   └── train-tracker/          # Python: ÖBB train delays via HAFAS API → JSON → OpenHAB rules
-├── deploy.sh                   # SSH/rsync deployment script
+├── deploy.sh                   # Just runs: git push (server pulls from GitHub)
 ├── .env.example                # Template for all secrets — copy to .env
 └── .gitignore
 ```
@@ -29,7 +29,7 @@ Four things files contain credentials and are **gitignored**. Their `.template` 
 | `things/telegrambot.things` | `things/telegrambot.things.template` |
 | `things/ReolinkCameras.things` | `things/ReolinkCameras.things.template` |
 
-All secrets are documented in `.env.example`. Copy it to `.env` (gitignored) to store real values locally.
+These files already exist correctly on the server and are untouched by `git pull`.
 
 ## Integrations Overview
 
@@ -38,51 +38,97 @@ All secrets are documented in `.env.example`. Copy it to `.env` (gitignored) to 
 - **Z-Wave** — Additional sensors/actuators
 - **BLE** — Bluetooth Low Energy sensors
 - **OpenWeatherMap** — External weather data (API v3, location: 48.317,16.675)
-- **Awattar** — Real-time electricity pricing (also drives Ulanzi LED display via `scripts/` Python)
+- **Awattar** — Real-time electricity pricing (also drives Ulanzi LED display)
 - **Telegram** — Notifications (main bot + washing machine bot)
 - **Reolink** — 6 IP cameras via NVR at 10.1.2.1 (channels 0–3, 6, 7)
 - **iCalendar** — Garbage collection calendar
-- **ÖBB trains** — Real-time delays via HAFAS API (`scripts/train-tracker/`)
+- **ÖBB trains** — Real-time delays via HAFAS API (`Scripts/train-tracker/`)
 
 ## Python Scripts
 
-### scripts/train-tracker/
+### Scripts/train-tracker/
 Queries the ÖBB HAFAS API for the next train on a configured route and outputs JSON.
 OpenHAB rules (`rules/trains.rules`) call it via `executeCommandLine()` every 15 min (6–10 AM, Mon–Fri).
-Server deploy path: `/opt/openhab-scripts/train-tracker/`
+Server path: `/etc/openhab/Scripts/train-tracker/`
 
-### scripts/battery-monitor/
+### Scripts/battery-monitor/
 Queries OpenHAB REST API + persistence to find battery-powered devices with no activity.
 Sends Telegram alerts for dead batteries. Run manually or via cron.
-Server deploy path: `/opt/openhab-scripts/battery-monitor/`
+Server path: `/etc/openhab/Scripts/battery-monitor/`
 
-## Deploying to the OpenHAB Server
+## Deployment Workflow
 
-1. Copy `.env.example` → `.env` and fill in `OPENHAB_HOST`, `OPENHAB_SSH_USER`, `OPENHAB_CONFIG_PATH`, `OPENHAB_SCRIPTS_PATH`
-2. Set up SSH key auth: `ssh-copy-id $OPENHAB_SSH_USER@$OPENHAB_HOST`
-3. Run the deploy script:
+```
+Windows (edit) → git commit → git push → GitHub → server: sudo git pull
+```
 
 ```bash
-./deploy.sh             # deploy everything (config + scripts)
-./deploy.sh items       # deploy only items/
-./deploy.sh rules       # deploy only rules/
-./deploy.sh things      # deploy only things/
-./deploy.sh scripts     # deploy Python scripts to /opt/openhab-scripts/
-./deploy.sh rules/trains.rules   # deploy a single file
+# Windows — after committing changes:
+./deploy.sh
+
+# Server — apply changes:
+ssh herwig@10.1.100.101 'cd /etc/openhab && sudo git pull'
 ```
 
 OpenHAB watches config directories — no restart needed for items/rules/things changes.
 
-**First-time scripts setup** (after first `./deploy.sh scripts`):
+## Server Setup (one-time)
+
+### 1. Create GitHub private repo and push
+
+On GitHub: New repository → private → no README.
+
 ```bash
-ssh $OPENHAB_SSH_USER@$OPENHAB_HOST
-cd /opt/openhab-scripts/train-tracker && bash setup.sh
-cd /opt/openhab-scripts/battery-monitor && bash setup.sh
+# In Config/ on Windows:
+git remote add origin git@github.com:YOUR_USERNAME/openhab-config.git
+git push -u origin main
+```
+
+### 2. Set up SSH key on the Debian server for GitHub
+
+```bash
+ssh herwig@10.1.100.101
+ssh-keygen -t ed25519 -C "openhab-server" -f ~/.ssh/github_openhab
+cat ~/.ssh/github_openhab.pub
+```
+
+Add that public key to GitHub: Settings → SSH and GPG keys → New SSH key.
+
+Test: `ssh -T git@github.com`
+
+### 3. Initialize git in /etc/openhab
+
+The config files already exist there, so we init in-place:
+
+```bash
+cd /etc/openhab
+sudo git init
+sudo git remote add origin git@github.com:YOUR_USERNAME/openhab-config.git
+sudo git fetch origin
+sudo git checkout -t origin/main
+```
+
+If git complains about existing files being overwritten, it means those files differ
+from the repo — review them first, then: `sudo git checkout -f main`
+
+The gitignored things files (MQTT_broker.things etc.) are untracked and left untouched.
+
+### 4. Set git to use your SSH key
+
+```bash
+sudo git config core.sshCommand "ssh -i /home/herwig/.ssh/github_openhab"
+```
+
+### 5. First-time Python venv setup
+
+```bash
+cd /etc/openhab/Scripts/train-tracker && bash setup.sh
+cd /etc/openhab/Scripts/battery-monitor && bash setup.sh
 ```
 
 ## Rules Notes
 
 - Several rules have `_FIXED` versions (`ulanzimessages_FIXED.rules`, `senddewpointalert_FIXED.rules`) — these are the active versions; the originals without the suffix are kept for reference. See `rules/FIXES_APPLIED.md`.
 - Dew point calculation: `rules/dewpoint.rules`
-- Train tracker: `rules/trains.rules` (calls `scripts/train-tracker/train_tracker.py`)
-- Ulanzi LED display: `rules/ulanzimessages_FIXED.rules` + `scripts/battery-monitor/../StrompreisUlanzi.py`
+- Train tracker: `rules/trains.rules` → `/etc/openhab/Scripts/train-tracker/train_tracker.py`
+- Ulanzi LED display: `rules/ulanzimessages_FIXED.rules` + `Scripts/StrompreisUlanzi.py`
