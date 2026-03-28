@@ -1,0 +1,66 @@
+config:
+  label: Cameras Strasshof
+blocks:
+  - component: oh-block
+    config: {}
+    slots:
+      default:
+        - component: oh-grid-row
+          config: {}
+          slots:
+            default:
+              - component: oh-grid-col
+                config: {}
+                slots:
+                  default:
+                    - component: oh-image-card
+                      config:
+                        item: Carport_Camera_Front_Jpg
+                        refreshInterval: 1000
+              - component: oh-grid-col
+                config: {}
+                slots:
+                  default:
+                    - component: oh-image-card
+                      config:
+                        item: Carport_Camera_Back_Jpg
+                        refreshInterval: 1000
+              - component: oh-grid-col
+                config: {}
+                slots:
+                  default:
+                    - component: oh-image-card
+                      config:
+                        item: Backyard_Camera_Jpg
+                        refreshInterval: 1000
+        - component: oh-grid-row
+          config: {}
+          slots:
+            default:
+              - component: oh-grid-col
+                config: {}
+                slots:
+                  default:
+                    - component: oh-image-card
+                      config:
+                        item: Terrace_Camera_Jpg
+                        refreshInterval: 1000
+              - component: oh-grid-col
+                config: {}
+                slots:
+                  default:
+                    - component: oh-image-card
+                      config:
+                        item: Corridor_Camera_Jpg
+                        refreshInterval: 1000
+              - component: oh-grid-col
+                config: {}
+                slots:
+                  default:
+                    - component: oh-image-card
+                      config:
+                        item: Livingroom_Camera_Jpg
+                        refreshInterval: 1000
+masonry: []
+grid: []
+canvas: []

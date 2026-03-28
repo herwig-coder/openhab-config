@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh herwig@10.1.100.101 'curl -s http://localhost:8080/rest/things/ipcamera:reolink:CarportFront | python3 -c \"\"import sys,json; t=json.load\\(sys.stdin\\); print\\(list\\(t.keys\\(\\)\\)\\)\"\"')"
+    ]
+  }
+}

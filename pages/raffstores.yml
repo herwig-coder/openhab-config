@@ -1,0 +1,173 @@
+config:
+  fixedType: canvas
+  gridEnable: false
+  label: Raffstores
+  layoutType: fixed
+  order: "0"
+  screenHeight: 810
+  screenWidth: 660
+  sidebar: true
+blocks: []
+masonry: []
+grid: []
+canvas:
+  - component: oh-canvas-layer
+    config: {}
+    slots:
+      default:
+        - component: oh-canvas-item
+          config:
+            h: 150
+            w: 200
+            x: 10
+            y: 9
+          slots:
+            default:
+              - component: widget:vp_shutter_full
+                config:
+                  item: DiningRoom_Rollershutter_SidesRight
+                  louvre: DiningRoom_Rollershutter_SidesRight_Tilt
+                  title: EZ rechts
+        - component: oh-canvas-item
+          config:
+            h: 150
+            w: 200
+            x: 10
+            y: 170
+          slots:
+            default:
+              - component: widget:vp_shutter_full
+                config:
+                  item: DiningRoom_Rollershutter_Exit
+                  louvre: DiningRoom_Rollershutter_Exit_Tilt
+                  title: EZ Ausgang
+        - component: oh-canvas-item
+          config:
+            h: 150
+            w: 200
+            x: 10
+            y: 328
+          slots:
+            default:
+              - component: widget:vp_shutter_full
+                config:
+                  item: DiningRoom_Rollershutter_SidesLeft
+                  louvre: DiningRoom_Rollershutter_SidesLeft_Tilt
+                  title: EZ links
+        - component: oh-canvas-item
+          config:
+            h: 150
+            w: 200
+            x: 10
+            y: 490
+          slots:
+            default:
+              - component: widget:vp_shutter_full
+                config:
+                  item: Kitchen_Rollershutter
+                  louvre: Kitchen_Rollershutter_Tilt
+                  title: Küche
+        - component: oh-canvas-item
+          config:
+            h: 150
+            w: 200
+            x: 10
+            y: 650
+          slots:
+            default:
+              - component: widget:vp_shutter_full
+                config:
+                  item: Speis_Rollershutter
+                  louvre: Speis_Rollershutter_Tilt
+                  title: Speis
+        - component: oh-canvas-item
+          config:
+            h: 150
+            w: 200
+            x: 230
+            y: 10
+          slots:
+            default:
+              - component: widget:vp_shutter_full
+                config:
+                  item: Livingroom_Rollershutter
+                  louvre: Livingroom_Rollershutter_Tilt
+                  title: Wohnzimmer
+        - component: oh-canvas-item
+          config:
+            h: 150
+            w: 200
+            x: 450
+            y: 9
+          slots:
+            default:
+              - component: widget:vp_shutter_full
+                config:
+                  item: Wintergarden_Rollershutter
+                  louvre: Wintergarden_Rollershutter_Tilt
+                  title: Wintergarten
+        - component: oh-canvas-item
+          config:
+            h: 150
+            w: 200
+            x: 450
+            y: 170
+          slots:
+            default:
+              - component: widget:vp_shutter_full
+                config:
+                  item: Wintergarden_Rollershutter_Exit
+                  louvre: Wintergarden_Rollershutter_Exit_Tilt
+                  title: Wintergarten Ausgang
+        - component: oh-canvas-item
+          config:
+            h: 150
+            w: 200
+            x: 450
+            y: 330
+          slots:
+            default:
+              - component: widget:vp_shutter_full
+                config:
+                  item: ParentsBedroom_Rollershutter
+                  louvre: ParentsBedroom_Rollershutter_Tilt
+                  title: Eltern Schlafzimmer
+        - component: oh-canvas-item
+          config:
+            h: 150
+            w: 200
+            x: 450
+            y: 490
+          slots:
+            default:
+              - component: widget:vp_shutter_full
+                config:
+                  item: ChildrenBedroom_Rollershutter
+                  louvre: ChildrenBedroom_Rollershutter_Tilt
+                  title: Tommy
+        - component: oh-canvas-item
+          config:
+            h: 150
+            w: 200
+            x: 450
+            y: 650
+          slots:
+            default:
+              - component: widget:vp_shutter_full
+                config:
+                  item: OfficeBig_Rollershutter
+                  louvre: OfficeBig_Rollershutter_Tilt
+                  title: Büro Zorina
+        - component: oh-canvas-item
+          config:
+            h: 150
+            w: 200
+            x: 230
+            y: 650
+          slots:
+            default:
+              - component: widget:vp_shutter_full
+                config:
+                  item: OfficeSmall_Rollershutter
+                  louvre: OfficeSmall_Rollershutter_Tilt
+                  title: Büro Herwig
