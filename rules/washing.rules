@@ -1,0 +1,88 @@
+////////////////////////////////////////////////////////
+/// Washing reminder
+////////////////////////////////////////////////////////
+rule "WashingTime"
+when
+    // At 08:20 AM, only on Sunday through Tuesday and Wednesday through Sunday
+    Time cron "0 20 7 * * ?"
+then
+    logInfo("WashingTime", "Trigger: Washing Reminder")
+    if (lastWash.state instanceof DateTimeType ) {
+
+        //val ZonedDateTime last = (lastWash.state as DateTimeType).zonedDateTime
+        val ZonedDateTime last = (lastWash.state as DateTimeType).getInstant.atZone(ZoneId.systemDefault())
+        val ZonedDateTime now  = ZonedDateTime.now()
+
+        val long days = java.time.Duration.between(last, now).toDays()
+
+        if (days >= 2) {
+            val telegramAction = getActions("telegram","telegram:telegramBot:TelegramWashbot_Bot")
+            val message = "Check for new wash now. Last wash was " + days + " ago."
+            telegramAction.sendTelegram(message)
+            logInfo("WashingTime", "lastTime ist älter als 2 Tage: {} Tage", days)
+        } else {
+            logInfo("WashingTime", "lastTime ist aktuell: {} Tage alt", days)
+        }
+    } else {
+        logWarn("WashingTime", "lastTime ist kein valider DateTime-Wert!")
+    }
+end
+
+////////////////////////////////////////////////////////
+/// Hang clothes reminder
+////////////////////////////////////////////////////////
+rule "WashHangTime"
+when
+    // Every 10 mins
+    Time cron "0 /10 * * * ?"
+then
+    logInfo("WashHangTime", "Trigger: Check hang clothes")
+    if (lastWash.state instanceof DateTimeType ) {
+
+        //val ZonedDateTime last = (lastWash.state as DateTimeType).zonedDateTime
+        val ZonedDateTime last = (lastWash.state as DateTimeType).getInstant.atZone(ZoneId.systemDefault())
+        val ZonedDateTime now  = ZonedDateTime.now()
+
+        val long minutes = java.time.Duration.between(last, now).toMinutes()
+
+        if ((minutes >= 10) && (minutes < 20)) {
+            val telegramAction = getActions("telegram","telegram:telegramBot:TelegramWashbot_Bot")
+            val message = "The wash is ready to hang."
+            telegramAction.sendTelegram(message)
+            logInfo("WashHangTime", "lastTime ist älter als 10 min")
+        } else {
+            logInfo("WashHangTime", "lastTime ist aktuell: {} Minuten alt", minutes)
+        }
+    } else {
+        logWarn("WashHangTime", "lastTime ist kein valider DateTime-Wert!")
+    }
+end
+
+////////////////////////////////////////////////////////
+/// clothes hanging reminder
+////////////////////////////////////////////////////////
+rule "WashresetLast"
+when
+    Item Gosund_02_Power_consumption changed
+then
+    logInfo("WashresetLast", "Trigger: Washing machine is running")
+    val power = (Gosund_02_Power_consumption.state as QuantityType<Number>).toUnit("kW").doubleValue
+    logInfo("WashresetLast", "Power Consumption {}", power)
+    if (power > 0.01) {
+        lastWash.postUpdate(now.toLocalDateTime.toString())
+        logInfo("WashresetLast", "lastwash UPDATED")
+    }
+    
+end
+
+rule "WashingBedsheets"
+when
+    // At 08:20 AM, only on Sunday through Tuesday and Wednesday through Sunday
+    Time cron "0 20 8 ? 1/1 FRI#2 * " or
+    Time cron "0 20 8 ? 1/1 FRI#4 * "
+then
+    logInfo("WashingBedsheets", "Trigger: Wash Bed sheets")
+    val telegramAction = getActions("telegram","telegram:telegramBot:TelegramWashbot_Bot")
+    val message = "Sissy, ask your Goddess nicely if you are allowed to wash her bedsheets today."
+    telegramAction.sendTelegram(message)  
+end

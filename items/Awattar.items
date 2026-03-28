@@ -1,0 +1,65 @@
+Number:Dimensionless currentnet "Current Exchnage net price [%2.2f ct/kWh]"     <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#market-net" }
+Number:Dimensionless currentgross "Current Exchnage gross price [%2.2f ct/kWh]" <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#market-gross" }
+Number:Dimensionless totalnet "Current Awattar net price [%2.2f ct/kWh]"        <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#total-net" }
+Number:Dimensionless totalgross "Current Awattar gross price [%2.2f ct/kWh]"    <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#total-gross" }
+Number:Dimensionless totalprice "Strompreis [%2.2f ct/kWh]"                     <if:f7:money-euro-circle> (gStrasshof) ["Point"] {alexa="Other"}
+
+Number:Dimensionless today00 "Electricity Today 00-01 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today00#total-gross" }
+Number:Dimensionless today01 "Electricity Today 01-02 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today01#total-gross" }
+Number:Dimensionless today02 "Electricity Today 02-03 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today02#total-gross" }
+Number:Dimensionless today03 "Electricity Today 03-04 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today03#total-gross" }
+Number:Dimensionless today04 "Electricity Today 04-05 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today04#total-gross" }
+Number:Dimensionless today05 "Electricity Today 05-06 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today05#total-gross" }
+Number:Dimensionless today06 "Electricity Today 06-07 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today06#total-gross" }
+Number:Dimensionless today07 "Electricity Today 07-08 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today07#total-gross" }
+Number:Dimensionless today08 "Electricity Today 08-09 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today08#total-gross" }
+Number:Dimensionless today09 "Electricity Today 09-10 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today09#total-gross" }
+Number:Dimensionless today10 "Electricity Today 10-11 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today10#total-gross" }
+Number:Dimensionless today11 "Electricity Today 11-12 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today11#total-gross" }
+Number:Dimensionless today12 "Electricity Today 12-13 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today12#total-gross" }
+Number:Dimensionless today13 "Electricity Today 13-14 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today13#total-gross" }
+Number:Dimensionless today14 "Electricity Today 14-15 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today14#total-gross" }
+Number:Dimensionless today15 "Electricity Today 15-16 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today15#total-gross" }
+Number:Dimensionless today16 "Electricity Today 16-17 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today16#total-gross" }
+Number:Dimensionless today17 "Electricity Today 17-18 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today17#total-gross" }
+Number:Dimensionless today18 "Electricity Today 18-19 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today18#total-gross" }
+Number:Dimensionless today19 "Electricity Today 19-20 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today19#total-gross" }
+Number:Dimensionless today20 "Electricity Today 20-21 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today20#total-gross" }
+Number:Dimensionless today21 "Electricity Today 21-22 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today21#total-gross" }
+Number:Dimensionless today22 "Electricity Today 22-23 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today22#total-gross" }
+Number:Dimensionless today23 "Electricity Today 23-00 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today23#total-gross" }
+
+Number:Dimensionless tomorrow00 "Electricity Tomorrow 00-01 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow00#total-gross" }
+Number:Dimensionless tomorrow01 "Electricity Tomorrow 01-02 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow01#total-gross" }
+Number:Dimensionless tomorrow02 "Electricity Tomorrow 02-03 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow02#total-gross" }
+Number:Dimensionless tomorrow03 "Electricity Tomorrow 03-04 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow03#total-gross" }
+Number:Dimensionless tomorrow04 "Electricity Tomorrow 04-05 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow04#total-gross" }
+Number:Dimensionless tomorrow05 "Electricity Tomorrow 05-06 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow05#total-gross" }
+Number:Dimensionless tomorrow06 "Electricity Tomorrow 06-07 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow06#total-gross" }
+Number:Dimensionless tomorrow07 "Electricity Tomorrow 07-08 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow07#total-gross" }
+Number:Dimensionless tomorrow08 "Electricity Tomorrow 08-09 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow08#total-gross" }
+Number:Dimensionless tomorrow09 "Electricity Tomorrow 09-10 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow09#total-gross" }
+Number:Dimensionless tomorrow10 "Electricity Tomorrow 10-11 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow10#total-gross" }
+Number:Dimensionless tomorrow11 "Electricity Tomorrow 11-12 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow11#total-gross" }
+Number:Dimensionless tomorrow12 "Electricity Tomorrow 12-13 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow12#total-gross" }
+Number:Dimensionless tomorrow13 "Electricity Tomorrow 13-14 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow13#total-gross" }
+Number:Dimensionless tomorrow14 "Electricity Tomorrow 14-15 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow14#total-gross" }
+Number:Dimensionless tomorrow15 "Electricity Tomorrow 15-16 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow15#total-gross" }
+Number:Dimensionless tomorrow16 "Electricity Tomorrow 16-17 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow16#total-gross" }
+Number:Dimensionless tomorrow17 "Electricity Tomorrow 17-18 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow17#total-gross" }
+Number:Dimensionless tomorrow18 "Electricity Tomorrow 18-19 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow18#total-gross" }
+Number:Dimensionless tomorrow19 "Electricity Tomorrow 19-20 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow19#total-gross" }
+Number:Dimensionless tomorrow20 "Electricity Tomorrow 20-21 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow20#total-gross" }
+Number:Dimensionless tomorrow21 "Electricity Tomorrow 21-22 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow21#total-gross" }
+Number:Dimensionless tomorrow22 "Electricity Tomorrow 22-23 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow22#total-gross" }
+Number:Dimensionless tomorrow23 "Electricity Tomorrow 23-00 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow23#total-gross" }
+
+DateTime CarStart "Start car loader [%1$tH:%1$tM]"                          <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:start" }
+DateTime CarEnd "End car loader [%1$tH:%1$tM]"                              <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:end" }
+String CarCountdown "Countdown for car loader [%s]"                         <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:countdown" }
+String CarHours "Hours for car loader [%s]"                                 <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:hours" }
+Switch CarActive                                                            <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:active" }
+
+//Switch WaterActive { channel="awattar:bestprice:bridge1:water:active" }
+//Switch HeatpumpActive { channel="awattar:bestprice:bridge1:heatpump:active" }
+

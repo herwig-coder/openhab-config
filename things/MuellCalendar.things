@@ -1,0 +1,8 @@
+// Müllkalender
+// generate ics file at: https://gaenserndorf.umweltverbaende.at/fuer-die-bevoelkerung/abholtermine/
+// Put ics File in Folder /etc/openhab/html and change owner to openhab. Url as below: http://localhost:8080/static/abfuhrtermine-strasshof-an-der-nordbahn.ics
+
+Bridge icalendar:calendar:muellcalendar    "Müllkalender" @ "Serverroom" [ url="http://localhost:8080/static/abfuhrtermine-strasshof-an-der-nordbahn.ics", refreshTime=1440 ]
+
+Thing  icalendar:eventfilter:nextcollection "Terminfilter Müll" (icalendar:calendar:muellcalendar) [ maxEvents=4, datetimeUnit="HOUR", datetimeStart=-2, datetimeEnd=25, datetimeRound=false ]
+//Thing  icalendar:eventfilter:nextcollection "Terminfilter Müll" (icalendar:calendar:muellcalendar) [ maxEvents=4, datetimeUnit="HOUR", datetimeStart=-2, datetimeEnd=260, datetimeRound=false ]

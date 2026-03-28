@@ -1,0 +1,55 @@
+//Type   	ItemID           Label                Icon                         Groups            Tags                                       Channel/Metadata
+//HOUSE MODEL
+
+//Strasshof
+Group    gStrasshof         "Strasshof"                                                          ["Location","Strasshof"]                   {widgetOrder="10"}
+Group    gHouse             "Haus"                <if:lsicon:house-outline>     (gStrasshof)     ["House"]                                  {widgetOrder="20"}
+Group    gFrontYard         "Eingangsbereich aussen"  <if:cbi:panel-door-open>  (gStrasshof)     ["Entrance"]                               {widgetOrder="30"}
+Group    gBackYard          "Garten hinten"       <if:ic:outline-yard>          (gStrasshof)     ["Backyard"]
+Group    gBasement          "Keller"              <if:iconoir:cellar>           (gStrasshof)     ["Basement"]                               {widgetOrder="40"}
+
+Group    gPool              "Pool"                <if:ic:sharp-pool>            (gStrasshof)     ["Location","Pool"]                        {widgetOrder="50"}
+
+//FrontYard
+Group    gCarport            "Carport"            <if:bxs:car-garage>           (gFrontYard)     ["Carport"]                                {widgetOrder="60"}
+Group    gGarage             "Garage"             <if:game-icons:home-garage>   (gFrontYard)     ["Garage"]                                 {widgetOrder="70"}
+Group    gTerrasseEntrance   "Eingang und Terrasse"  <if:hugeicons:patio>       (gFrontYard)     ["Location","Eingang und Terasse"]         {widgetOrder="80"}
+
+// Backyard
+
+// House
+Group    gDiningRoom        "Essbereich"          <kitchen>                     (gHouse)         ["Kitchen"]                                {widgetOrder="90"}
+Group    gKitchen           "Küche"               <kitchen>                     (gHouse)         ["Kitchen"]                                {widgetOrder="100"}
+Group    gBathroom          "Bad"                 <bathroom>                    (gHouse)         ["Bathroom"]                               {widgetOrder="110"}                    
+Group    gLivingRoom        "Wohnzimmer"          <livingroom>                  (gHouse)         ["Room"]                                   {widgetOrder="120"}
+Group    gMainCorridor      "Großer Vorraum"                                    (gHouse)         ["Corridor"]                               {widgetOrder="130"}
+Group    gSmallCorridor     "Kleiner Vorraum"                                   (gHouse)         ["Corridor"]                               {widgetOrder="140"}
+Group    gParentsBedroom    "Eltern Schlafzimmer" <bedroom>                     (gHouse)         ["Bedroom"]                                {widgetOrder="150"}
+Group    gChildrenBedroom   "Kinderzimmer"        <bedroom>                     (gHouse)         ["Bedroom"]                                {widgetOrder="160"}
+Group    gOfficeSmall       "Büro Herwig"         <if:guidance:office>          (gHouse)         ["Office"]                                 {widgetOrder="170"}
+Group    gOfficeBig         "Büro Zorina"         <if:guidance:office>          (gHouse)         ["Office"]                                 {widgetOrder="180"}
+Group    gServerroom        "Serverraum"          <if:uil:server>               (gHouse)         ["Room"]                                   {widgetOrder="190"}
+Group    gSpeis             "Speis"                                             (gHouse)         ["Kitchen"]                                {widgetOrder="200"}
+Group    gWC                "WC"                  <if:tabler:badge-wc>          (gHouse)         ["Bathroom"]                               {widgetOrder="210"}
+Group    gWintergarden      "Wintergarten"        <if:game-icons:greenhouse>    (gHouse)         ["Room"]                                   {widgetOrder="220"}
+
+//Basement
+Group    gBasementBathroom  "Bad Keller"          <bathroom>                    (gBasement)      ["Bathroom"]                               {widgetOrder="230"}
+Group    gSteambath         "Dampfbad"            <bathroom>                    (gBasement)      ["Bathroom"]                               {widgetOrder="240"}
+Group    gHobbyroom         "Hobbyraum"           <if:cbi:hobby>                (gBasement)      ["Room"]                                   {widgetOrder="250"}
+Group    gBoilerroom        "Heizraum"            <if:game-icons:fireplace>     (gBasement)      ["Room"]                                   {widgetOrder="260"}
+
+//Pool
+Group    gPoolHouse         "Poolhaus"            <if:roentgen:houseboat>       (gPool)          ["Location","Poolhaus"]                    {widgetOrder="270"}
+Group    gPoolEngineering   "Pooltechnik"         <if:ic:baseline-engineering>  (gPool)          ["Location","Pooltechnik"]                 {widgetOrder="280"}
+Group    gSwimmingpool      "Schwimmbecken"       <if:mdi:pool>                 (gPool)          ["Location","Schwimmbecken"]               {widgetOrder="290"}
+
+//Bleiburg
+Group    gBleiburg      "Bleiburg"                                                              ["Location","Bleiburg"]
+Group    gBLivingRoom   "Bleiburg Living Room"                                  (gBleiburg)     ["LivingRoom"]
+Group    gBKitchen      "Bleiburg Kitchen"        <kitchen>                     (gBleiburg)     ["Kitchen"]
+Group    gBBedroom      "Bleiburg Bedroom"        <bedroom>                     (gBleiburg)     ["Bedroom"]
+Group    gBWC           "Bleiburg WC"                                           (gBleiburg)     ["Bathroom"]
+Group    gBBathroom     "Bleiburg Bathroom"       <bathroom>                    (gBleiburg)     ["Bathroom"]
+Group    gBCorridor     "Bleiburg Corridor"                                     (gBleiburg)     ["Corridor"]
+Group    gBOutdoor      "Bleiburg Outdoor"                                                      ["Outdoor"]

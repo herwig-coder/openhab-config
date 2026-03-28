@@ -1,0 +1,12 @@
+# Normalize line endings
+* text=auto
+
+# Shell scripts must have LF on all platforms (they run on Linux)
+*.sh text eol=lf
+
+# OpenHAB config files — LF on checkout (server is Linux)
+*.items text eol=lf
+*.rules text eol=lf
+*.things text eol=lf
+*.template text eol=lf
+*.py text eol=lf

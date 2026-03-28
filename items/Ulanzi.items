@@ -1,0 +1,13 @@
+String                  Ulanzi_01_settings                          "Ulanzi Settings"                    <if:material-symbols:display-settings-outline> (gStrasshof)         ["Point"]  {channel = "mqtt:topic:mqtt_Ulanzi:Ulanzi_01_settings"}
+String                  Ulanzi_01_reboot                            "Ulanzi Reboot"                      <if:material-symbols:device-reset> (gStrasshof)                     ["Point"]  {channel = "mqtt:topic:mqtt_Ulanzi:Ulanzi_01_reboot"}
+String                  Ulanzi_01_muell                             "Ulanzi Müllbenachrichtigung"        <if:mdi:garbage> (gStrasshof)                                       ["Point"]  {channel = "mqtt:topic:mqtt_Ulanzi:Ulanzi_01_muell"}
+String                  Ulanzi_01_toair                             "Ulanzi Lüften Benachrichtigung"     <if:mdi:humidity-alert> (gStrasshof)                                ["Point"]  {channel = "mqtt:topic:mqtt_Ulanzi:Ulanzi_01_air"}
+String                  Ulanzi_01_strom                             "Ulanzi Strompreis"                  <if:mdi:electricity-from-grid> (gStrasshof)                         ["Point"]  {channel = "mqtt:topic:mqtt_Ulanzi:Ulanzi_01_strom"}
+String                  Ulanzi_01_train                             "Ulanzi Zug"                         <if:mdi:train> (gStrasshof)                                         ["Point"]  {channel = "mqtt:topic:mqtt_Ulanzi:Ulanzi_01_train"}
+Switch                  Ulanzi_01_traincheck                        "Ulanzi Traincheck"
+
+String                  Ulanzi_01_status                            "Ulanzi Status"                      <if:material-symbols:display-settings-outline> (gStrasshof)         ["Point"]  {channel = "mqtt:topic:mqtt_Ulanzi:Ulanzi_01_status"}
+
+
+
+//Number:Temperature      Weatherstation_Temperature_1               "Wetterstation Aussentemperatur"      <Temperature> (gStrasshof) ["Point"]  { unit="°C", channel="mqtt:topic:mqtt_Weatherstation:temperature_1" }  

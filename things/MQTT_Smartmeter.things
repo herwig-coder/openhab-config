@@ -1,0 +1,17 @@
+Thing mqtt:topic:mqtt_SmartMeterNetzNOE "MQTT SmartMeterNetzNOE" (mqtt:broker:mqttbroker) {
+
+        Channels:
+        Type number : WirkenergieP "WirkenergieP"           [stateTopic="Smartmeter/WirkenergieP"]
+        Type number : WirkenergieN "WirkenergieN"           [stateTopic="Smartmeter/WirkenergieN"]
+        Type number : MomentanleistungP "MomentanleistungP" [stateTopic="Smartmeter/MomentanleistungP"]
+        Type number : MomentanleistungN "MomentanleistungN" [stateTopic="Smartmeter/MomentanleistungN"]
+        Type number : Momentanleistung "Momentanleistung"   [stateTopic="Smartmeter/Momentanleistung"]
+        Type number : SpannungL1 "SpannungL1"               [stateTopic="Smartmeter/SpannungL1"]
+        Type number : SpannungL2 "SpannungL2"               [stateTopic="Smartmeter/SpannungL2"]
+        Type number : SpannungL3 "SpannungL3"               [stateTopic="Smartmeter/SpannungL3"]
+        Type number : StromL1 "StromL1"                     [stateTopic="Smartmeter/StromL1"]
+        Type number : StromL2 "StromL2"                     [stateTopic="Smartmeter/StromL2"]
+        Type number : StromL3 "StromL3"                     [stateTopic="Smartmeter/StromL3"]
+        Type number : Leistungsfaktor "Leistungsfaktor"     [stateTopic="Smartmeter/Leistungsfaktor"]
+
+}

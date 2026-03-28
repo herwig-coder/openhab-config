@@ -1,0 +1,9 @@
+# OpenWeatherMap
+# Copy to openweathermap.things and fill in credentials from .env
+
+Bridge openweathermap:weather-api:api "OpenWeatherMap Account" [apikey="YOUR_OWM_API_KEY", refreshInterval=60, language="de", apiVersion="3.0"] {
+    Thing onecall local "Local Weather and Forecast" [location="48.317,16.675"]
+    Thing air-pollution local "Local Pollution" [location="48.317,16.675", forecastHours=6, forecastDays=6]
+    Thing onecall-history local "Local History" [location="48.317,16.675", historyDay=1]
+    Thing weather-and-forecast local "Local Weather And Forecast" [location="48.317,16.675", forecastHours=6, forecastDays=6]
+}

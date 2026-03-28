@@ -1,0 +1,6 @@
+Thing mqtt:topic:mqtt_Matrix "MQTT Matrix" (mqtt:broker:9a73e5895e) @ "MainCorridor" {
+    Channels:
+    Type string        : Matrix                   "Matrix Message"           [ commandTopic="matrix", formatBeforePublish="{\"message\":\"%s\"}"]
+    Type string        : MatrixWarning            "Matrix WarningMessage"    [ commandTopic="matrix", formatBeforePublish="{\"warning\":\"%s\"}"]
+
+}

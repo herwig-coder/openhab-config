@@ -1,0 +1,149 @@
+
+rule "BreakfastSun"
+when
+    Item Rollershutter_Kitchen_LowSun changed 
+
+then
+    logInfo("BreakfastSun", "Trigger: Breakfast Sun")
+
+    if (Rollershutter_Kitchen_LowSun.state == ON) {
+        logInfo("BreakfastSun", "Lower the Blinds")
+        // TEst Office_Herwig_Rollershutter.sendCommand("50")
+        EZ_Sides_Right_Rollershutter.sendCommand("40")
+        EZ_Sides_Left_Rollershutter.sendCommand("40")
+        EZ_Exit_Rollershutter.sendCommand("40")
+        Kitchen_Rollershutter.sendCommand("50")
+        EZ_Sides_Right_Rollershutter_tilt.sendCommand("60")
+        EZ_Sides_Left_Rollershutter_tilt.sendCommand("60")
+        EZ_Exit_Rollershutter_tilt.sendCommand("60")
+        Kitchen_Rollershutter_tilt.sendCommand("60")
+    } 
+    else {
+        logInfo("BreakfastSun", "Lift the Blinds")
+        // Test Office_Herwig_Rollershutter.sendCommand("0")
+        EZ_Sides_Right_Rollershutter_tilt.sendCommand("0")
+        EZ_Sides_Left_Rollershutter_tilt.sendCommand("0")
+        EZ_Exit_Rollershutter_tilt.sendCommand("0")
+        Kitchen_Rollershutter_tilt.sendCommand("0")
+        EZ_Sides_Left_Rollershutter.sendCommand("0")
+        EZ_Sides_Right_Rollershutter.sendCommand("0")
+        EZ_Exit_Rollershutter.sendCommand("0")
+        Kitchen_Rollershutter.sendCommand("0")
+
+    }
+end
+
+
+
+rule "NightPrivacy"
+when
+//    Item Rollershutter_Privacy changed or 
+    Item Privacy changed
+then
+    logInfo("NightPrivacy", "Trigger: Night Privacy")
+
+//    if (Rollershutter_Privacy.state == ON) {
+    if (Privacy.state == ON) {
+        logInfo("NightPrivacy", "Lower the Blinds")
+        // TEst Office_Herwig_Rollershutter.sendCommand("50")
+
+        EZ_Sides_Right_Rollershutter_tilt.sendCommand("70")
+        EZ_Sides_Left_Rollershutter_tilt.sendCommand("70")
+        EZ_Exit_Rollershutter_tilt.sendCommand("70")
+        Livingroom_Rollershutter_tilt.sendCommand("80")
+        Kitchen_Rollershutter_tilt.sendCommand("70")
+        EZ_Sides_Right_Rollershutter.sendCommand("100")
+        EZ_Sides_Left_Rollershutter.sendCommand("100")
+        EZ_Exit_Rollershutter.sendCommand("100")
+        Livingroom_Rollershutter.sendCommand("100")
+        Kitchen_Rollershutter.sendCommand("90")
+    } 
+    else {
+        logInfo("NightPrivacy", "Lift the Blinds")
+        // Test Office_Herwig_Rollershutter.sendCommand("0")
+        EZ_Sides_Right_Rollershutter_tilt.sendCommand("0")
+        EZ_Sides_Left_Rollershutter_tilt.sendCommand("0")
+        EZ_Exit_Rollershutter_tilt.sendCommand("0")
+        Livingroom_Rollershutter_tilt.sendCommand("0")
+        Kitchen_Rollershutter_tilt.sendCommand("0")
+        Livingroom_Rollershutter.sendCommand("0")
+        EZ_Sides_Left_Rollershutter.sendCommand("0")
+        EZ_Sides_Right_Rollershutter.sendCommand("0")
+        EZ_Exit_Rollershutter.sendCommand("0")
+        Kitchen_Rollershutter.sendCommand("0")
+
+
+    }
+end
+
+// Move Rollershutter to top in case tilt was not set
+rule "Top up Rollershutter Kitchen"
+when 
+    Item Kitchen_Rollershutter changed
+then
+    val opening = Kitchen_Rollershutter.state
+    val tilt = Kitchen_Rollershutter_tilt.state
+    //logInfo("top_up_kitchen", "Trigger: move_to_top_kitchen changed to {}%. Tilt: {}%.}", opening, tilt)
+    if (opening == 0 && tilt != 0) {
+       logInfo("top_up_rollershutter", "Trigger: Rollershutter Kitchen reached 0 therefor setting tilt to 0 too.", opening)
+       Kitchen_Rollershutter_tilt.sendCommand("0") 
+    }
+end
+
+
+
+// Move Rollershutter to top in case tilt was not set
+rule "Top up Rollershutter Side Left"
+when 
+    Item EZ_Sides_Left_Rollershutter changed
+then
+    val opening = EZ_Sides_Left_Rollershutter.state
+    val tilt = EZ_Sides_Left_Rollershutter_tilt.state
+    //logInfo("top_up_kitchen", "Trigger: Rollershutter Side Left changed to {}%. Tilt: {}%.}", opening, tilt)
+    if (opening == 0 && tilt != 0) {
+       logInfo("top_up_rollershutter", "Trigger: Rollershutter Side Left reached 0 therefor setting tilt to 0 too.", opening)
+       EZ_Sides_Left_Rollershutter_tilt.sendCommand("0") 
+    }
+end
+
+// Move Rollershutter to top in case tilt was not set
+rule "Top up Rollershutter Side Right"
+when 
+    Item EZ_Sides_Right_Rollershutter changed
+then
+    val opening = EZ_Sides_Right_Rollershutter.state
+    val tilt = EZ_Sides_Right_Rollershutter_tilt.state
+    //logInfo("top_up_kitchen", "Trigger: Rollershutter Side Right changed to {}%. Tilt: {}%.}", opening, tilt)
+    if (opening == 0 && tilt != 0) {
+       logInfo("top_up_rollershutter", "Trigger: Rollershutter Side Right reached 0 therefor setting tilt to 0 too.", opening)
+       EZ_Sides_Right_Rollershutter_tilt.sendCommand("0") 
+    }
+end
+
+// Move Rollershutter to top in case tilt was not set
+rule "Top up Rollershutter Esszimmer Ausgang"
+when 
+    Item EZ_Exit_Rollershutter changed
+then
+    val opening = EZ_Exit_Rollershutter.state
+    val tilt = EZ_Exit_Rollershutter_tilt.state
+    //logInfo("top_up_kitchen", "Trigger: move_to_top_Dining Exit changed to {}%. Tilt: {}%.}", opening, tilt)
+    if (opening == 0 && tilt != 0) {
+       logInfo("top_up_rollershutter", "Trigger: Rollershutter Esszimmer Ausgang reached 0 therefor setting tilt to 0 too.", opening)
+       EZ_Exit_Rollershutter_tilt.sendCommand("0") 
+    }
+end
+
+// Move Rollershutter to top in case tilt was not set
+rule "Top up Rollershutter Livingroom"
+when 
+    Item Livingroom_Rollershutter changed
+then
+    val opening = Livingroom_Rollershutter.state
+    val tilt = Livingroom_Rollershutter_tilt.state
+    //logInfo("top_up_kitchen", "Trigger: move_to_top_livingroom changed to {}%. Tilt: {}%.}", opening, tilt)
+    if (opening == 0 && tilt != 0) {
+       logInfo("top_up_rollershutter", "Trigger: Rollershutter Livingroom reached 0 therefor setting tilt to 0 too.", opening)
+       Livingroom_Rollershutter_tilt.sendCommand("0") 
+    }
+end

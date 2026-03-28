@@ -1,0 +1,121 @@
+/**
+ * OpenHAB Items for Train Tracker
+ *
+ * This file defines the items used by the train delay tracker.
+ * Place this file in: conf/items/trains.items
+ */
+
+// ============================================================================
+// TRAIN STATUS ITEMS (Required - Updated by Python script)
+// ============================================================================
+
+// Delay in minutes (0 if on time)
+Number              TrainDelay_Minutes          "Train Delay [%d min]"                      <if:mdi:clock>                  (gTrains)  ["Measurement", "Duration"]
+
+// Status text: ON_TIME, DELAYED, CANCELLED, NOT_FOUND, ERROR
+String              TrainStatus_Text            "Train Status [%s]"                         <if:mdi:train>                  (gTrains)  ["Status"]
+
+// Train type (e.g., "REX", "S", "RJ", "IC")
+String              TrainType                   "Train Type [%s]"                           <if:mdi:train_variant>          (gTrains)  ["Status"]
+
+// Train name (e.g., "REX 3", "S1", "RJ 123")
+String              TrainName                   "Train Name [%s]"                           <if:mdi:tag_text>               (gTrains)  ["Status"]
+
+// Actual departure time (ISO 8601 format)
+DateTime            TrainDeparture_Time         "Departure Time [%1$tH:%1$tM]"              <if:mdi:calendar_clock>         (gTrains)  ["Timestamp"]
+
+// Arrival time at destination (ISO 8601 format)
+DateTime            TrainArrival_Time           "Arrival Time [%1$tH:%1$tM]"                <if:mdi:calendar_check>         (gTrains)  ["Timestamp"]
+
+
+// ============================================================================
+// OPTIONAL ITEMS (For enhanced functionality)
+// ============================================================================
+
+// Manual trigger switch - uncomment to enable manual checks from UI
+// Switch           CheckTrainNow               "Check Train Now"                           <if:material-symbols:refresh>   (gTrains)
+
+// Track last update time
+DateTime            TrainLastUpdate             "Last Update [%1$td.%1$tm.%1$tY %1$tH:%1$tM]"  <if:mdi:update>             (gTrains)  ["Timestamp"]
+
+// Track consecutive errors for alerting
+Number              TrainErrorCount             "Error Count [%d]"                          <if:mdi:alert_circle>           (gTrains)
+
+// Display formatted status message
+String              TrainStatusMessage          "Status Message"                            <if:mdi:message_text>           (gTrains)  ["Status"]
+
+
+// ============================================================================
+// COMPUTED/VIRTUAL ITEMS (Derived from main items)
+// ============================================================================
+
+// Boolean: Is train delayed?
+Switch              TrainIsDelayed              "Train Delayed?"                            <if:mdi:alert>                  (gTrains)  ["Switch"]
+
+// Boolean: Is train on time?
+Switch              TrainIsOnTime               "Train On Time?"                            <if:mdi:check_circle>           (gTrains)  ["Switch"]
+
+// Color for status display (green/yellow/red)
+String              TrainStatusColor            "Status Color [%s]"                         <if:mdi:palette>                (gTrains)
+
+
+// ============================================================================
+// ROUTE INFORMATION (Optional - for display purposes)
+// ============================================================================
+
+String              TrainOrigin                 "Origin Station [%s]"                       <if:mdi:map_marker>             (gTrains, gTrainRoute)
+String              TrainDestination            "Destination Station [%s]"                  <if:mdi:map_marker_check>       (gTrains, gTrainRoute)
+String              TrainScheduledTime          "Scheduled Time [%s]"                       <if:mdi:clock_outline>          (gTrains, gTrainRoute)
+
+
+// ============================================================================
+// GROUPS
+// ============================================================================
+
+Group               gTrains                     "Train Information"                         <if:mdi:train>
+Group               gTrainRoute                 "Train Route"                               <if:mdi:map>                    (gTrains)
+
+
+// ============================================================================
+// EXAMPLE: MULTIPLE ROUTES
+// ============================================================================
+
+/*
+ * If you want to track multiple train routes, create separate items for each:
+
+// Morning commute
+Number              TrainDelay_Morning          "Morning Train Delay [%d min]"              <if:mdi:clock>                  (gTrainsMorning)
+String              TrainStatus_Morning         "Morning Train Status [%s]"                 <if:mdi:train>                  (gTrainsMorning)
+DateTime            TrainDeparture_Morning      "Morning Departure [%1$tH:%1$tM]"           <if:mdi:calendar_clock>         (gTrainsMorning)
+
+// Evening commute
+Number              TrainDelay_Evening          "Evening Train Delay [%d min]"              <if:mdi:clock>                  (gTrainsEvening)
+String              TrainStatus_Evening         "Evening Train Status [%s]"                 <if:mdi:train>                  (gTrainsEvening)
+DateTime            TrainDeparture_Evening      "Evening Departure [%1$tH:%1$tM]"           <if:mdi:calendar_clock>         (gTrainsEvening)
+
+Group               gTrainsMorning              "Morning Train"                             <if:mdi:weather_sunset_up>      (gTrains)
+Group               gTrainsEvening              "Evening Train"                             <if:mdi:weather_sunset_down>    (gTrains)
+
+ * Then run the script multiple times with different parameters:
+ * - Once for morning route (update TrainDelay_Morning, etc.)
+ * - Once for evening route (update TrainDelay_Evening, etc.)
+ */
+
+
+// ============================================================================
+// PERSISTENCE CONFIGURATION
+// ============================================================================
+
+/*
+ * Add to conf/persistence/rrd4j.persist or influxdb.persist:
+
+gTrains* : strategy = everyChange, everyMinute, restoreOnStartup
+TrainDelay_Minutes : strategy = everyChange
+TrainStatus_Text : strategy = everyChange
+TrainDeparture_Time : strategy = everyChange
+
+ * This allows you to:
+ * - See historical delay data
+ * - Create charts of delays over time
+ * - Track punctuality statistics
+ */

@@ -1,0 +1,19 @@
+
+rule "UpdateMatrixMessage"
+when
+    Item Collection_Message changed 
+
+then
+    logInfo("UpdateMatrixMessage", "Trigger: New Muellmessage")
+    if (Collection_Message.state.toString=="NULL")
+    {
+        logInfo("UpdateMatrixMessage", "Muellmessage empty - clear display")
+        Corridor_Message.sendCommand("")
+    }
+    else{
+        logInfo("UpdateMatrixMessage", "Muellmessage {}", Collection_Message.state)
+        Corridor_Message.sendCommand(Collection_Message.state.toString.toUpperCase)
+    }
+    
+
+end

@@ -1,0 +1,32 @@
+Thing mqtt:topic:mqtt_Gosund         "MQTT Gosund"         (mqtt:broker:mqttbroker) {
+    Channels:
+    Type switch        : Gosund_01_Power "Gosund 01 Power"  [ stateTopic="stat/tasmota01/POWER", commandTopic="cmnd/tasmota01/POWER",on="ON", off="OFF" ]
+    Type switch        : Gosund_02_Power "Gosund 02 Power"  [ stateTopic="stat/tasmota02/POWER", commandTopic="cmnd/tasmota02/POWER",on="ON", off="OFF" ]
+    Type switch        : Gosund_03_Power "Gosund 03 Power"  [ stateTopic="stat/tasmota03/POWER", commandTopic="cmnd/tasmota03/POWER",on="ON", off="OFF" ]
+    Type switch        : Gosund_04_Power "Gosund 04 Power"  [ stateTopic="stat/tasmota04/POWER", commandTopic="cmnd/tasmota04/POWER",on="ON", off="OFF" ]
+    Type switch        : Gosund_05_Power "Gosund 05 Power"  [ stateTopic="stat/tasmota05/POWER", commandTopic="cmnd/tasmota05/POWER",on="ON", off="OFF" ]
+    Type switch        : Gosund_06_Power "Gosund 06 Power"  [ stateTopic="stat/tasmota06/POWER", commandTopic="cmnd/tasmota06/POWER",on="ON", off="OFF" ]
+    Type switch        : Gosund_07_Power "Gosund 07 Power"  [ stateTopic="stat/tasmota07/POWER", commandTopic="cmnd/tasmota07/POWER",on="ON", off="OFF" ]
+    Type switch        : Gosund_08_Power "Gosund 08 Power"  [ stateTopic="stat/tasmota08/POWER", commandTopic="cmnd/tasmota08/POWER",on="ON", off="OFF" ]
+    Type switch        : Gosund_09_Power "Gosund 09 Power"  [ stateTopic="stat/tasmota09/POWER", commandTopic="cmnd/tasmota09/POWER",on="ON", off="OFF" ]
+    Type switch        : Gosund_10_Power "Gosund 10 Power"  [ stateTopic="stat/tasmota10/POWER", commandTopic="cmnd/tasmota10/POWER",on="ON", off="OFF" ]
+    Type switch        : Gosund_11_Power "Gosund 11 Power"  [ stateTopic="stat/tasmota11/POWER", commandTopic="cmnd/tasmota11/POWER",on="ON", off="OFF" ]
+    Type switch        : Gosund_12_Power "Gosund 12 Power"  [ stateTopic="stat/tasmota12/POWER", commandTopic="cmnd/tasmota12/POWER",on="ON", off="OFF" ]
+
+
+    Type number        : Gosund_01_Energy "Gosund 01 Energy"  [ stateTopic="tele/tasmota01/SENSOR", transformationPattern="JSONPATH:$.ENERGY.Total"]
+    Type number        : Gosund_02_Energy "Gosund 02 Energy" [ stateTopic="tele/tasmota02/SENSOR", transformationPattern="JSONPATH:$.ENERGY.Total"]
+    Type number        : Gosund_03_Energy "Gosund 03 Energy" [ stateTopic="tele/tasmota03/SENSOR", transformationPattern="JSONPATH:$.ENERGY.Total"]
+    Type number        : Gosund_04_Energy "Gosund 04 Energy" [ stateTopic="tele/tasmota04/SENSOR", transformationPattern="JSONPATH:$.ENERGY.Total"]
+    Type number        : Gosund_05_Energy "Gosund 05 Energy" [ stateTopic="tele/tasmota05/SENSOR", transformationPattern="JSONPATH:$.ENERGY.Total"]
+    Type number        : Gosund_06_Energy "Gosund 06 Energy" [ stateTopic="tele/tasmota06/SENSOR", transformationPattern="JSONPATH:$.ENERGY.Total"]
+    Type number        : Gosund_07_Energy "Gosund 07 Energy" [ stateTopic="tele/tasmota07/SENSOR", transformationPattern="JSONPATH:$.ENERGY.Total"]
+    Type number        : Gosund_08_Energy "Gosund 08 Energy"  [ stateTopic="tele/tasmota08/SENSOR", transformationPattern="JSONPATH:$.ENERGY.Total"]
+    Type number        : Gosund_09_Energy "Gosund 09 Energy" [ stateTopic="tele/tasmota09/SENSOR", transformationPattern="JSONPATH:$.ENERGY.Total"]
+    Type number        : Gosund_10_Energy "Gosund 10 Energy" [ stateTopic="tele/tasmota10/SENSOR", transformationPattern="JSONPATH:$.ENERGY.Total"]
+    Type number        : Gosund_11_Energy "Gosund 11 Energy" [ stateTopic="tele/tasmota11/SENSOR", transformationPattern="JSONPATH:$.ENERGY.Total"] 
+    Type number        : Gosund_12_Energy "Gosund 12 Energy" [ stateTopic="tele/tasmota12/SENSOR", transformationPattern="JSONPATH:$.ENERGY.Total"]
+
+    Type number        : Gosund_02_Power_consumption "Gosund 02 Energy consumption" [ stateTopic="tele/tasmota02/SENSOR", transformationPattern="JSONPATH:$.ENERGY.Power"]
+    Type number        : Gosund_10_Power_consumption "Gosund 10 Energy consumption" [ stateTopic="tele/tasmota10/SENSOR", transformationPattern="JSONPATH:$.ENERGY.Power"]    
+}

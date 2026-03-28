@@ -1,0 +1,136 @@
+// KNX Bridge Siemens
+Bridge knx:ip:bridge [
+    type="TUNNEL",
+    ipAddress="10.1.0.16",
+    portNumber=3671,
+    localIp="10.1.100.101",
+    readingPause=50,
+    responseTimeout=10,
+    readRetriesLimit=3,
+    autoReconnectPeriod=60,
+    localSourceAddr="0.0.0"
+] {
+    Thing device knx_main [
+        address="1.1.103",
+        fetch=true,
+        pingInterval=300,
+        readInterval=3600
+    ] {
+
+
+        //Speis
+        Type rollershutter: Raffstore_Speis_opening             "Shade"         [upDown="2/1/12", stopMove="2/2/12", position="5.001:2/3/12 + <2/5/12"]
+        Type rollershutter: Raffstore_Speis_tilt                "Shade"         [upDown="2/2/12", stopMove="2/2/12", position="5.001:2/3/32 + <2/5/31"]
+        Type string       : Raffstore_Speis_diagnose            "Message"       [ga="2/0/1" ]     
+        //Küche
+        Type rollershutter: Raffstore_Kitchen_opening           "Shade"         [upDown="2/1/1", stopMove="2/2/1", position="5.001:2/3/1 + <2/5/1"]
+        Type rollershutter: Raffstore_Kitchen_tilt              "Shade"         [upDown="2/2/1", stopMove="2/2/1", position="5.001:2/3/21 + <2/5/21"]
+        Type string       : Raffstore_Kitchen_diagnose          "Message"       [ga="2/0/1" ]        
+        //Esszimmer SeitenTeile
+        Type rollershutter: Raffstore_EZ_Sides_left_opening     "Shade"         [upDown="2/1/2", stopMove="2/2/2", position="2/3/2 + <2/5/2"]
+        Type rollershutter: Raffstore_EZ_Sides_left_tilt        "Shade"         [upDown="2/2/2", stopMove="2/2/2", position="2/3/22 + <2/5/22"]
+        Type rollershutter: Raffstore_EZ_Sides_right_opening    "Shade"         [upDown="2/1/4", stopMove="2/2/4", position="2/3/4 + <2/5/4"]
+        Type rollershutter: Raffstore_EZ_Sides_right_tilt       "Shade"         [upDown="2/2/4", stopMove="2/2/4", position="2/3/24 + <2/5/24"]
+
+        Type string       : Raffstore_EZ_L_diagnose             "Message"       [ga="2/0/2" ]
+        Type string       : Raffstore_EZ_R_diagnose             "Message"       [ga="2/0/4" ] 
+        //Esszimmer Ausgang
+        Type rollershutter: Raffstore_EZ_Exit_opening           "Shade"         [upDown="2/1/3", stopMove="2/2/3", position="5.001:2/3/3 + <2/5/3"]
+        Type rollershutter: Raffstore_EZ_Exit_tilt              "Shade"         [upDown="2/2/3", stopMove="2/2/3", position="5.001:2/3/23 + <2/5/23"] 
+        Type string       : Raffstore_EZ_Exit_diagnose          "Message"       [ga="2/0/3" ]
+        //Wohnzimmer
+        Type rollershutter: Raffstore_Livingroom_opening        "Shade"         [upDown="2/1/5", stopMove="2/2/5", position="5.001:2/3/5 + <2/5/5"]
+        Type rollershutter: Raffstore_Livingroom_tilt           "Shade"         [upDown="2/2/5", stopMove="2/2/5", position="5.001:2/3/25 + <2/5/32"] 
+        Type string       : Raffstore_Livingroomdiagnose        "Message"       [ga="2/0/5" ]
+        //Wintergarten
+        Type rollershutter: Raffstore_Wintergarden_opening      "Shade"         [upDown="2/1/6", stopMove="2/2/6", position="5.001:2/3/6 + <2/5/6"]
+        Type rollershutter: Raffstore_Wintergarden_tilt         "Shade"         [upDown="2/2/6", stopMove="2/2/6", position="5.001:2/3/26 + <2/5/25"] 
+        Type string       : Raffstore_Wintergarden_diagnose     "Message"       [ga="2/0/6" ]
+        //Wintergarten Exit
+        Type rollershutter: Raffstore_Wintergarden_Exit_opening "Shade"         [upDown="2/1/7", stopMove="2/2/7", position="5.001:2/3/7+ <2/5/7"]
+        Type rollershutter: Raffstore_Wintergarden_Exit_tilt    "Shade"         [upDown="2/2/7", stopMove="2/2/7", position="5.001:2/3/27 + <2/5/26"] 
+        Type string       : Raffstore_Wintergarden_Exit_diagnose "Message"      [ga="2/0/7" ]
+        //Eltern Schlafzimmer
+        Type rollershutter: Raffstore_Bedroom_Parents_opening   "Shade"         [upDown="2/1/8", stopMove="2/2/8", position="5.001:2/3/8 + <2/5/8"]
+        Type rollershutter: Raffstore_Bedroom_Parents_tilt      "Shade"         [upDown="2/2/8", stopMove="2/2/8", position="5.001:2/3/28 + <2/5/27"] 
+        Type string       : Raffstore_Bedroom_Parents_diagnose  "Message"       [ga="2/0/8" ]
+        //Tommy Schlafzimmer
+        Type rollershutter: Raffstore_Bedroom_Tommy_opening     "Shade"         [upDown="2/1/9", stopMove="2/2/9", position="5.001:2/3/9 + <2/5/9"]
+        Type rollershutter: Raffstore_Bedroom_Tommy_tilt        "Shade"         [upDown="2/2/9", stopMove="2/2/9", position="5.001:2/3/29 + <2/5/28"] 
+        Type string       : Raffstore_Bedroom_Tommy_diagnose    "Message"       [ga="2/0/9" ]
+        // Büro Zorina
+        Type rollershutter: Raffstore_Office_Zorina_opening     "Shade"         [upDown="2/1/10", stopMove="2/2/10", position="5.001:2/3/10 + <2/5/10"]
+        Type rollershutter: Raffstore_Office_Zorina_tilt        "Shade"         [upDown="2/2/10", stopMove="2/2/10", position="5.001:2/3/30 + <2/5/29"]
+        Type string       : Raffstore_Office_Zorina_diagnose    "Message"       [ga="2/0/10" ]
+        // Büro Herwig
+        Type rollershutter: Raffstore_Office_Herwig_opening     "Shade"         [upDown="2/1/11", stopMove="2/2/11", position="2/3/11 + <2/5/11"]
+        Type rollershutter: Raffstore_Office_Herwig_tilt        "Shade"         [upDown="2/2/11", stopMove="2/2/11", position="2/3/31 + <2/5/30"]
+        Type string       : Raffstore_Office_Herwig_diagnose    "Message"       [ga="2/0/11" ]
+
+        //Vorraum
+        Type switch        : Corridor_Main_Light                "Light"         [ga="1.001:1/0/0" ]
+        Type switch        : Corridor_Ambient_Light             "Light"         [ga="1.001:1/0/1" ]
+        Type switch        : Corridor_Picture_Light             "Light"         [ga="1.001:1/0/7" ]
+        Type switch        : Door_Opener                        "Light"         [ga="1.001:5/0/1" ]
+        Type contact       : Alarm_on                           "Light"         [ga="5/0/0" ]
+        //Vorraum klein
+        Type switch        : Small_Corridor_Main_Light          "Light"         [ga="1.001:1/0/2" ]
+        //lock all lights
+        Type switch        : Corridor_lights_lock               "Light"         [ga="1.001:1/0/3" ]
+        Type switch        : Small_Corridor_lights_lock         "Light"         [ga="1.001:1/0/4" ]
+        Type switch        : Corridor_lights_lock_Motion_Entry  "Light"         [ga="1.001:1/0/5" ]
+        Type switch        : Corridor_lights_lock_Motion        "Light"         [ga="1.001:1/0/8" ]
+
+        //Bedroom
+        Type switch        : Parents_Bedroom_Main_Light         "Light"         [ga="1.001:1/3/3" ]        
+        Type number        : Parents_Bedroom_Temperature        "Temperature"   [ga="9.001:<3/1/0" ]
+        //Bedroom Tommy
+        Type switch        : Tommy_Bedroom_Main_Light           "Light"         [ga="1.001:1/3/5" ]   
+
+        Type switch        : WC_Main_Light                      "Light"         [ga="1.001:1/4/0" ]        
+        //Bad
+        Type switch        : Bathroom_Mirror_Light              "Light"         [ga="1.001:1/4/2" ]
+        Type switch        : Bathroom_Ceiling_Light             "Light"         [ga="1.001:1/4/1" ]
+        Type switch        : Bathroom_Humidity_Alert            "Alert"         [ga="1.001:6/0/0" ]
+        Type switch        : Bathroom_Open_Window               "Light"         [ga="1.001:3/2/1" ]
+        Type switch        : Bathroom_Airing_Automation         "Alert"         [ga="1.001:3/2/0" ]
+
+        //Keller          
+        Type switch        : Basement_Bathroom_Mirror_Light     "Light"         [ga="1.001:1/6/0" ]
+        Type switch        : Basement_Bathroom_Ceiling_Light    "Light"         [ga="1.001:1/6/1" ]
+        Type switch        : Basement_Steambath_Light           "Light"         [ga="1.001:1/6/2" ]
+        Type switch        : Basement_Steambath_Heating         "Heating"       [ga="1.001:3/0/0" ]
+        Type switch        : Basement_Steambath_Radio           "Radio"         [ga="1.001:4/0/0" ]
+        Type number        : Basement_Bathroom_Temperature      "Temperature"   [ga="9.001:<3/0/4" ]
+
+        //Küche          
+        Type switch        : Kitchen_Working_Light              "Light"         [ga="1.001:1/1/9" ]
+        Type switch        : Kitchen_Dining_Light               "Light"         [ga="1.001:1/1/10" ]
+        Type switch        : Kitchen_Speis_Light                "Light"         [ga="1.001:1/1/11" ]
+        Type number        : Kitchen_Temperature                "Temperature"   [ga="9.001:<3/3/1" ]
+
+        //Pool          
+        Type switch        : Pool_Pump                          "Pump"          [ga="1.001:14/0/0" ]
+        Type switch        : Pool_UV                            "Light"         [ga="1.001:14/0/1" ]
+        Type switch        : Pool_Salinator                     "Light"         [ga="1.001:14/0/2" ]
+        Type switch        : Pool_Light                         "Light"         [ga="1.001:14/0/3" ]
+        Type switch        : Poolhouse_Light_outside            "Light"         [ga="1.001:14/1/0" ]
+
+
+        //Scenes
+        Type switch        : Bathroom_All_Lights_On             "Light"         [ga="1.001:0/0/1" ]
+        Type switch        : All_Lights_Locks_Off               "Light"         [ga="1.001:0/0/2" ]
+        Type switch        : Ambient_Lights_On                  "Light"         [ga="1.001:0/0/3" ]
+        Type switch        : All_Lights_Off                     "Light"         [ga="1.001:0/0/4" ]
+        Type switch        : Privacy                            "Shade"         [ga="1.001:2/1/14" ]
+
+
+
+//        Type color         : demoColorLight    "Color"       [ hsb="6/0/10+<6/0/11", switch="6/0/12+<6/0/13", position="6/0/14+<6/0/15", increaseDecrease="6/0/16+<6/0/17" ]
+//        Type contact       : demoContact       "Door"        [ ga="1.019:<5/1/2" ]
+//        Type number        : demoTemperature   "Temperature" [ ga="9.001:<5/0/0" ]
+//        Type dimmer        : demoDimmer        "Dimmer"      [ switch="5/0/0", position="5/0/2+<5/0/3", increaseDecrease="5/0/4" ]
+//        Type string        : demoString        "Message"     [ ga="5/3/1" ]
+//        Type datetime      : demoDatetime      "Alarm"       [ ga="5/5/42" ]
+    }
+}

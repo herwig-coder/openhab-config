@@ -1,0 +1,2 @@
+String      LocalSun_SunPhaseName               "Day Phase Strasshof"      <if:mdi:time-of-day-outline>   	                        (gStrasshof) ["Point"]  { channel="astro:sun:local:phase#name" }  
+

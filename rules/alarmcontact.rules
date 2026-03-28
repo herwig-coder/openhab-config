@@ -1,0 +1,16 @@
+rule "bathroom_alarmcontact"
+when
+    Item Bathroom_Alarm_Locked changed or
+    Item Bathroom_Alarm_Gekippt changed or
+    Item Bathroom_Alarm_Helper changed
+then
+    logInfo("bathroom_alarmcontact", "Trigger: bathroom window alarmcontact has changed")
+    if ( Bathroom_Alarm_Locked.state == OFF && Bathroom_Alarm_Gekippt.state == OFF && Bathroom_Alarm_Helper.state == ON ) {
+       Bathroom_Alarm_Open.state = ON
+       logInfo("bathroom_alarmcontact", "Turning on 'Open' State")
+    }
+    else {
+       Bathroom_Alarm_Open.state = OFF
+       logInfo("bathroom_alarmcontact", "Turning off 'Open' State")
+    }
+end

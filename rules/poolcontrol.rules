@@ -1,0 +1,26 @@
+var Timer delaytimer = null
+
+rule "delayed UV on"
+when 
+    Item Pool_Filtering changed
+then
+    if (Pool_Filtering.state == ON)
+    {
+        logInfo ("Poolfilter", "Turn on Poolfilter.")
+        delaytimer=createTimer(now.plusSeconds(10)) [|   // wait 5 seconds 
+            logInfo ("Poolfilter", "Turn on Poolfilter. UV on.")
+            Pool_UV.sendCommand(ON)
+        ]
+        logInfo ("Poolfilter", "Turn on Poolfilter. Pump on.")
+        Pool_Pump.sendCommand(ON)
+    }
+    else{
+        logInfo ("Poolfilter", "Turn off Poolfilter.")
+        delaytimer=createTimer(now.plusSeconds(10)) [|   // wait 5 seconds 
+            logInfo ("Poolfilter", "Turn on Poolfilter. Pump off.")
+            Pool_Pump.sendCommand(OFF)
+	    ]
+        logInfo ("Poolfilter", "Turn off Poolfilter. UV off.")
+        Pool_UV.sendCommand(OFF)
+    }
+end

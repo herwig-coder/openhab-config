@@ -1,0 +1,428 @@
+/**
+ * OpenHAB Rules for Train Tracker
+ *
+ * This file contains automation rules for the train delay tracker.
+ * Place this file in: conf/rules/trains.rules
+ */
+
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+
+// ============================================================================
+// CONFIGURATION - UPDATE THESE PATHS FOR YOUR SYSTEM
+// ============================================================================
+
+// Script deployed to server by deploy.sh → /opt/openhab-scripts/train-tracker/
+val String SCRIPT_PATH = "/opt/openhab-scripts/train-tracker/venv/bin/python"
+val String TRACKER_SCRIPT = "/opt/openhab-scripts/train-tracker/train_tracker.py"
+
+val String NOTIFICATION_EMAIL = "herwig.kaltenhauser@gmx.at"  // For sendNotification
+
+// Configuration values - UPDATE THESE FOR YOUR ROUTE
+val String ORIGIN_STATION = "Strasshof/Nordbahn"
+val String DESTINATION_STATION = "Wien Praterstern"
+val String SCHEDULED_TIME = "07:55"
+val String MAX_CHANGES = "0"  // Maximum train changes (0=direct only, 1=one transfer, etc.)
+
+
+// ============================================================================
+// RULE 1: Run Train Tracker Periodically
+// ============================================================================
+
+rule "Update Train Status"
+when
+    // Run every 15 minutes between 6 AM and 10 AM on weekdays
+    Time cron "0 */15 6-10 ? * MON-FRI"
+then
+    logInfo("TrainTracker", "Running train status check...")
+
+    // Execute the Python script (returns JSON)
+    val results = executeCommandLine(
+        Duration.ofSeconds(30),  // 30 second timeout
+        SCRIPT_PATH,
+        TRACKER_SCRIPT,
+        "--origin", ORIGIN_STATION,
+        "--destination", DESTINATION_STATION,
+        "--time", SCHEDULED_TIME,
+        "--max-changes", MAX_CHANGES
+    )
+
+    // Parse JSON output and update items
+    if (results !== null && !results.equals("")) {
+        try {
+            logDebug("TrainTracker", "JSON output: " + results)
+
+            // Parse JSON using JSONPATH transformation
+            val status = transform("JSONPATH", "$.status", results)
+            val delayStr = transform("JSONPATH", "$.delay_minutes", results)
+            val departureTime = transform("JSONPATH", "$.departure_time", results)
+            val arrivalTime = transform("JSONPATH", "$.arrival_time", results)
+            val trainType = transform("JSONPATH", "$.train_type", results)
+            val trainName = transform("JSONPATH", "$.train_name", results)
+
+            // Update OpenHAB items directly
+            if (status !== null) {
+                TrainStatus_Text.postUpdate(status)
+                logInfo("TrainTracker", "Status: " + status)
+            }
+
+            if (delayStr !== null) {
+                val delay = Integer::parseInt(delayStr)
+                TrainDelay_Minutes.postUpdate(delay)
+                logInfo("TrainTracker", "Delay: " + delay + " min")
+            }
+
+            if (trainType !== null && !trainType.equals("null")) {
+                TrainType.postUpdate(trainType)
+                logInfo("TrainTracker", "Train type: " + trainType)
+            }
+
+            if (trainName !== null && !trainName.equals("null")) {
+                TrainName.postUpdate(trainName)
+                logInfo("TrainTracker", "Train name: " + trainName)
+            }
+
+            if (departureTime !== null && !departureTime.equals("null")) {
+                TrainDeparture_Time.postUpdate(departureTime)
+                logInfo("TrainTracker", "Departure: " + departureTime)
+            }
+
+            if (arrivalTime !== null && !arrivalTime.equals("null")) {
+                TrainArrival_Time.postUpdate(arrivalTime)
+                logInfo("TrainTracker", "Arrival: " + arrivalTime)
+            }
+        } catch (Exception e) {
+            logError("TrainTracker", "Error parsing train data: " + e.getMessage())
+            TrainStatus_Text.postUpdate("ERROR")
+        }
+    } else {
+        logError("TrainTracker", "Script execution failed or timed out")
+        TrainStatus_Text.postUpdate("ERROR")
+    }
+end
+
+
+// ============================================================================
+// RULE 2: Alert on Train Delays
+// ============================================================================
+
+rule "Train Delay Alert"
+when
+    Item TrainStatus_Text changed to "DELAYED"
+then
+    // Check for NULL state before casting
+    if (TrainDelay_Minutes.state === NULL || TrainDelay_Minutes.state === UNDEF) {
+        logWarn("TrainTracker", "Delay value not available yet")
+        return
+    }
+
+    val delay = TrainDelay_Minutes.state as Number
+
+    if (delay !== null && delay.intValue > 5) {
+        val message = String.format(
+            "Your train is delayed by %d minutes! New departure time: %s",
+            delay.intValue,
+            TrainDeparture_Time.state.toString
+        )
+
+        logWarn("TrainTracker", message)
+
+        // Send notification (requires notification action configured in OpenHAB)
+        // sendNotification(NOTIFICATION_EMAIL, message)
+
+        // Or send to phone via Telegram/Pushover if configured
+        // sendTelegram("bot1", message)
+    }
+end
+
+
+// ============================================================================
+// RULE 3: Alert on Train Cancellation
+// ============================================================================
+
+rule "Train Cancelled Alert"
+when
+    Item TrainStatus_Text changed to "CANCELLED"
+then
+    val message = "⚠️ Your train has been CANCELLED! Check for alternatives."
+
+    logError("TrainTracker", message)
+
+    // Send urgent notification
+    // sendNotification(NOTIFICATION_EMAIL, message)
+
+    // Flash a light or send to smart display
+    // MyWarningLight.sendCommand(ON)
+end
+
+
+// ============================================================================
+// RULE 4: Train Status Changed - General Logger
+// ============================================================================
+
+rule "Train Status Changed"
+when
+    Item TrainStatus_Text changed
+then
+    val status = TrainStatus_Text.state.toString
+    var message = "Train status: " + status
+
+    // Safely check delay (may be NULL)
+    if (TrainDelay_Minutes.state !== NULL && TrainDelay_Minutes.state !== UNDEF) {
+        val delay = TrainDelay_Minutes.state as Number
+        if (delay !== null && delay.intValue > 0) {
+            message = message + String.format(" (Delay: %d min)", delay.intValue)
+        }
+    }
+
+    // Safely check departure time (may be NULL)
+    if (TrainDeparture_Time.state !== NULL && TrainDeparture_Time.state !== UNDEF) {
+        val departure = TrainDeparture_Time.state.toString
+        if (departure !== null && !departure.equals("NULL")) {
+            message = message + " | Departure: " + departure
+        }
+    }
+
+    logInfo("TrainTracker", message)
+end
+
+
+// ============================================================================
+// RULE 5: Morning Train Check - Run Before Commute
+// ============================================================================
+
+rule "Morning Train Check"
+when
+    // Run at 6:30 AM on weekdays (adjust to your schedule)
+    Time cron "0 30 6 ? * MON-FRI"
+then
+    logInfo("TrainTracker", "Running morning train check...")
+
+    // Execute the script (returns JSON)
+    val results = executeCommandLine(
+        Duration.ofSeconds(30),
+        SCRIPT_PATH,
+        TRACKER_SCRIPT,
+        "--origin", ORIGIN_STATION,
+        "--destination", DESTINATION_STATION,
+        "--time", SCHEDULED_TIME,
+        "--max-changes", MAX_CHANGES
+    )
+
+    // Parse JSON and update items
+    var String status = "UNKNOWN"
+    var Number delay = null
+
+    if (results !== null && !results.equals("")) {
+        try {
+            val statusStr = transform("JSONPATH", "$.status", results)
+            val delayStr = transform("JSONPATH", "$.delay_minutes", results)
+            val departureTime = transform("JSONPATH", "$.departure_time", results)
+            val arrivalTime = transform("JSONPATH", "$.arrival_time", results)
+            val trainType = transform("JSONPATH", "$.train_type", results)
+            val trainName = transform("JSONPATH", "$.train_name", results)
+
+            // Update items
+            if (statusStr !== null) {
+                TrainStatus_Text.postUpdate(statusStr)
+                status = statusStr
+            }
+
+            if (delayStr !== null) {
+                delay = Integer::parseInt(delayStr)
+                TrainDelay_Minutes.postUpdate(delay)
+            }
+
+            if (trainType !== null && !trainType.equals("null")) {
+                TrainType.postUpdate(trainType)
+            }
+
+            if (trainName !== null && !trainName.equals("null")) {
+                TrainName.postUpdate(trainName)
+            }
+
+            if (departureTime !== null && !departureTime.equals("null")) {
+                TrainDeparture_Time.postUpdate(departureTime)
+            }
+
+            if (arrivalTime !== null && !arrivalTime.equals("null")) {
+                TrainArrival_Time.postUpdate(arrivalTime)
+            }
+        } catch (Exception e) {
+            logError("TrainTracker", "Error parsing train data: " + e.getMessage())
+            TrainStatus_Text.postUpdate("ERROR")
+            status = "ERROR"
+        }
+    } else {
+        logError("TrainTracker", "Script execution failed")
+        TrainStatus_Text.postUpdate("ERROR")
+        status = "ERROR"
+    }
+
+    // Send morning summary based on status
+    if (status.equals("DELAYED")) {
+        if (delay !== null && delay.intValue > 10) {
+            val message = String.format(
+                "Good morning! Your train is delayed by %d minutes. Consider leaving earlier.",
+                delay.intValue
+            )
+            // sendNotification(NOTIFICATION_EMAIL, message)
+            logWarn("TrainTracker", message)
+        }
+    } else if (status.equals("ON_TIME")) {
+        logInfo("TrainTracker", "Good morning! Your train is on time.")
+    }
+end
+
+
+// ============================================================================
+// RULE 6: High Delay Warning
+// ============================================================================
+
+rule "High Delay Warning"
+when
+    Item TrainDelay_Minutes changed
+then
+    // Check for NULL state
+    if (TrainDelay_Minutes.state === NULL || TrainDelay_Minutes.state === UNDEF) {
+        return
+    }
+
+    val delay = TrainDelay_Minutes.state as Number
+
+    if (delay !== null) {
+        if (delay.intValue >= 30) {
+            logError("TrainTracker", String.format("⚠️ MAJOR DELAY: %d minutes!", delay.intValue))
+            // Consider alternative transportation
+            // sendNotification(NOTIFICATION_EMAIL, "Major train delay! Consider taxi/car.")
+        } else if (delay.intValue >= 15) {
+            logWarn("TrainTracker", String.format("Significant delay: %d minutes", delay.intValue))
+        }
+    }
+end
+
+
+// ============================================================================
+// RULE 7: Weekend/Holiday - Skip Tracking
+// ============================================================================
+
+rule "Disable Weekend Tracking"
+when
+    System started
+then
+    logInfo("TrainTracker", "Train tracker rules loaded")
+    logInfo("TrainTracker", "Scheduled checks: Every 15 min, 6-10 AM, Mon-Fri")
+    logInfo("TrainTracker", "Morning check: 6:30 AM, Mon-Fri")
+end
+
+
+// ============================================================================
+// RULE 8: Manual Trigger via Switch (Optional)
+// ============================================================================
+
+/*
+ * Uncomment this rule if you create a Switch item called "CheckTrainNow"
+ * This allows manual triggering from the UI
+
+rule "Manual Train Check"
+when
+    Item CheckTrainNow changed to ON
+then
+    logInfo("TrainTracker", "Manual train check triggered...")
+
+    val results = executeCommandLine(
+        Duration.ofSeconds(30),
+        SCRIPT_PATH,
+        TRACKER_SCRIPT,
+        "--origin", ORIGIN_STATION,
+        "--destination", DESTINATION_STATION,
+        "--time", SCHEDULED_TIME
+    )
+
+    // Parse and update items
+    if (results !== null && !results.equals("")) {
+        try {
+            val status = transform("JSONPATH", "$.status", results)
+            val delayStr = transform("JSONPATH", "$.delay_minutes", results)
+            val departureTime = transform("JSONPATH", "$.departure_time", results)
+            val arrivalTime = transform("JSONPATH", "$.arrival_time", results)
+            val trainType = transform("JSONPATH", "$.train_type", results)
+            val trainName = transform("JSONPATH", "$.train_name", results)
+
+            if (status !== null) TrainStatus_Text.postUpdate(status)
+            if (delayStr !== null) TrainDelay_Minutes.postUpdate(Integer::parseInt(delayStr))
+            if (trainType !== null && !trainType.equals("null")) TrainType.postUpdate(trainType)
+            if (trainName !== null && !trainName.equals("null")) TrainName.postUpdate(trainName)
+            if (departureTime !== null && !departureTime.equals("null")) TrainDeparture_Time.postUpdate(departureTime)
+            if (arrivalTime !== null && !arrivalTime.equals("null")) TrainArrival_Time.postUpdate(arrivalTime)
+        } catch (Exception e) {
+            logError("TrainTracker", "Error: " + e.getMessage())
+            TrainStatus_Text.postUpdate("ERROR")
+        }
+    }
+
+    // Reset the switch
+    CheckTrainNow.postUpdate(OFF)
+end
+*/
+
+
+// ============================================================================
+// RULE 9: Smart Departure Reminder
+// ============================================================================
+
+rule "Departure Reminder"
+when
+    Time cron "0 * * ? * *"  // Run every hour
+then
+    val status = TrainStatus_Text.state.toString
+    val departureStr = TrainDeparture_Time.state.toString
+
+    if (!status.equals("NOT_FOUND") && !departureStr.equals("NULL")) {
+        try {
+            // Parse departure time
+            val formatter = DateTimeFormatter.ISO_DATE_TIME
+            val departureTime = ZonedDateTime.parse(departureStr, formatter)
+            val now = ZonedDateTime.now()
+
+            // Calculate time until departure
+            val minutesUntil = java.time.Duration.between(now, departureTime).toMinutes()
+
+            // Send reminder 45 minutes before departure
+            if (minutesUntil >= 40 && minutesUntil <= 45) {
+                var message = "Reminder: Your train departs in 45 minutes"
+
+                if (TrainDelay_Minutes.state !== NULL && TrainDelay_Minutes.state !== UNDEF) {
+                    val delay = TrainDelay_Minutes.state as Number
+                    if (delay !== null && delay.intValue > 0) {
+                        message = message + String.format(" (delayed by %d min)", delay.intValue)
+                    }
+                }
+
+                logInfo("TrainTracker", message)
+                // sendNotification(NOTIFICATION_EMAIL, message)
+            }
+        } catch (Exception e) {
+            logDebug("TrainTracker", "Could not parse departure time: " + e.getMessage())
+        }
+    }
+end
+
+
+// ============================================================================
+// RULE 10: Error Handling - Script Failures
+// ============================================================================
+
+rule "Train Tracker Error Detection"
+when
+    Item TrainStatus_Text changed to "ERROR" or
+    Item TrainStatus_Text changed to "NOT_FOUND"
+then
+    val status = TrainStatus_Text.state.toString
+
+    if (status.equals("ERROR")) {
+        logError("TrainTracker", "Train tracker script reported an error. Check logs.")
+    } else if (status.equals("NOT_FOUND")) {
+        logWarn("TrainTracker", "No matching train found. Check configuration or schedule.")
+    }
+end

@@ -1,0 +1,5 @@
+# Telegram Bots
+# Copy to telegrambot.things and fill in credentials from .env
+
+Thing telegram:telegramBot:Telegram_Bot [ chatIds="YOUR_TELEGRAM_CHAT_ID", botToken="YOUR_TELEGRAM_BOT_TOKEN" ]
+Thing telegram:telegramBot:TelegramWashbot_Bot [ chatIds="YOUR_WASHBOT_CHAT_ID", botToken="YOUR_WASHBOT_TOKEN" ]

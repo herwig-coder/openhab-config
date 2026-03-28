@@ -1,0 +1,10 @@
+Bridge awattar:bridge:bridge1 "aWATTar Bridge" [ country="AT", vatPercent="20", basePrice="1.5"] {
+ Thing prices price1 "aWATTar Price" [] 
+// The car should be loaded for 4 hours during the night
+ Thing bestprice carloader "Car Loader" [ rangeStart="0", rangeDuration="24", length="5", consecutive="true" ]
+// In the cheapest hour of the night the garden should be watered
+// Thing bestprice water "Water timer" [ rangeStart="19", rangeDuration="12", length="1" ]
+// The heatpump should run the 12 cheapest hours per day
+// Thing bestprice heatpump "Heat pump" [ length="12", consecutive="false" ]
+}
+

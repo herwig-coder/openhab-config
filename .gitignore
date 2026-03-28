@@ -1,0 +1,32 @@
+# Sensitive things files containing credentials/API keys
+things/MQTT_broker.things
+things/openweathermap.things
+things/telegrambot.things
+things/ReolinkCameras.things
+
+# Local environment / secrets file
+.env
+scripts/**/.env
+
+# Python virtual environments (Scripts/ on Windows, scripts/ on Linux — git is case-insensitive on Windows)
+Scripts/**/venv/
+Scripts/**/__pycache__/
+Scripts/**/*.pyc
+Scripts/**/*.pyo
+
+# Each script's openhab/ subfolder is redundant — authoritative files live in items/ and rules/
+Scripts/train-tracker/openhab/
+
+# Claude Code workspace files
+Scripts/**/.claude/
+
+# Windows artifacts
+Thumbs.db
+desktop.ini
+
+# macOS artifacts
+.DS_Store
+
+# Editor artifacts
+*.swp
+*.tmp

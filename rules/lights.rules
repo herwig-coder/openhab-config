@@ -1,0 +1,74 @@
+// Ambient Light
+rule "Ambient Light"
+when 
+    //Time cron "0 08 20 * * *" or
+    Item LocalSun_SunPhaseName changed
+then
+   logInfo("AmbientLight", "Trigger: SunPhase Changed")
+    // Test Ambient_Light_On.sendCommand(ON)
+    if (LocalSun_SunPhaseName.state == "SUN_SET") {
+        logInfo("AmbientLight", "Sunset - switch on ambient light")
+        Ambient_Light_On.sendCommand(ON)
+    } 
+    else {
+      if (LocalSun_SunPhaseName.state == "SUN_RISE") {
+        logInfo("AmbientLight", "Sunset - switch off ambient light")
+        Ambient_Light_On.sendCommand(OFF)
+    } 
+    }
+end
+
+// Midnight off
+rule "Lights off at Midnight"
+when 
+    Time cron "0 00 00 * * *"
+
+then
+   logInfo("MidnightOff", "Trigger: Midnight Lights off")
+    // Test Ambient_Light_On.sendCommand(ON)
+    WC_Light.sendCommand(OFF)
+    Corridor_Light.sendCommand(OFF)
+    Corridor_Picture_Light.sendCommand(OFF)
+    Small_Corridor_Light.sendCommand(OFF)
+end
+
+// Feuchtealarm
+rule "Feuchte im Bad"
+when
+    Item Bathroom_DewPoint_Alert changed
+then
+    logInfo("bathroomhumidity", "Trigger: Dewpoint Alert Bathroom status has changed")
+
+    if (Bathroom_DewPoint_Alert.state == ON ){
+        logInfo("bathroomhumidity", "Alert KNX Switch ON")
+        Bathroom_Humidity_Alert.sendCommand(ON)
+    }
+    else {
+       logInfo("bathroomhumidity", "Alert KNX Switch OFF")
+       Bathroom_Humidity_Alert.sendCommand(OFF)
+    }
+end
+
+// Aquarium lights on
+rule "Aquarium on"
+when 
+    Time cron "0 0 7,13 * * *"
+
+then
+   logInfo("Aquarium", "Trigger: Aquarium Lights on")
+    // Test Ambient_Light_On.sendCommand(ON)
+    Switch_Aquarium.sendCommand(ON)
+    
+end
+
+// Aquarium lights off
+rule "Aquarium off"
+when 
+    Time cron "0 0 12,19 * * *"
+
+then
+   logInfo("Aquarium", "Trigger: Aquarium Lights off")
+    // Test Ambient_Light_On.sendCommand(ON)
+    Switch_Aquarium.sendCommand(OFF)
+    
+end

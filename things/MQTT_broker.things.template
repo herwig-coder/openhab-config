@@ -1,0 +1,4 @@
+# MQTT broker
+# Copy to MQTT_broker.things and fill in credentials from .env
+
+mqtt:broker:mqttbroker "MQTT Broker Homeserver" @ "Serverroom" [ host="YOUR_MQTT_HOST", secure=false, username="YOUR_MQTT_USERNAME", password="YOUR_MQTT_PASSWORD" ]

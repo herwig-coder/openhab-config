@@ -1,0 +1,244 @@
+import java.lang.Math
+
+// Define a reusable closure for dewpoint calculation
+val calculateDewpoint = [ Number temp, Number humidity |
+    val a = 17.27
+    val b = 237.7
+    val alpha = (a * temp) / (b + temp) + Math.log(humidity.doubleValue / 100.0)
+    val dewpoint = Math.round(((b * alpha) / (a - alpha))*100.0)/100.0  //rounding to 2 digits
+    dewpoint
+]
+
+rule "dewpointBad"
+when
+    Item Bathroom_Temperature changed or
+    Item Bathroom_Humidity changed
+then
+    logInfo("Bad_Dewpoint", "Trigger: Bathroom_Temperature or Bathroom_Humidity changed")
+
+    if (Bathroom_Temperature.state instanceof QuantityType && Bathroom_Humidity.state instanceof QuantityType) {
+        // Extract temperature and humidity values
+        val temp = (Bathroom_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val humidity = (Bathroom_Humidity.state as QuantityType<Number>).toUnit("%").doubleValue
+
+        // Log the input values
+        logInfo("Bathroom_Dewpoint", "Input values - Temperature: {} °C, Humidity: {} %", temp, humidity)
+
+        // Use the closure for calculation
+        val dewpoint = calculateDewpoint.apply(temp, humidity)
+
+        // Log the calculated dewpoint
+        logInfo("Bathroom_Dewpoint", "Calculated Dewpoint: {} °C", dewpoint)
+
+        // Update the Bathroom_Dewpoint item
+        Bathroom_Last_DewPoint.postUpdate(Bathroom_DewPoint.state)
+        Bathroom_DewPoint.postUpdate(dewpoint)
+    } 
+    else {
+        logWarn("Bathroom_DewPoint", "Invalid input: Bad_Temperature or Bad_Humidity state is not a QuantityType")
+    }
+end
+
+rule "dewpointParentsBedroom"
+when
+    Item ParentsBedroom_Temperature changed or
+    Item ParentsBedroom_Humidity changed
+then
+    logInfo("ParentsBedroom_Dewpoint", "Trigger: ParentsBedroom_Temperature or ParentsBedroom_Humidity changed")
+
+    if (ParentsBedroom_Temperature.state instanceof QuantityType && ParentsBedroom_Humidity.state instanceof QuantityType) {
+        // Extract temperature and humidity values
+        val temp = (ParentsBedroom_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val humidity = (ParentsBedroom_Humidity.state as QuantityType<Number>).toUnit("%").doubleValue
+
+        // Log the input values
+        logInfo("ParentsBedroom_Dewpoint", "Input values - Temperature: {} °C, Humidity: {} %", temp, humidity)
+
+        // Use the closure for calculation
+        val dewpoint = calculateDewpoint.apply(temp, humidity)
+
+        // Log the calculated dewpoint
+        logInfo("ParentsBedroom_Dewpoint", "Calculated Dewpoint: {} °C", dewpoint)
+
+        // Update the ParentsBedroom_Dewpoint item
+        ParentsBedroom_DewPoint.postUpdate(dewpoint)
+    } 
+    else {
+        logWarn("ParentsBedroom_DewPoint", "Invalid input: ParentsBedroom_Temperature or ParentsBedroom_Humidity state is not a QuantityType")
+    }
+end
+
+rule "dewpointOfficeSmall"
+when
+    Item OfficeSmall_Temperature changed or
+    Item OfficeSmall_Humidity changed
+then
+    logInfo("OfficeSmall_Dewpoint", "Trigger: OfficeSmall_Temperature or OfficeSmall_Humidity changed")
+
+    if (OfficeSmall_Temperature.state instanceof QuantityType && OfficeSmall_Humidity.state instanceof QuantityType) {
+        // Extract temperature and humidity values
+        val temp = (OfficeSmall_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val humidity = (OfficeSmall_Humidity.state as QuantityType<Number>).toUnit("%").doubleValue
+
+        // Log the input values
+        logInfo("OfficeSmall_Dewpoint", "Input values - Temperature: {} °C, Humidity: {} %", temp, humidity)
+
+        // Use the closure for calculation
+        val dewpoint = calculateDewpoint.apply(temp, humidity)
+
+        // Log the calculated dewpoint
+        logInfo("OfficeSmall_Dewpoint", "Calculated Dewpoint: {} °C", dewpoint)
+
+        // Update the OfficeSmall_Dewpoint item
+        OfficeSmall_DewPoint.postUpdate(dewpoint)
+    } 
+    else {
+        logWarn("OfficeSmall_DewPoint", "Invalid input: OfficeSmall_Temperature or OfficeSmall_Humidity state is not a QuantityType")
+    }
+end
+
+rule "dewpointServerroom"
+when
+    Item Serverroom_Temperature changed or
+    Item Serverroom_Humidity changed
+then
+    logInfo("Serverroom_Dewpoint", "Trigger: Serverroom_Temperature or Serverroom_Humidity changed")
+
+    if (Serverroom_Temperature.state instanceof QuantityType && Serverroom_Humidity.state instanceof QuantityType) {
+        // Extract temperature and humidity values
+        val temp = (Serverroom_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val humidity = (Serverroom_Humidity.state as QuantityType<Number>).toUnit("%").doubleValue
+
+        // Log the input values
+        logInfo("Serverroom_Dewpoint", "Input values - Temperature: {} °C, Humidity: {} %", temp, humidity)
+
+        // Use the closure for calculation
+        val dewpoint = calculateDewpoint.apply(temp, humidity)
+
+        // Log the calculated dewpoint
+        logInfo("Serverroom_Dewpoint", "Calculated Dewpoint: {} °C", dewpoint)
+
+        // Update the Serverroom_Dewpoint item
+        Serverroom_DewPoint.postUpdate(dewpoint)
+    } 
+    else {
+        logWarn("Serverroom_DewPoint", "Invalid input: Serverroom_Temperature or Serverroom_Humidity state is not a QuantityType")
+    }
+end
+
+rule "dewpointChildrenBedroom"
+when
+    Item ChildrenBedroom_Temperature changed or
+    Item ChildrenBedroom_Humidity changed
+then
+    logInfo("ChildrenBedroom_Dewpoint", "Trigger: ChildrenBedroom_Temperature or ChildrenBedroom_Humidity changed")
+
+    if (ChildrenBedroom_Temperature.state instanceof QuantityType && ChildrenBedroom_Humidity.state instanceof QuantityType) {
+        // Extract temperature and humidity values
+        val temp = (ChildrenBedroom_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val humidity = (ChildrenBedroom_Humidity.state as QuantityType<Number>).toUnit("%").doubleValue
+
+        // Log the input values
+        logInfo("ChildrenBedroom_Dewpoint", "Input values - Temperature: {} °C, Humidity: {} %", temp, humidity)
+
+        // Use the closure for calculation
+        val dewpoint = calculateDewpoint.apply(temp, humidity)
+
+        // Log the calculated dewpoint
+        logInfo("ChildrenBedroom_Dewpoint", "Calculated Dewpoint: {} °C", dewpoint)
+
+        // Update the ChildrenBedroom_Dewpoint item
+        ChildrenBedroom_DewPoint.postUpdate(dewpoint)
+    } 
+    else {
+        logWarn("ChildrenBedroom_DewPoint", "Invalid input: ChildrenBedroom_Temperature or ChildrenBedroom_Humidity state is not a QuantityType")
+    }
+end
+
+
+rule "dewpointWC"
+when
+    Item WC_Temperature changed or
+    Item WC_Humidity changed
+then
+    logInfo("WC_Dewpoint", "Trigger: WC_Temperature or WC_Humidity changed")
+
+    if (WC_Temperature.state instanceof QuantityType && WC_Humidity.state instanceof QuantityType) {
+        // Extract temperature and humidity values
+        val temp = (WC_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val humidity = (WC_Humidity.state as QuantityType<Number>).toUnit("%").doubleValue
+
+        // Log the input values
+        logInfo("WC_Dewpoint", "Input values - Temperature: {} °C, Humidity: {} %", temp, humidity)
+
+        // Use the closure for calculation
+        val dewpoint = calculateDewpoint.apply(temp, humidity)
+
+        // Log the calculated dewpoint
+        logInfo("WC_Dewpoint", "Calculated Dewpoint: {} °C", dewpoint)
+
+        // Update the WC_Dewpoint item
+        WC_DewPoint.postUpdate(dewpoint)
+    } 
+    else {
+        logWarn("WC_DewPoint", "Invalid input: WC_Temperature or WC_Humidity state is not a QuantityType")
+    }
+end
+
+rule "dewpointLivingroom"
+when
+    Item Livingroom_Temperature changed or
+    Item Livingroom_Humidity changed
+then
+    logInfo("Livingroom_Dewpoint", "Trigger: Livingroom_Temperature or Livingroom_Humidity changed")
+
+    if (Livingroom_Temperature.state instanceof QuantityType && Livingroom_Humidity.state instanceof QuantityType) {
+        // Extract temperature and humidity values
+        val temp = (Livingroom_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val humidity = (Livingroom_Humidity.state as QuantityType<Number>).toUnit("%").doubleValue
+
+        // Log the input values
+        logInfo("Livingroom_Dewpoint", "Input values - Temperature: {} °C, Humidity: {} %", temp, humidity)
+
+        // Use the closure for calculation
+        val dewpoint = calculateDewpoint.apply(temp, humidity)
+
+        // Log the calculated dewpoint
+        logInfo("Livingroom_Dewpoint", "Calculated Dewpoint: {} °C", dewpoint)
+
+        // Update the Livingroom_Dewpoint item
+        Livingroom_DewPoint.postUpdate(dewpoint)
+    } 
+    else {
+        logWarn("Livingroom_DewPoint", "Invalid input: Livingroom_Temperature or Livingroom_Humidity state is not a QuantityType")
+    }
+end
+
+rule "dewpointOfficeBig"
+when
+    Item OfficeBig_Temperature changed or
+    Item OfficeBig_Humidity changed
+then
+    logInfo("OfficeBig_Dewpoint", "Trigger: OfficeBig_Temperature or OfficeBig_Humidity changed")
+
+    if (OfficeBig_Temperature.state instanceof QuantityType && OfficeBig_Humidity.state instanceof QuantityType) {
+        // Extract temperature and humidity values
+        val temp = (OfficeBig_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val humidity = (OfficeBig_Humidity.state as QuantityType<Number>).toUnit("%").doubleValue
+
+        // Log the input values
+        logInfo("OfficeBig_Dewpoint", "Input values - Temperature: {} °C, Humidity: {} %", temp, humidity)
+
+        // Use the closure for calculation
+        val dewpoint = calculateDewpoint.apply(temp, humidity)
+
+        // Log the calculated dewpoint
+        logInfo("OfficeBig_Dewpoint", "Calculated Dewpoint: {} °C", dewpoint)
+
+        // Update the OfficeBig_Dewpoint item
+        OfficeBig_DewPoint.postUpdate(dewpoint)
+    } 
+    else {
+        logWarn("OfficeBig_DewPoint", "Invalid input: OfficeBig_Temperature or OfficeBig_Humidity state is not a QuantityType")
+    }
+end

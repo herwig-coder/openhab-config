@@ -1,0 +1,130 @@
+////////////////////////////////////////////////////////
+/// Bathroom Dewpoint Alert
+////////////////////////////////////////////////////////
+rule "dewpointBadAlert"
+when
+    Item Bathroom_DewPoint changed
+then
+    logInfo("Bad_Dewpoint_Alert", "Trigger: Bathroom_Dewpoint changed")
+    if (Bathroom_DewPoint.state instanceof QuantityType ) {
+        // Extract temperature and humidity values
+        val temp = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val outtemp = (Weatherstation_Temperature_1.state as QuantityType<Number>).toUnit("°C").doubleValue
+        // Log the input value
+        logInfo("Bad_Dewpoint_Alert", "Input values - Temperature: {} °C", temp)
+        if ((temp > 18.3)&&(outtemp<10)){
+            val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
+            val message = "ALERT! Bathroom: Time to air. Dewpoint at: " + String.format("%.1f",temp) + " °C"
+            if (Bathroom_DewPoint_Alert.state != ON){
+                telegramAction.sendTelegram(message)
+                logInfo("Bad_Dewpoint_Alert", "Alert sent: {}", message)
+                Bathroom_DewPoint_Alert.postUpdate(ON)
+            }
+            else{
+                logInfo("Bad_Dewpoint_Alert", "Alert not sent: {}", message)
+            }
+        }
+        else {
+            if ((temp < 18)&&(Bathroom_DewPoint_Alert.state == ON)){
+                val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
+                val message = "Bathroom: aired enough. Dewpoint at: " + String.format("%.1f",temp) + " °C"
+                if (Bathroom_DewPoint_Alert.state != OFF){
+                    telegramAction.sendTelegram(message)
+                    logInfo("Bad_Dewpoint_Alert", "Alert off sent: {}", message)
+                    Bathroom_DewPoint_Alert.postUpdate("OFF")  
+                } 
+            }             
+        }
+    } 
+    else {
+        logWarn("Bad_Dewpoint_Alert", "Invalid input: Bathroom_DewPoint or Weatherstation_Temperature_1 state is not a QuantityType")
+    }
+end
+
+
+////////////////////////////////////////////////////////
+/// Paretns Beddroom Dewpoint Alert
+////////////////////////////////////////////////////////
+rule "dewpointBedroomAlert"
+when
+    Item ParentsBedroom_DewPoint changed
+then
+    logInfo("Partentsbedroom_Dewpoint_Alert", "Trigger: Parents Bedroom Dewpoint changed")
+    if (ParentsBedroom_DewPoint.state instanceof QuantityType ) {
+        // Extract temperature and humidity values
+        val temp = (ParentsBedroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val outtemp = (Weatherstation_Temperature_1.state as QuantityType<Number>).toUnit("°C").doubleValue
+        // Log the input value
+        logInfo("Partentsbedroom_Dewpoint_Alert", "Input values - Temperature: {} °C", temp)
+        if ((temp > 18.3)&&(outtemp<10)){
+            val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
+            val message = "ALERT! Parents Bedroom: Time to air. Dewpoint at: " + String.format("%.1f",temp) + " °C"
+            if (ParentsBedroom_DewPoint_Alert.state != ON){
+                telegramAction.sendTelegram(message)
+                logInfo("Partentsbedroom_Dewpoint_Alert", "Alert sent: {}", message)
+                ParentsBedroom_DewPoint_Alert.postUpdate(ON)
+            }
+            else{
+                logInfo("Partentsbedroom_Dewpoint_Alert", "Alert not sent: {}", message)
+            }
+        }
+        else {
+            if ((temp < 18)&&(ParentsBedroom_DewPoint_Alert.state == ON)){
+                val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
+                val message = "Parents Bedroom: aired enough. Dewpoint at: " + String.format("%.1f",temp) + " °C"
+                if (ParentsBedroom_DewPoint_Alert.state != OFF){
+                    telegramAction.sendTelegram(message)
+                    logInfo("Partentsbedroom_Dewpoint_Alert", "Alert off sent: {}", message)
+                    ParentsBedroom_DewPoint_Alert.postUpdate("OFF")  
+                } 
+            }             
+        }
+    } 
+    else {
+        logWarn("Partentsbedroom_Dewpoint_Alert", "Invalid input: ParentsBedroom_DewPoint or Weatherstation_Temperature_1 state is not a QuantityType")
+    }
+end
+
+////////////////////////////////////////////////////////
+/// Tommy Beddroom Dewpoint Alert
+////////////////////////////////////////////////////////
+rule "dewpointBedroomTommyAlert"
+when
+    Item ChildrenBedroom_DewPoint changed
+then
+    logInfo("BedroomTommy_Dewpoint_Alert", "Trigger: Tommy Bedroom Dewpoint changed")
+    if (ChildrenBedroom_DewPoint.state instanceof QuantityType ) {
+        // Extract temperature and humidity values
+        val temp = (ChildrenBedroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val outtemp = (Weatherstation_Temperature_1.state as QuantityType<Number>).toUnit("°C").doubleValue
+        // Log the input value
+        logInfo("BedroomTommy_Dewpoint_Alert", "Input values - Temperature: {} °C", temp)
+        if ((temp > 18)&&(outtemp<10)){
+            val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
+            val message = "ALERT! Tommy Bedroom: Time to air. Dewpoint at: " + String.format("%.1f",temp) + " °C"
+            if (ChildrenBedroom_DewPoint_Alert.state != ON){
+                telegramAction.sendTelegram(message)
+                logInfo("BedroomTommy_Dewpoint_Alert", "Alert sent: {}", message)
+                ChildrenBedroom_DewPoint_Alert.postUpdate(ON)
+            }
+            else{
+                logInfo("BedroomTommy_Dewpoint_Alert", "Alert not sent: {}", message)
+            }
+        }
+        else {
+            if (ChildrenBedroom_DewPoint_Alert.state == ON){
+                val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
+                val message = "Tommy Bedroom: aired enough. Dewpoint at: " + String.format("%.1f",temp) + " °C"
+                if (ChildrenBedroom_DewPoint_Alert.state != OFF){
+                    telegramAction.sendTelegram(message)
+                    logInfo("BedroomTommy_Dewpoint_Alert", "Alert off sent: {}", message)
+                    ChildrenBedroom_DewPoint_Alert.postUpdate("OFF")  
+                } 
+            }             
+        }
+    } 
+    else {
+        logWarn("Partentsbedroom_Dewpoint_Alert", "Invalid input: ChildrenBedroom_DewPoint or Weatherstation_Temperature_1 state is not a QuantityType")
+    }
+end
+

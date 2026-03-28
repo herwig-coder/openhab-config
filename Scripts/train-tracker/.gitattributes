@@ -1,0 +1,11 @@
+# Ensure shell scripts always use Unix line endings (LF)
+*.sh text eol=lf
+
+# Windows batch files should use Windows line endings (CRLF)
+*.bat text eol=crlf
+
+# Python files should use Unix line endings (LF)
+*.py text eol=lf
+
+# Markdown files should use Unix line endings (LF)
+*.md text eol=lf

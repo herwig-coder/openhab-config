@@ -1,0 +1,12 @@
+Thing mqtt:topic:mqtt_Ulanzi "MQTT Ulanzi" (mqtt:broker:9a73e5895e) @ "Kitchen" {
+    Channels:
+    Type string        : Ulanzi_01_settings    "Settings"    [ commandTopic="awtrixef9440/settings"]
+    Type string        : Ulanzi_01_reboot      "Reboot"      [ commandTopic="awtrixef9440/reboot"]
+    Type string        : Ulanzi_01_muell       "Müll"        [ commandTopic="awtrixef9440/custom/muell"]
+
+    Type string        : Ulanzi_01_air         "Lüften"      [ commandTopic="awtrixef9440/custom/air"]
+    Type string        : Ulanzi_01_strom       "Strompreis"  [ commandTopic="awtrixef9440/custom/strom"]
+    Type string        : Ulanzi_01_train       "Zug"         [ commandTopic="awtrixef9440/custom/train"]
+
+    Type string        : Ulanzi_01_status      "Status"      [ stateTopic="awtrixef9440/stats"]
+}

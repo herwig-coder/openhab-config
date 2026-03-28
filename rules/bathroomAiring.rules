@@ -1,0 +1,142 @@
+rule "someone_showering"
+when 
+    Item Bathroom_DewPoint changed
+then
+    val tempnow = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
+    val tempold = (Bathroom_Last_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
+    logInfo("bathroom_airing", "Showercheck current dew point:" + tempnow + " previous dew point: " + tempold)
+    if (tempnow >= tempold && Bathroom_DewPoint_Alert.state==ON) {
+        logInfo("bathroom_airing", "Someone is showering")
+        Bathroom_Someone_Showering.sendCommand(ON)
+    }
+    else if ((tempnow < tempold))
+    {
+        logInfo("bathroom_airing","Showering over")
+        Bathroom_Someone_Showering.sendCommand(OFF)
+    }
+end
+
+// Turn on after Showering
+rule "bathroom_airing"
+when
+    Item Bathroom_Someone_Showering changed
+then
+    logInfo("bathroom_airing", "Trigger: dewpointalert changed")
+    //val tempnow = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
+    // check if bathroomwindow is locked or gekippt
+    if (Bathroom_Alarm_Gekippt.state == OFF && Bathroom_Alarm_Locked.state==OFF){
+        if (Bathroom_DewPoint_Alert.state == ON && Bathroom_Someone_Showering.state == OFF) {
+            logInfo("bathroom_airing", "Trigger: turn airing on")
+            Bathroom_Airing_Open_Request.sendCommand(ON)
+            Bathroom_Airing_Close_Request.sendCommand(OFF)
+        }
+        else if (Bathroom_DewPoint_Alert.state == OFF){
+            logInfo("bathroom_airing", "Trigger: turn airing on")
+            Bathroom_Airing_Close_Request.sendCommand(ON)
+            Bathroom_Airing_Open_Request.sendCommand(OFF)
+        } 
+    }
+    else{
+        logInfo("bathroom_airing", "BLOCKED since window is locked or gekippt")
+    }
+end
+
+// Close Window when dew point is below 17°
+rule "bathroom_airing_done"
+when
+    Item Bathroom_DewPoint changed
+then
+    val tempnow = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
+        logInfo("bathroom_airing_done", "Dewpoint check dew point:" + tempnow )
+    if (tempnow <= 17) {
+        logInfo("bathroom_airing_done", "aired enough")
+        Bathroom_Airing_Close_Request.sendCommand(ON)
+        Bathroom_Airing_Open_Request.sendCommand(OFF)
+    }
+end
+
+// KNX request to air
+rule "bathroom_airing_button"
+when
+    Item Bathroom_Open_Window changed
+then
+    logInfo("bathroom_airing_button", "Trigger: bathroom airing button")
+    // check if bathroomwindow is locked or gekippt
+    if (Bathroom_Alarm_Gekippt.state == OFF && Bathroom_Alarm_Locked.state==OFF){
+        if (Bathroom_Open_Window.state == ON) {
+            logInfo("bathroom_airing_button", "Trigger: turn airing on")
+            Bathroom_Airing_Open_Request.sendCommand(ON)
+            Bathroom_Airing_Close_Request.sendCommand(OFF)
+        }
+        else if (Bathroom_DewPoint_Alert.state == OFF ){
+            logInfo("bathroom_airing_button", "Trigger: turn airing on")
+            Bathroom_Airing_Close_Request.sendCommand(ON)
+            Bathroom_Airing_Open_Request.sendCommand(OFF)
+        } 
+    }
+    else{
+        logInfo("bathroom_airing", "BLOCKED since window is locked or gekippt")
+    }
+end
+
+// Request to Action
+rule "bathroom_airing_action"
+when
+    Item Bathroom_Airing_Open_Request changed or
+    Item Bathroom_Airing_Close_Request changed
+then
+    logInfo("bathroom_airing_action", "Trigger: bathroom airing Request changed")
+    // check if bathroomwindow is locked or gekippt
+    if (Bathroom_Alarm_Gekippt.state == OFF && Bathroom_Alarm_Locked.state==OFF){
+        if (Bathroom_Airing_Open_Request.state == ON) {
+            logInfo("bathroom_airing_action", "Open Window; Close Switch OFF, Open Switch ON. Reset Timer")
+            Bathroom_Airing_Close_Switch.sendCommand(OFF)
+            Bathroom_Airing_Open_Switch.sendCommand(ON)
+            Bathroom_Airing_Close_Request.sendCommand(OFF)
+            Bathroom_Motor_on.postUpdate(now.toLocalDateTime.toString())
+        }
+        else if (Bathroom_Airing_Close_Request.state == ON ){
+            logInfo("bathroom_airing_action", "Close Window Close Switch ON, Open Switch OFF. Reset Timer")
+            Bathroom_Airing_Open_Switch.sendCommand(OFF)
+            Bathroom_Airing_Close_Switch.sendCommand(ON)
+            Bathroom_Airing_Open_Request.sendCommand(OFF)
+            Bathroom_Motor_on.postUpdate(now.toLocalDateTime.toString())
+        } 
+    }
+    else{
+        logInfo("bathroom_airing", "BLOCKED since window is locked or gekippt")
+    }
+end
+
+rule "bathroom_airing_motor_off"
+when
+    Item Bathroom_Airing_Open_Power changed or
+    Item Bathroom_Airing_Close_Power changed
+then
+    logInfo("bathroom_airing", "CheckMotors")
+    if (Bathroom_Motor_on.state instanceof DateTimeType ) {
+
+        val poweropen      = (Bathroom_Airing_Open_Power.state as QuantityType<Number>).toUnit("W").doubleValue
+        val powerclose     = (Bathroom_Airing_Close_Power.state as QuantityType<Number>).toUnit("W").doubleValue
+        //val ZonedDateTime last = (Bathroom_Motor_on.state as DateTimeType).zonedDateTime
+        val ZonedDateTime last = (Bathroom_Motor_on.state as DateTimeType).getInstant.atZone(ZoneId.systemDefault())
+        val ZonedDateTime now  = ZonedDateTime.now()
+        val ageSecs      = java.time.Duration.between(last, now).seconds
+
+        logInfo("bathroom_airing", "Check consumption of Motor. Open: " + poweropen + "W. Close: " + powerclose +" W. Time passed: " + ageSecs)
+
+        // check if bathroomwindow is locked or gekippt
+        if (Bathroom_Airing_Open_Switch.state==ON && poweropen <= 1.1 && ageSecs > 4){
+            logInfo("bathroom_airing", "Trigger: power off motor open")
+            Bathroom_Airing_Open_Switch.sendCommand(OFF)
+            Bathroom_Motor_on.postUpdate(now.toLocalDateTime.toString())
+            //Bathroom_Airing_Open_Request.sendCommand(OFF)
+        }
+        else if (Bathroom_Airing_Close_Switch.state==ON && powerclose <= 1.1 && ageSecs > 4){
+            logInfo("bathroom_airing", "Trigger: power off motor close")
+            Bathroom_Airing_Close_Switch.sendCommand(OFF)
+            Bathroom_Motor_on.postUpdate(now.toLocalDateTime.toString())
+            //Bathroom_Airing_Close_Request.sendCommand(OFF)
+        }
+    }
+end
