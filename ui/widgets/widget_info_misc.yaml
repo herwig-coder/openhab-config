@@ -49,6 +49,7 @@ slots:
             config:
               style:
                 margin-bottom: "4px"
+                display: "=items['Garbage_Collection_Item0'].state == 'UNDEF' ? 'none' : 'flex'"
             slots:
               default:
                 - component: f7-col
@@ -80,6 +81,7 @@ slots:
             config:
               style:
                 margin-bottom: "4px"
+                display: "=items['Garbage_Collection_Item1'].state == 'UNDEF' ? 'none' : 'flex'"
             slots:
               default:
                 - component: f7-col
@@ -110,6 +112,7 @@ slots:
             config:
               style:
                 margin-bottom: "4px"
+                display: "=items['Garbage_Collection_Item2'].state == 'UNDEF' ? 'none' : 'flex'"
             slots:
               default:
                 - component: f7-col
@@ -140,6 +143,7 @@ slots:
             config:
               style:
                 margin-bottom: "10px"
+                display: "=items['Garbage_Collection_Item3'].state == 'UNDEF' ? 'none' : 'flex'"
             slots:
               default:
                 - component: f7-col
