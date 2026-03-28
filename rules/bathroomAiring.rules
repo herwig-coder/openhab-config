@@ -58,12 +58,12 @@ end
 // KNX request to air
 rule "bathroom_airing_button"
 when
-    Item Bathroom_Open_Window changed
+    Item Bathroom_Window_Open changed
 then
     logInfo("bathroom_airing_button", "Trigger: bathroom airing button")
     // check if bathroomwindow is locked or gekippt
     if (Bathroom_Alarm_Tilted.state == OFF && Bathroom_Alarm_Locked.state==OFF){
-        if (Bathroom_Open_Window.state == ON) {
+        if (Bathroom_Window_Open.state == ON) {
             logInfo("bathroom_airing_button", "Trigger: turn airing on")
             Bathroom_Airing_Open_Request.sendCommand(ON)
             Bathroom_Airing_Close_Request.sendCommand(OFF)
