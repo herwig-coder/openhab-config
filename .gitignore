@@ -20,6 +20,9 @@ Scripts/train-tracker/openhab/
 # Claude Code workspace files
 Scripts/**/.claude/
 
+# OpenHAB default placeholder files (no custom content)
+readme.txt
+
 # Windows artifacts
 Thumbs.db
 desktop.ini
