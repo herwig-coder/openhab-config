@@ -1,0 +1,934 @@
+uid: widget_electricity_prices
+tags:
+  - widget
+props:
+  parameters: []
+timestamp: "2024-03-28T00:00:00.000Z"
+component: f7-card
+config:
+  style:
+    background: "#FDFAF6"
+    border-radius: "12px"
+    border: "1px solid #E8E0D5"
+    margin: "0"
+    box-shadow: "0 2px 8px rgba(156,79,30,0.08)"
+    font-family: "'DM Sans', system-ui, sans-serif"
+slots:
+  default:
+    - component: f7-card-content
+      config:
+        style:
+          padding: "14px 16px 12px"
+      slots:
+        default:
+
+          - component: Label
+            config:
+              text: "STROMPREISE"
+              style:
+                font-size: "9px"
+                font-weight: "700"
+                color: "#9C4F1E"
+                letter-spacing: "2px"
+                text-transform: uppercase
+                display: block
+                margin-bottom: "10px"
+
+          # ── HEUTE ────────────────────────────────────────────────────────────
+          - component: Label
+            config:
+              text: "Heute"
+              style:
+                font-size: "10px"
+                color: "#A89880"
+                display: block
+                margin-bottom: "4px"
+
+          # Bar chart: 60px tall container, align-items flex-end = bars grow from bottom.
+          # Height formula: state/30*60 px (30 ct = full height). Min 3px for zero/NULL.
+          - component: f7-row
+            config:
+              style:
+                height: "60px"
+                align-items: flex-end
+                gap: "1px"
+                flex-wrap: nowrap
+                overflow: hidden
+            slots:
+              default:
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today00'].state > 0 ? items['today00'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today00'].state > 20 ? '#EF9A9A' : items['today00'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today01'].state > 0 ? items['today01'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today01'].state > 20 ? '#EF9A9A' : items['today01'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today02'].state > 0 ? items['today02'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today02'].state > 20 ? '#EF9A9A' : items['today02'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today03'].state > 0 ? items['today03'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today03'].state > 20 ? '#EF9A9A' : items['today03'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today04'].state > 0 ? items['today04'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today04'].state > 20 ? '#EF9A9A' : items['today04'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today05'].state > 0 ? items['today05'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today05'].state > 20 ? '#EF9A9A' : items['today05'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today06'].state > 0 ? items['today06'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today06'].state > 20 ? '#EF9A9A' : items['today06'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today07'].state > 0 ? items['today07'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today07'].state > 20 ? '#EF9A9A' : items['today07'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today08'].state > 0 ? items['today08'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today08'].state > 20 ? '#EF9A9A' : items['today08'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today09'].state > 0 ? items['today09'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today09'].state > 20 ? '#EF9A9A' : items['today09'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today10'].state > 0 ? items['today10'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today10'].state > 20 ? '#EF9A9A' : items['today10'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today11'].state > 0 ? items['today11'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today11'].state > 20 ? '#EF9A9A' : items['today11'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today12'].state > 0 ? items['today12'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today12'].state > 20 ? '#EF9A9A' : items['today12'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today13'].state > 0 ? items['today13'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today13'].state > 20 ? '#EF9A9A' : items['today13'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today14'].state > 0 ? items['today14'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today14'].state > 20 ? '#EF9A9A' : items['today14'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today15'].state > 0 ? items['today15'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today15'].state > 20 ? '#EF9A9A' : items['today15'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today16'].state > 0 ? items['today16'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today16'].state > 20 ? '#EF9A9A' : items['today16'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today17'].state > 0 ? items['today17'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today17'].state > 20 ? '#EF9A9A' : items['today17'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today18'].state > 0 ? items['today18'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today18'].state > 20 ? '#EF9A9A' : items['today18'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today19'].state > 0 ? items['today19'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today19'].state > 20 ? '#EF9A9A' : items['today19'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today20'].state > 0 ? items['today20'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today20'].state > 20 ? '#EF9A9A' : items['today20'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today21'].state > 0 ? items['today21'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today21'].state > 20 ? '#EF9A9A' : items['today21'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today22'].state > 0 ? items['today22'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today22'].state > 20 ? '#EF9A9A' : items['today22'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['today23'].state > 0 ? items['today23'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['today23'].state > 20 ? '#EF9A9A' : items['today23'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+
+          # Hour labels — only 0, 6, 12, 18 to avoid crowding; empty cols maintain alignment
+          - component: f7-row
+            config:
+              style:
+                gap: "1px"
+                flex-wrap: nowrap
+                margin-bottom: "12px"
+            slots:
+              default:
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      text-align: center
+                      min-width: "0"
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "0"
+                          style:
+                            font-size: "7px"
+                            color: "#A89880"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      text-align: center
+                      min-width: "0"
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "6"
+                          style:
+                            font-size: "7px"
+                            color: "#A89880"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      text-align: center
+                      min-width: "0"
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "12"
+                          style:
+                            font-size: "7px"
+                            color: "#A89880"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      text-align: center
+                      min-width: "0"
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "18"
+                          style:
+                            font-size: "7px"
+                            color: "#A89880"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+
+          # ── MORGEN ───────────────────────────────────────────────────────────
+          - component: Label
+            config:
+              text: "Morgen"
+              style:
+                font-size: "10px"
+                color: "#A89880"
+                display: block
+                margin-bottom: "4px"
+
+          # Tomorrow bars: grey (#D8D0C8) when state == 'NULL' (prices not yet published ~14:00)
+          - component: f7-row
+            config:
+              style:
+                height: "60px"
+                align-items: flex-end
+                gap: "1px"
+                flex-wrap: nowrap
+                overflow: hidden
+            slots:
+              default:
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow00'].state > 0 ? items['tomorrow00'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow00'].state == 'NULL' ? '#D8D0C8' : items['tomorrow00'].state > 20 ? '#EF9A9A' : items['tomorrow00'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow01'].state > 0 ? items['tomorrow01'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow01'].state == 'NULL' ? '#D8D0C8' : items['tomorrow01'].state > 20 ? '#EF9A9A' : items['tomorrow01'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow02'].state > 0 ? items['tomorrow02'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow02'].state == 'NULL' ? '#D8D0C8' : items['tomorrow02'].state > 20 ? '#EF9A9A' : items['tomorrow02'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow03'].state > 0 ? items['tomorrow03'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow03'].state == 'NULL' ? '#D8D0C8' : items['tomorrow03'].state > 20 ? '#EF9A9A' : items['tomorrow03'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow04'].state > 0 ? items['tomorrow04'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow04'].state == 'NULL' ? '#D8D0C8' : items['tomorrow04'].state > 20 ? '#EF9A9A' : items['tomorrow04'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow05'].state > 0 ? items['tomorrow05'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow05'].state == 'NULL' ? '#D8D0C8' : items['tomorrow05'].state > 20 ? '#EF9A9A' : items['tomorrow05'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow06'].state > 0 ? items['tomorrow06'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow06'].state == 'NULL' ? '#D8D0C8' : items['tomorrow06'].state > 20 ? '#EF9A9A' : items['tomorrow06'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow07'].state > 0 ? items['tomorrow07'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow07'].state == 'NULL' ? '#D8D0C8' : items['tomorrow07'].state > 20 ? '#EF9A9A' : items['tomorrow07'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow08'].state > 0 ? items['tomorrow08'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow08'].state == 'NULL' ? '#D8D0C8' : items['tomorrow08'].state > 20 ? '#EF9A9A' : items['tomorrow08'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow09'].state > 0 ? items['tomorrow09'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow09'].state == 'NULL' ? '#D8D0C8' : items['tomorrow09'].state > 20 ? '#EF9A9A' : items['tomorrow09'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow10'].state > 0 ? items['tomorrow10'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow10'].state == 'NULL' ? '#D8D0C8' : items['tomorrow10'].state > 20 ? '#EF9A9A' : items['tomorrow10'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow11'].state > 0 ? items['tomorrow11'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow11'].state == 'NULL' ? '#D8D0C8' : items['tomorrow11'].state > 20 ? '#EF9A9A' : items['tomorrow11'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow12'].state > 0 ? items['tomorrow12'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow12'].state == 'NULL' ? '#D8D0C8' : items['tomorrow12'].state > 20 ? '#EF9A9A' : items['tomorrow12'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow13'].state > 0 ? items['tomorrow13'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow13'].state == 'NULL' ? '#D8D0C8' : items['tomorrow13'].state > 20 ? '#EF9A9A' : items['tomorrow13'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow14'].state > 0 ? items['tomorrow14'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow14'].state == 'NULL' ? '#D8D0C8' : items['tomorrow14'].state > 20 ? '#EF9A9A' : items['tomorrow14'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow15'].state > 0 ? items['tomorrow15'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow15'].state == 'NULL' ? '#D8D0C8' : items['tomorrow15'].state > 20 ? '#EF9A9A' : items['tomorrow15'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow16'].state > 0 ? items['tomorrow16'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow16'].state == 'NULL' ? '#D8D0C8' : items['tomorrow16'].state > 20 ? '#EF9A9A' : items['tomorrow16'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow17'].state > 0 ? items['tomorrow17'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow17'].state == 'NULL' ? '#D8D0C8' : items['tomorrow17'].state > 20 ? '#EF9A9A' : items['tomorrow17'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow18'].state > 0 ? items['tomorrow18'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow18'].state == 'NULL' ? '#D8D0C8' : items['tomorrow18'].state > 20 ? '#EF9A9A' : items['tomorrow18'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow19'].state > 0 ? items['tomorrow19'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow19'].state == 'NULL' ? '#D8D0C8' : items['tomorrow19'].state > 20 ? '#EF9A9A' : items['tomorrow19'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow20'].state > 0 ? items['tomorrow20'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow20'].state == 'NULL' ? '#D8D0C8' : items['tomorrow20'].state > 20 ? '#EF9A9A' : items['tomorrow20'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow21'].state > 0 ? items['tomorrow21'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow21'].state == 'NULL' ? '#D8D0C8' : items['tomorrow21'].state > 20 ? '#EF9A9A' : items['tomorrow21'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow22'].state > 0 ? items['tomorrow22'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow22'].state == 'NULL' ? '#D8D0C8' : items['tomorrow22'].state > 20 ? '#EF9A9A' : items['tomorrow22'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      height: "=(items['tomorrow23'].state > 0 ? items['tomorrow23'].state / 30 * 60 : 3) + 'px'"
+                      background: "=items['tomorrow23'].state == 'NULL' ? '#D8D0C8' : items['tomorrow23'].state > 20 ? '#EF9A9A' : items['tomorrow23'].state > 12 ? '#FFCC80' : '#A5D6A7'"
+                      border-radius: "2px 2px 0 0"
+                      min-width: "0"
+                      padding: "0"
+
+          # Hour labels for Morgen — same positions: 0, 6, 12, 18
+          - component: f7-row
+            config:
+              style:
+                gap: "1px"
+                flex-wrap: nowrap
+                margin-bottom: "10px"
+            slots:
+              default:
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      text-align: center
+                      min-width: "0"
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "0"
+                          style:
+                            font-size: "7px"
+                            color: "#A89880"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      text-align: center
+                      min-width: "0"
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "6"
+                          style:
+                            font-size: "7px"
+                            color: "#A89880"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      text-align: center
+                      min-width: "0"
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "12"
+                          style:
+                            font-size: "7px"
+                            color: "#A89880"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      text-align: center
+                      min-width: "0"
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "18"
+                          style:
+                            font-size: "7px"
+                            color: "#A89880"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "1"
+                      min-width: "0"
+
+          # ── LEGEND ───────────────────────────────────────────────────────────
+          - component: f7-row
+            config:
+              style:
+                gap: "6px"
+                align-items: center
+                flex-wrap: nowrap
+            slots:
+              default:
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                      width: "10px"
+                      height: "10px"
+                      background: "#A5D6A7"
+                      border-radius: "2px"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "≤12 ct"
+                          style:
+                            font-size: "9px"
+                            color: "#A89880"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                      width: "10px"
+                      height: "10px"
+                      background: "#FFCC80"
+                      border-radius: "2px"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "≤20 ct"
+                          style:
+                            font-size: "9px"
+                            color: "#A89880"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                      width: "10px"
+                      height: "10px"
+                      background: "#EF9A9A"
+                      border-radius: "2px"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: ">20 ct"
+                          style:
+                            font-size: "9px"
+                            color: "#A89880"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                      width: "10px"
+                      height: "10px"
+                      background: "#D8D0C8"
+                      border-radius: "2px"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "n/v"
+                          style:
+                            font-size: "9px"
+                            color: "#A89880"

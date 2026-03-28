@@ -1,0 +1,532 @@
+uid: widget_climate_rooms
+tags:
+  - widget
+props:
+  parameters: []
+timestamp: "2024-03-28T00:00:00.000Z"
+component: f7-card
+config:
+  style:
+    background: "#FDFAF6"
+    border-radius: "12px"
+    border: "1px solid #E8E0D5"
+    margin: "0"
+    box-shadow: "0 2px 8px rgba(156,79,30,0.08)"
+    font-family: "'DM Sans', system-ui, sans-serif"
+slots:
+  default:
+    - component: f7-card-content
+      config:
+        style:
+          padding: "14px 16px"
+      slots:
+        default:
+          - component: Label
+            config:
+              text: "RAUMKLIMA"
+              style:
+                font-size: "9px"
+                font-weight: "700"
+                color: "#9C4F1E"
+                letter-spacing: "2px"
+                text-transform: uppercase
+                display: block
+                margin-bottom: "10px"
+
+          # ── ROW 1: Wohnzimmer · Bad · Eltern-SZ · Tommy-SZ ──────────────────
+          - component: f7-row
+            config:
+              style:
+                margin-bottom: "6px"
+            slots:
+              default:
+
+                # ── WOHNZIMMER (no alert) ─────────────────────────────────────
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: f7-card
+                        config:
+                          style:
+                            background: "#F7F3EE"
+                            border: "1px solid #E8E0D5"
+                            border-radius: "8px"
+                            margin: "0 2px 0 0"
+                        slots:
+                          default:
+                            - component: f7-card-content
+                              config:
+                                style:
+                                  padding: "10px 12px"
+                              slots:
+                                default:
+                                  - component: f7-row
+                                    slots:
+                                      default:
+                                        - component: f7-col
+                                          slots:
+                                            default:
+                                              - component: Label
+                                                config:
+                                                  text: "WOHNZIMMER"
+                                                  style:
+                                                    font-size: "9px"
+                                                    font-weight: "700"
+                                                    color: "#9C4F1E"
+                                        - component: f7-col
+                                          config:
+                                            style:
+                                              flex: "0 0 auto"
+                                              text-align: right
+                                          slots:
+                                            default:
+                                              - component: Label
+                                                config:
+                                                  text: "🟢"
+                                                  style:
+                                                    font-size: "10px"
+                                  - component: Label
+                                    config:
+                                      text: "=items['Livingroom_Temperature'].state || '—'"
+                                      style:
+                                        font-size: "28px"
+                                        font-weight: "700"
+                                        color: "#3D2B1F"
+                                        line-height: "1.1"
+                                        display: block
+                                        margin-top: "4px"
+                                  - component: Label
+                                    config:
+                                      text: "=(items['Livingroom_Humidity'].state || '—') + ' · ' + (items['Livingroom_DewPoint'].displayState || '—')"
+                                      style:
+                                        font-size: "12px"
+                                        color: "#A89880"
+                                        display: block
+                                        margin-top: "4px"
+
+                # ── BAD (dew point alert) ─────────────────────────────────────
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: f7-card
+                        config:
+                          style:
+                            background: "=items['Bathroom_DewPoint_Alert'].state == 'ON' ? '#FFF3F3' : '#F7F3EE'"
+                            border: "=items['Bathroom_DewPoint_Alert'].state == 'ON' ? '1px solid #FFCDD2' : '1px solid #E8E0D5'"
+                            border-radius: "8px"
+                            margin: "0 2px"
+                        slots:
+                          default:
+                            - component: f7-card-content
+                              config:
+                                style:
+                                  padding: "10px 12px"
+                              slots:
+                                default:
+                                  - component: f7-row
+                                    slots:
+                                      default:
+                                        - component: f7-col
+                                          slots:
+                                            default:
+                                              - component: Label
+                                                config:
+                                                  text: "BAD"
+                                                  style:
+                                                    font-size: "9px"
+                                                    font-weight: "700"
+                                                    color: "#9C4F1E"
+                                        - component: f7-col
+                                          config:
+                                            style:
+                                              flex: "0 0 auto"
+                                              text-align: right
+                                          slots:
+                                            default:
+                                              - component: Label
+                                                config:
+                                                  text: "=items['Bathroom_DewPoint_Alert'].state == 'ON' ? '🔴' : '🟢'"
+                                                  style:
+                                                    font-size: "10px"
+                                  - component: Label
+                                    config:
+                                      text: "=items['Bathroom_Temperature'].state || '—'"
+                                      style:
+                                        font-size: "28px"
+                                        font-weight: "700"
+                                        color: "#3D2B1F"
+                                        line-height: "1.1"
+                                        display: block
+                                        margin-top: "4px"
+                                  - component: Label
+                                    config:
+                                      text: "=(items['Bathroom_Humidity'].state || '—') + ' · ' + (items['Bathroom_DewPoint'].displayState || '—')"
+                                      style:
+                                        font-size: "12px"
+                                        color: "#A89880"
+                                        display: block
+                                        margin-top: "4px"
+
+                # ── ELTERN-SZ (dew point alert) ───────────────────────────────
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: f7-card
+                        config:
+                          style:
+                            background: "=items['ParentsBedroom_DewPoint_Alert'].state == 'ON' ? '#FFF3F3' : '#F7F3EE'"
+                            border: "=items['ParentsBedroom_DewPoint_Alert'].state == 'ON' ? '1px solid #FFCDD2' : '1px solid #E8E0D5'"
+                            border-radius: "8px"
+                            margin: "0 2px"
+                        slots:
+                          default:
+                            - component: f7-card-content
+                              config:
+                                style:
+                                  padding: "10px 12px"
+                              slots:
+                                default:
+                                  - component: f7-row
+                                    slots:
+                                      default:
+                                        - component: f7-col
+                                          slots:
+                                            default:
+                                              - component: Label
+                                                config:
+                                                  text: "ELTERN-SZ"
+                                                  style:
+                                                    font-size: "9px"
+                                                    font-weight: "700"
+                                                    color: "#9C4F1E"
+                                        - component: f7-col
+                                          config:
+                                            style:
+                                              flex: "0 0 auto"
+                                              text-align: right
+                                          slots:
+                                            default:
+                                              - component: Label
+                                                config:
+                                                  text: "=items['ParentsBedroom_DewPoint_Alert'].state == 'ON' ? '🔴' : '🟢'"
+                                                  style:
+                                                    font-size: "10px"
+                                  - component: Label
+                                    config:
+                                      text: "=items['ParentsBedroom_Temperature'].state || '—'"
+                                      style:
+                                        font-size: "28px"
+                                        font-weight: "700"
+                                        color: "#3D2B1F"
+                                        line-height: "1.1"
+                                        display: block
+                                        margin-top: "4px"
+                                  - component: Label
+                                    config:
+                                      text: "=(items['ParentsBedroom_Humidity'].state || '—') + ' · ' + (items['ParentsBedroom_DewPoint'].displayState || '—')"
+                                      style:
+                                        font-size: "12px"
+                                        color: "#A89880"
+                                        display: block
+                                        margin-top: "4px"
+
+                # ── TOMMY-SZ (dew point alert) ────────────────────────────────
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: f7-card
+                        config:
+                          style:
+                            background: "=items['ChildrenBedroom_DewPoint_Alert'].state == 'ON' ? '#FFF3F3' : '#F7F3EE'"
+                            border: "=items['ChildrenBedroom_DewPoint_Alert'].state == 'ON' ? '1px solid #FFCDD2' : '1px solid #E8E0D5'"
+                            border-radius: "8px"
+                            margin: "0 0 0 2px"
+                        slots:
+                          default:
+                            - component: f7-card-content
+                              config:
+                                style:
+                                  padding: "10px 12px"
+                              slots:
+                                default:
+                                  - component: f7-row
+                                    slots:
+                                      default:
+                                        - component: f7-col
+                                          slots:
+                                            default:
+                                              - component: Label
+                                                config:
+                                                  text: "TOMMY-SZ"
+                                                  style:
+                                                    font-size: "9px"
+                                                    font-weight: "700"
+                                                    color: "#9C4F1E"
+                                        - component: f7-col
+                                          config:
+                                            style:
+                                              flex: "0 0 auto"
+                                              text-align: right
+                                          slots:
+                                            default:
+                                              - component: Label
+                                                config:
+                                                  text: "=items['ChildrenBedroom_DewPoint_Alert'].state == 'ON' ? '🔴' : '🟢'"
+                                                  style:
+                                                    font-size: "10px"
+                                  - component: Label
+                                    config:
+                                      text: "=items['ChildrenBedroom_Temperature'].state || '—'"
+                                      style:
+                                        font-size: "28px"
+                                        font-weight: "700"
+                                        color: "#3D2B1F"
+                                        line-height: "1.1"
+                                        display: block
+                                        margin-top: "4px"
+                                  - component: Label
+                                    config:
+                                      text: "=(items['ChildrenBedroom_Humidity'].state || '—') + ' · ' + (items['ChildrenBedroom_DewPoint'].displayState || '—')"
+                                      style:
+                                        font-size: "12px"
+                                        color: "#A89880"
+                                        display: block
+                                        margin-top: "4px"
+
+          # ── ROW 2: Küche · WC · Büro H · Büro Z ─────────────────────────────
+          - component: f7-row
+            slots:
+              default:
+
+                # ── KÜCHE (KNX, temp only) ────────────────────────────────────
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: f7-card
+                        config:
+                          style:
+                            background: "#F7F3EE"
+                            border: "1px solid #E8E0D5"
+                            border-radius: "8px"
+                            margin: "0 2px 0 0"
+                        slots:
+                          default:
+                            - component: f7-card-content
+                              config:
+                                style:
+                                  padding: "10px 12px"
+                              slots:
+                                default:
+                                  - component: Label
+                                    config:
+                                      text: "KÜCHE"
+                                      style:
+                                        font-size: "9px"
+                                        font-weight: "700"
+                                        color: "#9C4F1E"
+                                        display: block
+                                  - component: Label
+                                    config:
+                                      text: "=items['Kitchen_Temperature'].state || '—'"
+                                      style:
+                                        font-size: "28px"
+                                        font-weight: "700"
+                                        color: "#3D2B1F"
+                                        line-height: "1.1"
+                                        display: block
+                                        margin-top: "4px"
+                                  - component: f7-block
+                                    config:
+                                      style:
+                                        height: "16px"
+                                        margin: "4px 0 0 0"
+                                        padding: "0"
+
+                # ── WC ────────────────────────────────────────────────────────
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: f7-card
+                        config:
+                          style:
+                            background: "#F7F3EE"
+                            border: "1px solid #E8E0D5"
+                            border-radius: "8px"
+                            margin: "0 2px"
+                        slots:
+                          default:
+                            - component: f7-card-content
+                              config:
+                                style:
+                                  padding: "10px 12px"
+                              slots:
+                                default:
+                                  - component: f7-row
+                                    slots:
+                                      default:
+                                        - component: f7-col
+                                          slots:
+                                            default:
+                                              - component: Label
+                                                config:
+                                                  text: "WC"
+                                                  style:
+                                                    font-size: "9px"
+                                                    font-weight: "700"
+                                                    color: "#9C4F1E"
+                                        - component: f7-col
+                                          config:
+                                            style:
+                                              flex: "0 0 auto"
+                                              text-align: right
+                                          slots:
+                                            default:
+                                              - component: Label
+                                                config:
+                                                  text: "🟢"
+                                                  style:
+                                                    font-size: "10px"
+                                  - component: Label
+                                    config:
+                                      text: "=items['WC_Temperature'].state || '—'"
+                                      style:
+                                        font-size: "28px"
+                                        font-weight: "700"
+                                        color: "#3D2B1F"
+                                        line-height: "1.1"
+                                        display: block
+                                        margin-top: "4px"
+                                  - component: Label
+                                    config:
+                                      text: "=(items['WC_Humidity'].state || '—') + ' · ' + (items['WC_DewPoint'].displayState || '—')"
+                                      style:
+                                        font-size: "12px"
+                                        color: "#A89880"
+                                        display: block
+                                        margin-top: "4px"
+
+                # ── BÜRO H ────────────────────────────────────────────────────
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: f7-card
+                        config:
+                          style:
+                            background: "#F7F3EE"
+                            border: "1px solid #E8E0D5"
+                            border-radius: "8px"
+                            margin: "0 2px"
+                        slots:
+                          default:
+                            - component: f7-card-content
+                              config:
+                                style:
+                                  padding: "10px 12px"
+                              slots:
+                                default:
+                                  - component: f7-row
+                                    slots:
+                                      default:
+                                        - component: f7-col
+                                          slots:
+                                            default:
+                                              - component: Label
+                                                config:
+                                                  text: "BÜRO H"
+                                                  style:
+                                                    font-size: "9px"
+                                                    font-weight: "700"
+                                                    color: "#9C4F1E"
+                                        - component: f7-col
+                                          config:
+                                            style:
+                                              flex: "0 0 auto"
+                                              text-align: right
+                                          slots:
+                                            default:
+                                              - component: Label
+                                                config:
+                                                  text: "🟢"
+                                                  style:
+                                                    font-size: "10px"
+                                  - component: Label
+                                    config:
+                                      text: "=items['OfficeSmall_Temperature'].state || '—'"
+                                      style:
+                                        font-size: "28px"
+                                        font-weight: "700"
+                                        color: "#3D2B1F"
+                                        line-height: "1.1"
+                                        display: block
+                                        margin-top: "4px"
+                                  - component: Label
+                                    config:
+                                      text: "=(items['OfficeSmall_Humidity'].state || '—') + ' · ' + (items['OfficeSmall_DewPoint'].displayState || '—')"
+                                      style:
+                                        font-size: "12px"
+                                        color: "#A89880"
+                                        display: block
+                                        margin-top: "4px"
+
+                # ── BÜRO Z ────────────────────────────────────────────────────
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: f7-card
+                        config:
+                          style:
+                            background: "#F7F3EE"
+                            border: "1px solid #E8E0D5"
+                            border-radius: "8px"
+                            margin: "0 0 0 2px"
+                        slots:
+                          default:
+                            - component: f7-card-content
+                              config:
+                                style:
+                                  padding: "10px 12px"
+                              slots:
+                                default:
+                                  - component: f7-row
+                                    slots:
+                                      default:
+                                        - component: f7-col
+                                          slots:
+                                            default:
+                                              - component: Label
+                                                config:
+                                                  text: "BÜRO Z"
+                                                  style:
+                                                    font-size: "9px"
+                                                    font-weight: "700"
+                                                    color: "#9C4F1E"
+                                        - component: f7-col
+                                          config:
+                                            style:
+                                              flex: "0 0 auto"
+                                              text-align: right
+                                          slots:
+                                            default:
+                                              - component: Label
+                                                config:
+                                                  text: "🟢"
+                                                  style:
+                                                    font-size: "10px"
+                                  - component: Label
+                                    config:
+                                      text: "=items['OfficeBig_Temperature'].state || '—'"
+                                      style:
+                                        font-size: "28px"
+                                        font-weight: "700"
+                                        color: "#3D2B1F"
+                                        line-height: "1.1"
+                                        display: block
+                                        margin-top: "4px"
+                                  - component: Label
+                                    config:
+                                      text: "=(items['OfficeBig_Humidity'].state || '—') + ' · ' + (items['OfficeBig_DewPoint'].displayState || '—')"
+                                      style:
+                                        font-size: "12px"
+                                        color: "#A89880"
+                                        display: block
+                                        margin-top: "4px"

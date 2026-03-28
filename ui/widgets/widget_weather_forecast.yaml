@@ -1,0 +1,305 @@
+uid: widget_weather_forecast
+tags:
+  - widget
+props:
+  parameters: []
+timestamp: "2024-03-28T00:00:00.000Z"
+component: f7-card
+config:
+  style:
+    background: "#FDFAF6"
+    border-radius: "12px"
+    border: "1px solid #E8E0D5"
+    margin: "0"
+    box-shadow: "0 2px 8px rgba(156,79,30,0.08)"
+    font-family: "'DM Sans', system-ui, sans-serif"
+slots:
+  default:
+    - component: f7-card-content
+      config:
+        style:
+          padding: "14px 16px 12px"
+      slots:
+        default:
+
+          - component: Label
+            config:
+              text: "VORHERSAGE"
+              style:
+                font-size: "9px"
+                font-weight: "700"
+                color: "#9C4F1E"
+                letter-spacing: "2px"
+                text-transform: uppercase
+                display: block
+                margin-bottom: "12px"
+
+          # ── 4-DAY FORECAST ROW ───────────────────────────────────────────────
+          # ForecastDay2 = tomorrow, Day3/4/5 = subsequent days
+          # Timestamp displayState uses [%1$ta] pattern → abbreviated weekday (Mo, Di, Mi...)
+          # Icons: OWM @2x.png (100×100px rendered at 52px) with drop-shadow for visibility
+          # Precip probability shown in blue; min/max temps stacked
+          - component: f7-row
+            config:
+              style:
+                gap: "4px"
+            slots:
+              default:
+
+                # ── TOMORROW (ForecastTomorrow) ──────────────────────────────
+                - component: f7-col
+                  config:
+                    style:
+                      text-align: center
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastTomorrow_Timestamp'].displayState || '+1'"
+                          style:
+                            font-size: "11px"
+                            font-weight: "700"
+                            color: "#9C4F1E"
+                            display: block
+                      - component: img
+                        config:
+                          src: "=('https://openweathermap.org/img/wn/' + (items['OneCallAPIweatherandforecast_ForecastTomorrow_Iconid'].state || '01d') + '@2x.png')"
+                          style:
+                            width: "52px"
+                            height: "52px"
+                            display: block
+                            margin: "0 auto"
+                            filter: "drop-shadow(0 0 3px rgba(80,50,20,0.6))"
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastTomorrow_Maxtemperature'].displayState || '—'"
+                          style:
+                            font-size: "16px"
+                            font-weight: "700"
+                            color: "#3D2B1F"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastTomorrow_Mintemperature'].displayState || '—'"
+                          style:
+                            font-size: "12px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastTomorrow_Precipprobability'].state > 0 ? ((items['OneCallAPIweatherandforecast_ForecastTomorrow_Precipprobability'].state * 100 + 0.5) | 0) + '%' : '0%'"
+                          style:
+                            font-size: "11px"
+                            color: "#5A8FC5"
+                            display: block
+                            margin-top: "2px"
+
+                # ── DAY +1 (ForecastDay2) ────────────────────────────────────
+                - component: f7-col
+                  config:
+                    style:
+                      text-align: center
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay2_Timestamp'].displayState || '+1'"
+                          style:
+                            font-size: "11px"
+                            font-weight: "700"
+                            color: "#9C4F1E"
+                            display: block
+                      - component: img
+                        config:
+                          src: "=('https://openweathermap.org/img/wn/' + (items['OneCallAPIweatherandforecast_ForecastDay2_Iconid'].state || '01d') + '@2x.png')"
+                          style:
+                            width: "52px"
+                            height: "52px"
+                            display: block
+                            margin: "0 auto"
+                            filter: "drop-shadow(0 0 3px rgba(80,50,20,0.6))"
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay2_Maxtemperature'].displayState || '—'"
+                          style:
+                            font-size: "16px"
+                            font-weight: "700"
+                            color: "#3D2B1F"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay2_Mintemperature'].displayState || '—'"
+                          style:
+                            font-size: "12px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay2_Precipprobability'].state > 0 ? ((items['OneCallAPIweatherandforecast_ForecastDay2_Precipprobability'].state * 100 + 0.5) | 0) + '%' : '0%'"
+                          style:
+                            font-size: "11px"
+                            color: "#5A8FC5"
+                            display: block
+                            margin-top: "2px"
+
+                # ── DAY +2 (ForecastDay3) ────────────────────────────────────
+                - component: f7-col
+                  config:
+                    style:
+                      text-align: center
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay3_Timestamp'].displayState || '+2'"
+                          style:
+                            font-size: "11px"
+                            font-weight: "700"
+                            color: "#9C4F1E"
+                            display: block
+                      - component: img
+                        config:
+                          src: "=('https://openweathermap.org/img/wn/' + (items['OneCallAPIweatherandforecast_ForecastDay3_Iconid'].state || '01d') + '@2x.png')"
+                          style:
+                            width: "52px"
+                            height: "52px"
+                            display: block
+                            margin: "0 auto"
+                            filter: "drop-shadow(0 0 3px rgba(80,50,20,0.6))"
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay3_Maxtemperature'].displayState || '—'"
+                          style:
+                            font-size: "16px"
+                            font-weight: "700"
+                            color: "#3D2B1F"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay3_Mintemperature'].displayState || '—'"
+                          style:
+                            font-size: "12px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay3_Precipprobability'].state > 0 ? ((items['OneCallAPIweatherandforecast_ForecastDay3_Precipprobability'].state * 100 + 0.5) | 0) + '%' : '0%'"
+                          style:
+                            font-size: "11px"
+                            color: "#5A8FC5"
+                            display: block
+                            margin-top: "2px"
+
+                # ── DAY +3 (ForecastDay4) ────────────────────────────────────
+                - component: f7-col
+                  config:
+                    style:
+                      text-align: center
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay4_Timestamp'].displayState || '+3'"
+                          style:
+                            font-size: "11px"
+                            font-weight: "700"
+                            color: "#9C4F1E"
+                            display: block
+                      - component: img
+                        config:
+                          src: "=('https://openweathermap.org/img/wn/' + (items['OneCallAPIweatherandforecast_ForecastDay4_Iconid'].state || '01d') + '@2x.png')"
+                          style:
+                            width: "52px"
+                            height: "52px"
+                            display: block
+                            margin: "0 auto"
+                            filter: "drop-shadow(0 0 3px rgba(80,50,20,0.6))"
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay4_Maxtemperature'].displayState || '—'"
+                          style:
+                            font-size: "16px"
+                            font-weight: "700"
+                            color: "#3D2B1F"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay4_Mintemperature'].displayState || '—'"
+                          style:
+                            font-size: "12px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay4_Precipprobability'].state > 0 ? ((items['OneCallAPIweatherandforecast_ForecastDay4_Precipprobability'].state * 100 + 0.5) | 0) + '%' : '0%'"
+                          style:
+                            font-size: "11px"
+                            color: "#5A8FC5"
+                            display: block
+                            margin-top: "2px"
+
+                # ── DAY +4 (ForecastDay5) ────────────────────────────────────
+                - component: f7-col
+                  config:
+                    style:
+                      text-align: center
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay5_Timestamp'].displayState || '+4'"
+                          style:
+                            font-size: "11px"
+                            font-weight: "700"
+                            color: "#9C4F1E"
+                            display: block
+                      - component: img
+                        config:
+                          src: "=('https://openweathermap.org/img/wn/' + (items['OneCallAPIweatherandforecast_ForecastDay5_Iconid'].state || '01d') + '@2x.png')"
+                          style:
+                            width: "52px"
+                            height: "52px"
+                            display: block
+                            margin: "0 auto"
+                            filter: "drop-shadow(0 0 3px rgba(80,50,20,0.6))"
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay5_Maxtemperature'].displayState || '—'"
+                          style:
+                            font-size: "16px"
+                            font-weight: "700"
+                            color: "#3D2B1F"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay5_Mintemperature'].displayState || '—'"
+                          style:
+                            font-size: "12px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_ForecastDay5_Precipprobability'].state > 0 ? ((items['OneCallAPIweatherandforecast_ForecastDay5_Precipprobability'].state * 100 + 0.5) | 0) + '%' : '0%'"
+                          style:
+                            font-size: "11px"
+                            color: "#5A8FC5"
+                            display: block
+                            margin-top: "2px"
+
+          # ── LEGEND ───────────────────────────────────────────────────────────
+          - component: f7-row
+            config:
+              style:
+                margin-top: "10px"
+                gap: "12px"
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "↑ max  ↓ min  💧 Regen%"
+                          style:
+                            font-size: "9px"
+                            color: "#C0B4A6"

@@ -1,0 +1,221 @@
+uid: widget_info_misc
+tags:
+  - widget
+props:
+  parameters: []
+timestamp: "2024-03-28T00:00:00.000Z"
+component: f7-card
+config:
+  style:
+    background: "#FDFAF6"
+    border-radius: "12px"
+    border: "1px solid #E8E0D5"
+    margin: "0"
+    box-shadow: "0 2px 8px rgba(156,79,30,0.08)"
+    font-family: "'DM Sans', system-ui, sans-serif"
+slots:
+  default:
+    - component: f7-card-content
+      config:
+        style:
+          padding: "16px 20px 12px"
+      slots:
+        default:
+
+          - component: Label
+            config:
+              text: "INFO"
+              style:
+                font-size: "9px"
+                font-weight: "700"
+                color: "#9C4F1E"
+                letter-spacing: "2px"
+                text-transform: uppercase
+                display: block
+                margin-bottom: "10px"
+
+          # ── MÜLL ─────────────────────────────────────────────────────────────
+          - component: Label
+            config:
+              text: "🗑 Müll"
+              style:
+                font-size: "10px"
+                color: "#A89880"
+                display: block
+                margin-bottom: "6px"
+
+          # Next 4 garbage pickups — each row: title (left) + date (right)
+          - component: f7-row
+            config:
+              style:
+                margin-bottom: "4px"
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['Garbage_Collection_Item0'].state || '—'"
+                          style:
+                            font-size: "13px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                      text-align: right
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          # displayState uses [%1$ta %1$td.%1$tm.] pattern → e.g. "Sa 29.03."
+                          text: "=items['Garbage_NextCollection'].displayState || '—'"
+                          style:
+                            font-size: "13px"
+                            color: "#5A4A3A"
+
+          - component: f7-row
+            config:
+              style:
+                margin-bottom: "4px"
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['Garbage_Collection_Item1'].state || '—'"
+                          style:
+                            font-size: "13px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                      text-align: right
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['Garbage_NextCollection_1'].displayState || '—'"
+                          style:
+                            font-size: "13px"
+                            color: "#5A4A3A"
+
+          - component: f7-row
+            config:
+              style:
+                margin-bottom: "4px"
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['Garbage_Collection_Item2'].state || '—'"
+                          style:
+                            font-size: "13px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                      text-align: right
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['Garbage_NextCollection_2'].displayState || '—'"
+                          style:
+                            font-size: "13px"
+                            color: "#5A4A3A"
+
+          - component: f7-row
+            config:
+              style:
+                margin-bottom: "10px"
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['Garbage_Collection_Item3'].state || '—'"
+                          style:
+                            font-size: "13px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                      text-align: right
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['Garbage_NextCollection_3'].displayState || '—'"
+                          style:
+                            font-size: "13px"
+                            color: "#5A4A3A"
+
+          # ── DIVIDER ──────────────────────────────────────────────────────────
+          - component: f7-block
+            config:
+              style:
+                border-top: "1px solid #E8E0D5"
+                margin: "0 0 10px 0"
+                padding: "0"
+                height: "0"
+                min-height: "0"
+
+          # ── WASHING + SUN PHASE ──────────────────────────────────────────────
+          - component: f7-row
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "👕 Letzte Wäsche"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          # displayState uses [%1$td.%1$tm. %1$tH:%1$tM] → e.g. "27.03. 14:30"
+                          text: "=items['Washing_LastWash'].displayState || '—'"
+                          style:
+                            font-size: "14px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+
+                - component: f7-col
+                  config:
+                    style:
+                      text-align: right
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "☀ Tagesphase"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['Strasshof_SunPhase'].state || '—'"
+                          style:
+                            font-size: "14px"
+                            font-weight: "600"
+                            color: "#3D2B1F"

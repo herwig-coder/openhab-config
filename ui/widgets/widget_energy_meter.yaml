@@ -1,0 +1,331 @@
+uid: widget_energy_meter
+tags:
+  - widget
+props:
+  parameters: []
+timestamp: "2024-03-28T00:00:00.000Z"
+component: f7-card
+config:
+  style:
+    background: "#FDFAF6"
+    border-radius: "12px"
+    border: "1px solid #E8E0D5"
+    margin: "0"
+    box-shadow: "0 2px 8px rgba(156,79,30,0.08)"
+    font-family: "'DM Sans', system-ui, sans-serif"
+slots:
+  default:
+    - component: f7-card-content
+      config:
+        style:
+          padding: "16px 20px 12px"
+      slots:
+        default:
+
+          # ── HERO ROW: live power (left) + current price (right) ───────────────
+          - component: f7-row
+            config:
+              style:
+                align-items: flex-start
+                margin-bottom: "12px"
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "ENERGIE"
+                          style:
+                            font-size: "9px"
+                            font-weight: "700"
+                            color: "#9C4F1E"
+                            letter-spacing: "2px"
+                            text-transform: uppercase
+                      - component: Label
+                        config:
+                          text: "=items['SmartMeter_Power'].state || '—'"
+                          style:
+                            font-size: "52px"
+                            font-weight: "700"
+                            color: "#3D2B1F"
+                            line-height: "1"
+                            display: block
+                            margin-top: "4px"
+
+                - component: f7-col
+                  config:
+                    style:
+                      text-align: right
+                      flex: "0 0 auto"
+                      padding-left: "16px"
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "STROMPREIS"
+                          style:
+                            font-size: "9px"
+                            font-weight: "700"
+                            color: "#9C4F1E"
+                            letter-spacing: "2px"
+                            text-transform: uppercase
+                      - component: Label
+                        config:
+                          text: "=items['Awattar_Price_Total'].displayState || '—'"
+                          style:
+                            font-size: "28px"
+                            font-weight: "700"
+                            color: "#3D2B1F"
+                            line-height: "1"
+                            display: block
+                            margin-top: "4px"
+
+          # ── DIVIDER ──────────────────────────────────────────────────────────
+          - component: f7-block
+            config:
+              style:
+                border-top: "1px solid #E8E0D5"
+                margin: "0 0 10px 0"
+                padding: "0"
+                height: "0"
+                min-height: "0"
+
+          # ── BEZUG · EINSPEISUNG · cos φ ──────────────────────────────────────
+          - component: f7-row
+            config:
+              style:
+                margin-bottom: "10px"
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "↓ Bezug"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['SmartMeter_Power_Import'].state || '—'"
+                          style:
+                            font-size: "18px"
+                            font-weight: "600"
+                            color: "#E53935"
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "↑ Einspeisung"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['SmartMeter_Power_Export'].state || '—'"
+                          style:
+                            font-size: "18px"
+                            font-weight: "600"
+                            color: "#43A047"
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "cos φ"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['SmartMeter_PowerFactor'].state || '—'"
+                          style:
+                            font-size: "18px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+
+          # ── DIVIDER ──────────────────────────────────────────────────────────
+          - component: f7-block
+            config:
+              style:
+                border-top: "1px solid #E8E0D5"
+                margin: "0 0 10px 0"
+                padding: "0"
+                height: "0"
+                min-height: "0"
+
+          # ── PHASEN L1 · L2 · L3 (Spannung + Strom) ──────────────────────────
+          - component: f7-row
+            config:
+              style:
+                margin-bottom: "10px"
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "L1"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['SmartMeter_Voltage_L1'].state || '—'"
+                          style:
+                            font-size: "15px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+                      - component: Label
+                        config:
+                          text: "=items['SmartMeter_Current_L1'].state || '—'"
+                          style:
+                            font-size: "12px"
+                            color: "#5A4A3A"
+                            display: block
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "L2"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['SmartMeter_Voltage_L2'].state || '—'"
+                          style:
+                            font-size: "15px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+                      - component: Label
+                        config:
+                          text: "=items['SmartMeter_Current_L2'].state || '—'"
+                          style:
+                            font-size: "12px"
+                            color: "#5A4A3A"
+                            display: block
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "L3"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['SmartMeter_Voltage_L3'].state || '—'"
+                          style:
+                            font-size: "15px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+                      - component: Label
+                        config:
+                          text: "=items['SmartMeter_Current_L3'].state || '—'"
+                          style:
+                            font-size: "12px"
+                            color: "#5A4A3A"
+                            display: block
+
+          # ── DIVIDER ──────────────────────────────────────────────────────────
+          - component: f7-block
+            config:
+              style:
+                border-top: "1px solid #E8E0D5"
+                margin: "0 0 10px 0"
+                padding: "0"
+                height: "0"
+                min-height: "0"
+
+          # ── AUTO LADEN ───────────────────────────────────────────────────────
+          - component: f7-row
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "⚡ Auto laden"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['Awattar_Car_Active'].state == 'ON' ? 'aktiv' : 'inaktiv'"
+                          style:
+                            font-size: "15px"
+                            font-weight: "600"
+                            color: "=items['Awattar_Car_Active'].state == 'ON' ? '#43A047' : '#A89880'"
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "Start"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['Awattar_Car_LoadStart'].displayState || '—'"
+                          style:
+                            font-size: "15px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "Ende"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['Awattar_Car_LoadEnd'].displayState || '—'"
+                          style:
+                            font-size: "15px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "Countdown"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['Awattar_Car_Countdown'].state == 'NULL' ? 'fertig' : (items['Awattar_Car_Countdown'].state || '—')"
+                          style:
+                            font-size: "15px"
+                            font-weight: "600"
+                            color: "=items['Awattar_Car_Countdown'].state == 'NULL' ? '#43A047' : '#3D2B1F'"

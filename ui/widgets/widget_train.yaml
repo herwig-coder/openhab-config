@@ -1,0 +1,180 @@
+uid: widget_train
+tags:
+  - widget
+props:
+  parameters: []
+timestamp: "2024-03-28T00:00:00.000Z"
+component: f7-card
+config:
+  style:
+    background: "=items['TrainStatus_Text'].state == 'CANCELLED' ? '#FFF3F3' : items['TrainStatus_Text'].state == 'DELAYED' ? '#FFFBF0' : '#FDFAF6'"
+    border-radius: "12px"
+    border: "=items['TrainStatus_Text'].state == 'CANCELLED' ? '1px solid #FFCDD2' : items['TrainStatus_Text'].state == 'DELAYED' ? '1px solid #FFE082' : '1px solid #E8E0D5'"
+    margin: "0"
+    box-shadow: "0 2px 8px rgba(156,79,30,0.08)"
+    font-family: "'DM Sans', system-ui, sans-serif"
+slots:
+  default:
+    - component: f7-card-content
+      config:
+        style:
+          padding: "16px 20px 12px"
+      slots:
+        default:
+
+          # ── HEADER: ZUG + status dot ─────────────────────────────────────────
+          - component: f7-row
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "ZUG"
+                          style:
+                            font-size: "9px"
+                            font-weight: "700"
+                            color: "#9C4F1E"
+                            letter-spacing: "2px"
+                            text-transform: uppercase
+                            display: block
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                      text-align: right
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['TrainStatus_Text'].state == 'ON_TIME' ? '🟢' : items['TrainStatus_Text'].state == 'DELAYED' ? '🟡' : items['TrainStatus_Text'].state == 'CANCELLED' ? '🔴' : '⚪'"
+                          style:
+                            font-size: "14px"
+
+          # ── TRAIN NAME + DELAY ───────────────────────────────────────────────
+          - component: f7-row
+            config:
+              style:
+                align-items: baseline
+                margin-top: "4px"
+                margin-bottom: "4px"
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['TrainName'].state || '—'"
+                          style:
+                            font-size: "40px"
+                            font-weight: "700"
+                            color: "#3D2B1F"
+                            line-height: "1"
+                            display: block
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                      text-align: right
+                      padding-left: "8px"
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "=items['TrainStatus_Text'].state == 'CANCELLED' ? 'Entfällt' : (items['TrainDelay_Minutes'].state > 0 ? '+' + items['TrainDelay_Minutes'].state + ' min' : '')"
+                          style:
+                            font-size: "20px"
+                            font-weight: "700"
+                            color: "=items['TrainStatus_Text'].state == 'CANCELLED' ? '#E53935' : '#F57F17'"
+                            display: block
+
+          # ── ROUTE: Origin → Destination ──────────────────────────────────────
+          - component: Label
+            config:
+              text: "=(items['TrainOrigin'].state || '—') + ' → ' + (items['TrainDestination'].state || '—')"
+              style:
+                font-size: "13px"
+                color: "#5A4A3A"
+                display: block
+                margin-bottom: "10px"
+
+          # ── DIVIDER ──────────────────────────────────────────────────────────
+          - component: f7-block
+            config:
+              style:
+                border-top: "1px solid #E8E0D5"
+                margin: "0 0 10px 0"
+                padding: "0"
+                height: "0"
+                min-height: "0"
+
+          # ── TIMES: Geplant · Abfahrt · Ankunft ──────────────────────────────
+          - component: f7-row
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "Geplant"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['TrainScheduledTime'].state || '—'"
+                          style:
+                            font-size: "18px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "Abfahrt"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          # displayState uses [%1$tH:%1$tM] pattern from trains.items
+                          text: "=items['TrainDeparture_Time'].displayState || '—'"
+                          style:
+                            font-size: "18px"
+                            font-weight: "600"
+                            color: "=items['TrainDelay_Minutes'].state > 0 ? '#F57F17' : '#3D2B1F'"
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "Ankunft"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['TrainArrival_Time'].displayState || '—'"
+                          style:
+                            font-size: "18px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+
+          # ── STATUS MESSAGE ───────────────────────────────────────────────────
+          - component: Label
+            config:
+              text: "=items['TrainStatusMessage'].state || '—'"
+              style:
+                font-size: "11px"
+                color: "#A89880"
+                display: block
+                margin-top: "10px"

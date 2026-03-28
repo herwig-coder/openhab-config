@@ -1,0 +1,290 @@
+uid: widget_weather_current
+tags:
+  - widget
+props:
+  parameters: []
+timestamp: "2024-03-28T00:00:00.000Z"
+component: f7-card
+config:
+  style:
+    background: "#FDFAF6"
+    border-radius: "12px"
+    border: "1px solid #E8E0D5"
+    margin: "0"
+    box-shadow: "0 2px 8px rgba(156,79,30,0.08)"
+    font-family: "'DM Sans', system-ui, sans-serif"
+slots:
+  default:
+    - component: f7-card-content
+      config:
+        style:
+          padding: "16px 20px 12px"
+      slots:
+        default:
+
+          # ── HERO ROW: big icon (left) + temp + condition + meta (right) ─────────
+          - component: f7-row
+            config:
+              style:
+                align-items: flex-start
+                margin-bottom: "12px"
+            slots:
+              default:
+
+                # ── ICON ─────────────────────────────────────────────────────
+                - component: f7-col
+                  config:
+                    style:
+                      flex: "0 0 auto"
+                      padding-right: "8px"
+                  slots:
+                    default:
+                      - component: img
+                        config:
+                          src: "=('https://openweathermap.org/img/wn/' + (items['OneCallAPIweatherandforecast_Current_Iconid'].state || '01d') + '@4x.png')"
+                          style:
+                            width: "160px"
+                            height: "160px"
+                            display: block
+                            margin: "-12px 0 0 -16px"
+                            filter: "drop-shadow(0 0 4px rgba(80,50,20,0.75))"
+
+                # ── TEXT ─────────────────────────────────────────────────────
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "WETTER"
+                          style:
+                            font-size: "9px"
+                            font-weight: "700"
+                            color: "#9C4F1E"
+                            letter-spacing: "2px"
+                            text-transform: uppercase
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['Weatherstation_Temperature_1'].state || '—'"
+                          style:
+                            font-size: "56px"
+                            font-weight: "700"
+                            color: "#3D2B1F"
+                            line-height: "1"
+                            display: block
+                            margin-top: "2px"
+                      - component: Label
+                        config:
+                          text: "Strasshof · lokal"
+                          style:
+                            font-size: "11px"
+                            color: "#A89880"
+                            display: block
+                            margin-top: "2px"
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_Current_Condition'].state || '—'"
+                          style:
+                            font-size: "18px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+                            line-height: "1.2"
+                            display: block
+                            margin-top: "8px"
+                      - component: Label
+                        config:
+                          text: "='OWM: ' + (items['OneCallAPIweatherandforecast_Current_Temperature'].state || '—') + ' · gefühlt ' + (items['OneCallAPIweatherandforecast_Current_Apparenttemperature'].state || '—')"
+                          style:
+                            font-size: "12px"
+                            color: "#A89880"
+                            margin-top: "6px"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "='Druck: ' + (items['OneCallAPIweatherandforecast_Current_Pressure'].state || '—') + ' · Wolken: ' + (items['OneCallAPIweatherandforecast_Current_Cloudiness'].state || '—') + '%'"
+                          style:
+                            font-size: "12px"
+                            color: "#A89880"
+                            margin-top: "2px"
+                            display: block
+
+          # ── DIVIDER ──────────────────────────────────────────────────────────
+          - component: f7-block
+            config:
+              style:
+                border-top: "1px solid #E8E0D5"
+                margin: "0 0 12px 0"
+                padding: "0"
+                height: "0"
+                min-height: "0"
+
+          # ── META ROW: Wind · Feuchte · Regen/1h · UV-Index ───────────────────
+          - component: f7-row
+            config:
+              style:
+                margin-bottom: "12px"
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "💨 Wind 10'"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['Weatherstation_WindSpeed_10min'].state || '—'"
+                          style:
+                            font-size: "16px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "💧 Feuchte"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['Weatherstation_Humidity_1'].state || '—'"
+                          style:
+                            font-size: "16px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "🌧 Regen/1h"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['Weatherstation_Rain_1h'].state || '—'"
+                          style:
+                            font-size: "16px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "☀ UV-Index"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          # '' + value avoids String() which is not available in OH5 expressions
+                          text: "=items['OneCallAPIweatherandforecast_UVIndex'].state || '—'"
+                          style:
+                            font-size: "16px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+                            display: block
+
+          # ── DIVIDER ──────────────────────────────────────────────────────────
+          - component: f7-block
+            config:
+              style:
+                border-top: "1px solid #E8E0D5"
+                margin: "0 0 12px 0"
+                padding: "0"
+                height: "0"
+                min-height: "0"
+
+          # ── ASTRO ROW: Aufgang · Untergang · Taupunkt · Gefühlt ───────────────
+          - component: f7-row
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "☀↑ Aufgang"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          # OH DateTime state is ISO-8601; new Date() runs in browser context
+                          # isNaN guard handles "NULL"/"UNDEF" states → Invalid Date
+                          text: "=items['OneCallAPIweatherandforecast_Current_Sunrise'].displayState || '—'"
+                          style:
+                            font-size: "16px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+                            display: block
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "☀↓ Untergang"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['OneCallAPIweatherandforecast_Current_Sunset'].displayState || '—'"
+                          style:
+                            font-size: "16px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+                            display: block
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "🌡 Taupunkt"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['Weatherstation_Dewpoint_1'].state || '—'"
+                          style:
+                            font-size: "16px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
+
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: "🌡 Gefühlt"
+                          style:
+                            font-size: "10px"
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: "=items['Weatherstation_Windchill'].state || '—'"
+                          style:
+                            font-size: "16px"
+                            font-weight: "600"
+                            color: "#3D2B1F"
