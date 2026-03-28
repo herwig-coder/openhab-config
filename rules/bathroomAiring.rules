@@ -2,6 +2,11 @@ rule "someone_showering"
 when 
     Item Bathroom_DewPoint changed
 then
+    if (Bathroom_DewPoint.state == NULL || Bathroom_DewPoint.state == UNDEF ||
+        Bathroom_DewPoint_Previous.state == NULL || Bathroom_DewPoint_Previous.state == UNDEF) {
+        logWarn("bathroom_airing", "Bathroom_DewPoint or Bathroom_DewPoint_Previous is NULL/UNDEF, skipping")
+        return;
+    }
     val tempnow = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
     val tempold = (Bathroom_DewPoint_Previous.state as QuantityType<Number>).toUnit("°C").doubleValue
     logInfo("bathroom_airing", "Showercheck current dew point:" + tempnow + " previous dew point: " + tempold)
