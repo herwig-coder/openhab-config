@@ -22,7 +22,7 @@ String              TrainType                   "Zug Typ [%s]"                  
 String              TrainName                   "Zug Name [%s]"                             <if:mdi:tag_text>               (gTrains)  ["Status"]
 
 // Actual departure time (ISO 8601 format)
-DateTime            TrainDeparture_Time         "Abfahrt [%1$tH:%1$tM]"                     <if:mdi:calendar_clock>         (gTrains)  ["Timestamp"]
+DateTime            TrainDeparture_Time         "Abfahrt [%1$tH:%1$tM]"                     <if:mdi:calendar-clock>         (gTrains)  ["Timestamp"]
 
 // Arrival time at destination (ISO 8601 format)
 DateTime            TrainArrival_Time           "Ankunft [%1$tH:%1$tM]"                     <if:mdi:calendar_check>         (gTrains)  ["Timestamp"]
