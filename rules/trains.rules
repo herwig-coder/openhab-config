@@ -26,13 +26,82 @@ val String MAX_CHANGES = "0"  // Maximum train changes (0=direct only, 1=one tra
 
 
 // ============================================================================
+// RULE 0: Next two trains — runs every 15 min, 8:00–9:45 AM Mon–Fri
+// ============================================================================
+
+rule "Next Trains Update"
+when
+    Time cron "0 0/15 8-9 ? * MON-FRI"
+then
+    logInfo("NextTrains", "Fetching next 2 trains from now...")
+
+    val results = executeCommandLine(
+        Duration.ofSeconds(30),
+        SCRIPT_PATH,
+        TRACKER_SCRIPT,
+        "--origin", ORIGIN_STATION,
+        "--destination", DESTINATION_STATION,
+        "--max-changes", MAX_CHANGES,
+        "--count", "2"
+    )
+
+    if (results === null || results.equals("")) {
+        logError("NextTrains", "Script returned no output")
+        return;
+    }
+
+    logDebug("NextTrains", "JSON output: " + results)
+
+    try {
+        // Train 1
+        val t1Status  = transform("JSONPATH", "$.trains[0].status",        results)
+        val t1Dep     = transform("JSONPATH", "$.trains[0].departure_time", results)
+        val t1Arr     = transform("JSONPATH", "$.trains[0].arrival_time",   results)
+        val t1Type    = transform("JSONPATH", "$.trains[0].train_type",     results)
+        val t1Name    = transform("JSONPATH", "$.trains[0].train_name",     results)
+        val t1Delay   = transform("JSONPATH", "$.trains[0].delay_minutes",  results)
+
+        if (t1Status !== null) Train_Next1_Status.postUpdate(t1Status)
+        if (t1Type   !== null && !t1Type.equals("null"))   Train_Next1_Type.postUpdate(t1Type)
+        if (t1Name   !== null && !t1Name.equals("null"))   Train_Next1_Name.postUpdate(t1Name)
+        if (t1Dep    !== null && !t1Dep.equals("null"))    Train_Next1_Departure.postUpdate(t1Dep)
+        if (t1Arr    !== null && !t1Arr.equals("null"))    Train_Next1_Arrival.postUpdate(t1Arr)
+        if (t1Delay  !== null) Train_Next1_Delay.postUpdate(Integer::parseInt(t1Delay))
+
+        // Train 2
+        val t2Status  = transform("JSONPATH", "$.trains[1].status",        results)
+        val t2Dep     = transform("JSONPATH", "$.trains[1].departure_time", results)
+        val t2Arr     = transform("JSONPATH", "$.trains[1].arrival_time",   results)
+        val t2Type    = transform("JSONPATH", "$.trains[1].train_type",     results)
+        val t2Name    = transform("JSONPATH", "$.trains[1].train_name",     results)
+        val t2Delay   = transform("JSONPATH", "$.trains[1].delay_minutes",  results)
+
+        if (t2Status !== null) Train_Next2_Status.postUpdate(t2Status)
+        if (t2Type   !== null && !t2Type.equals("null"))   Train_Next2_Type.postUpdate(t2Type)
+        if (t2Name   !== null && !t2Name.equals("null"))   Train_Next2_Name.postUpdate(t2Name)
+        if (t2Dep    !== null && !t2Dep.equals("null"))    Train_Next2_Departure.postUpdate(t2Dep)
+        if (t2Arr    !== null && !t2Arr.equals("null"))    Train_Next2_Arrival.postUpdate(t2Arr)
+        if (t2Delay  !== null) Train_Next2_Delay.postUpdate(Integer::parseInt(t2Delay))
+
+        logInfo("NextTrains", "Train1: {} {} dep={} arr={} delay={}min",
+            t1Type, t1Name, t1Dep, t1Arr, t1Delay)
+        logInfo("NextTrains", "Train2: {} {} dep={} arr={} delay={}min",
+            t2Type, t2Name, t2Dep, t2Arr, t2Delay)
+
+    } catch (Exception e) {
+        logError("NextTrains", "Error parsing next trains JSON: " + e.getMessage())
+    }
+end
+
+
+// ============================================================================
 // RULE 1: Run Train Tracker Periodically
 // ============================================================================
 
 rule "Update Train Status"
 when
     // Run every 15 minutes between 6 AM and 10 AM on weekdays
-    Time cron "0 */15 6-18 ? * MON-FRI"
+    Time cron "0 */15 6-9 ? * MON-FRI"
 then
     logInfo("TrainTracker", "Running train status check...")
 

@@ -119,8 +119,9 @@ class TrainTracker:
         origin_id: str,
         destination_id: str,
         departure_time: datetime,
-        max_changes: int = 0
-    ) -> Optional[Dict]:
+        max_changes: int = 0,
+        count: int = 1
+    ) -> Optional[List]:
         """
         Get direct connections using HAFAS mgate API directly.
         Returns the first connection with <= max_changes.
@@ -154,7 +155,7 @@ class TrainTracker:
                     "arrLocL": [{"type": "S", "state": "F", "extId": destination_id}],
                     "outDate": date_str,
                     "outTime": time_str,
-                    "numF": 5,
+                    "numF": max(5, count + 2),
                     "maxChg": max_changes,
                     "getPasslist": True,
                     "getPolyline": False
@@ -195,68 +196,13 @@ class TrainTracker:
                 logger.warning(f"No connections with max {max_changes} changes found")
                 return None
 
-            # Take the first connection
-            connection = connections[0]
-
-            # Parse connection details
-            num_changes = int(connection.get("chg", 0))
-            duration_seconds = int(connection.get("dur", 0))
-
-            logger.info(f"Found connection with {num_changes} change(s), duration: {duration_seconds//60} min")
-
-            # Get first leg for departure info
-            if "secL" not in connection or not connection["secL"]:
-                logger.error("No sections in connection")
-                return None
-
-            first_leg = connection["secL"][0]
-            last_leg = connection["secL"][-1]
-
-            # Extract train type/line from first leg
-            train_type = "Unknown"
-            train_name = None
-            if "jny" in first_leg:
-                jny = first_leg["jny"]
-                # Try to get train name directly
-                train_name = jny.get("name", "")
-
-                # Try to extract train type from product information
-                if "prodX" in jny and "common" in svc_res["res"] and "prodL" in svc_res["res"]["common"]:
-                    prod_idx = jny["prodX"]
-                    prod_list = svc_res["res"]["common"]["prodL"]
-                    if 0 <= prod_idx < len(prod_list):
-                        product = prod_list[prod_idx]
-                        # Get product name (e.g., "REX", "S", "RJ")
-                        train_type = product.get("name", train_type)
-                        if not train_name:
-                            train_name = product.get("addName", "") or product.get("nameS", "")
-
-                # If we have a train name but no type, try to extract type from name
-                if train_name and train_type == "Unknown":
-                    # Extract train type from name (e.g., "REX 1" -> "REX")
-                    parts = train_name.split()
-                    if parts:
-                        train_type = parts[0]
-
-            logger.info(f"Train type: {train_type}, Train name: {train_name}")
-
-            # Parse departure and arrival times
-            dep_data = first_leg.get("dep", {})
-            arr_data = last_leg.get("arr", {})
-
-            planned_dep = dep_data.get("dTimeS")  # Planned departure timestamp
-            actual_dep = dep_data.get("aTimeS")   # Actual departure timestamp
-            arrival_time = arr_data.get("aTimeS") or arr_data.get("dTimeS")
-
             # Helper function to parse HAFAS timestamps (supports both full and time-only formats)
             def parse_hafas_time(time_str: str, base_date: datetime) -> Optional[datetime]:
                 if not time_str:
                     return None
                 try:
-                    # Try full format first (YYYYmmddHHMMSS)
                     if len(time_str) == 14:
                         return datetime.strptime(time_str, "%Y%m%d%H%M%S")
-                    # Try time-only format (HHMMSS)
                     elif len(time_str) == 6:
                         time_part = datetime.strptime(time_str, "%H%M%S").time()
                         return datetime.combine(base_date.date(), time_part)
@@ -267,30 +213,71 @@ class TrainTracker:
                     logger.warning(f"Could not parse time '{time_str}': {e}")
                     return None
 
-            # Convert timestamps to datetime
-            planned_dt = parse_hafas_time(planned_dep, departure_time) or departure_time
-            actual_dt = parse_hafas_time(actual_dep, departure_time) or planned_dt
-            arrival_dt = parse_hafas_time(arrival_time, departure_time)
+            # Parse up to `count` connections
+            results = []
+            for connection in connections[:count]:
+                num_changes = int(connection.get("chg", 0))
+                duration_seconds = int(connection.get("dur", 0))
 
-            # Calculate delay in seconds
-            delay_seconds = 0
-            if planned_dt and actual_dt:
-                delay_seconds = int((actual_dt - planned_dt).total_seconds())
+                logger.info(f"Found connection with {num_changes} change(s), duration: {duration_seconds//60} min")
 
-            actual_departure = actual_dt if actual_dt else planned_dt
+                if "secL" not in connection or not connection["secL"]:
+                    logger.warning("No sections in connection, skipping")
+                    continue
 
-            return {
-                'plannedWhen': planned_dt.isoformat(),
-                'when': actual_departure.isoformat(),
-                'delay': delay_seconds,
-                'cancelled': connection.get("isCanc", False),
-                'num_changes': num_changes,
-                'arrival_time': arrival_dt.isoformat() if arrival_dt else None,
-                'duration_minutes': duration_seconds // 60,
-                'direction': f"{num_changes} change(s)" if num_changes > 0 else "Direct",
-                'train_type': train_type,
-                'train_name': train_name
-            }
+                first_leg = connection["secL"][0]
+                last_leg = connection["secL"][-1]
+
+                train_type = "Unknown"
+                train_name = None
+                if "jny" in first_leg:
+                    jny = first_leg["jny"]
+                    train_name = jny.get("name", "")
+                    if "prodX" in jny and "common" in svc_res["res"] and "prodL" in svc_res["res"]["common"]:
+                        prod_idx = jny["prodX"]
+                        prod_list = svc_res["res"]["common"]["prodL"]
+                        if 0 <= prod_idx < len(prod_list):
+                            product = prod_list[prod_idx]
+                            train_type = product.get("name", train_type)
+                            if not train_name:
+                                train_name = product.get("addName", "") or product.get("nameS", "")
+                    if train_name and train_type == "Unknown":
+                        parts = train_name.split()
+                        if parts:
+                            train_type = parts[0]
+
+                logger.info(f"Train type: {train_type}, Train name: {train_name}")
+
+                dep_data = first_leg.get("dep", {})
+                arr_data = last_leg.get("arr", {})
+                planned_dep = dep_data.get("dTimeS")
+                actual_dep = dep_data.get("aTimeS")
+                arrival_time = arr_data.get("aTimeS") or arr_data.get("dTimeS")
+
+                planned_dt = parse_hafas_time(planned_dep, departure_time) or departure_time
+                actual_dt = parse_hafas_time(actual_dep, departure_time) or planned_dt
+                arrival_dt = parse_hafas_time(arrival_time, departure_time)
+
+                delay_seconds = 0
+                if planned_dt and actual_dt:
+                    delay_seconds = int((actual_dt - planned_dt).total_seconds())
+
+                actual_departure = actual_dt if actual_dt else planned_dt
+
+                results.append({
+                    'plannedWhen': planned_dt.isoformat(),
+                    'when': actual_departure.isoformat(),
+                    'delay': delay_seconds,
+                    'cancelled': connection.get("isCanc", False),
+                    'num_changes': num_changes,
+                    'arrival_time': arrival_dt.isoformat() if arrival_dt else None,
+                    'duration_minutes': duration_seconds // 60,
+                    'direction': f"{num_changes} change(s)" if num_changes > 0 else "Direct",
+                    'train_type': train_type,
+                    'train_name': train_name
+                })
+
+            return results if results else None
 
         except requests.RequestException as e:
             logger.error(f"Failed to call HAFAS API: {e}")
@@ -439,12 +426,14 @@ class TrainTracker:
             destination_id = self.lookup_station_id(destination_station)
 
             # Get connections using HAFAS API
-            departure = self.get_direct_connections(
+            departures = self.get_direct_connections(
                 origin_id,
                 destination_id,
                 scheduled_dt,
-                max_changes=max_changes
+                max_changes=max_changes,
+                count=1
             )
+            departure = departures[0] if departures else None
 
             # Calculate delay status
             status_info = self.calculate_delay_status(departure)
@@ -477,6 +466,50 @@ class TrainTracker:
             }
 
 
+    def check_next_trains(
+        self,
+        origin_station: str,
+        destination_station: str,
+        max_changes: int = 0,
+        count: int = 2
+    ) -> Dict:
+        """
+        Fetch the next N trains from now and return their status.
+
+        Args:
+            origin_station: Origin station name
+            destination_station: Destination station name
+            max_changes: Maximum number of train changes allowed
+            count: Number of next trains to return
+
+        Returns:
+            Dictionary with 'trains' list of status dicts
+        """
+        logger.info(f"Fetching next {count} trains: {origin_station} → {destination_station}")
+        try:
+            now = datetime.now()
+            origin_id = self.lookup_station_id(origin_station)
+            destination_id = self.lookup_station_id(destination_station)
+            connections = self.get_direct_connections(
+                origin_id, destination_id, now,
+                max_changes=max_changes, count=count
+            )
+            if not connections:
+                return {'success': True, 'trains': []}
+            trains = []
+            for conn in connections:
+                status_info = self.calculate_delay_status(conn)
+                trains.append({
+                    'origin': origin_station,
+                    'destination': destination_station,
+                    **status_info
+                })
+            return {'success': True, 'trains': trains}
+        except Exception as e:
+            logger.error(f"Error in check_next_trains: {e}")
+            return {'success': False, 'trains': [], 'status': 'ERROR', 'error': str(e)}
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Fetch train delay information from ÖBB/HAFAS and output JSON'
@@ -505,6 +538,12 @@ def main():
     parser.add_argument(
         '--test-station',
         help='Test station lookup and exit (provide station name)'
+    )
+    parser.add_argument(
+        '--count',
+        type=int,
+        default=1,
+        help='Number of next trains to fetch (default: 1). When > 1, uses current time and returns {"trains": [...]}'
     )
     parser.add_argument(
         '--verbose',
@@ -557,6 +596,21 @@ def main():
         }))
         sys.exit(1)
 
+    # Initialize tracker
+    tracker = TrainTracker()
+
+    # --count > 1: return next N trains from now (no --time needed)
+    if args.count > 1:
+        result = tracker.check_next_trains(
+            origin_station=args.origin,
+            destination_station=args.destination,
+            max_changes=args.max_changes,
+            count=args.count
+        )
+        print(json.dumps(result, indent=2))
+        return
+
+    # Single train check: --time required
     if not args.time:
         print(json.dumps({
             'success': False,
@@ -565,9 +619,6 @@ def main():
             'delay_minutes': 0
         }))
         sys.exit(1)
-
-    # Initialize tracker
-    tracker = TrainTracker()
 
     # Check train status
     result = tracker.check_train_status(

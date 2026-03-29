@@ -29,6 +29,25 @@ DateTime            TrainArrival_Time           "Arrival Time [%1$tH:%1$tM]"    
 
 
 // ============================================================================
+// NEXT TRAINS (Updated every 15 min, 8-10 AM Mon-Fri, next 2 trains from now)
+// ============================================================================
+
+String              Train_Next1_Type            "Nächster Zug Typ [%s]"                     <if:mdi:train-variant>          (gTrains)  ["Status"]
+String              Train_Next1_Name            "Nächster Zug Name [%s]"                    <if:mdi:tag-text>               (gTrains)  ["Status"]
+DateTime            Train_Next1_Departure       "Nächster Zug Abfahrt [%1$tH:%1$tM]"        <if:mdi:calendar-clock>         (gTrains)  ["Timestamp"]
+DateTime            Train_Next1_Arrival         "Nächster Zug Ankunft [%1$tH:%1$tM]"        <if:mdi:calendar-check>         (gTrains)  ["Timestamp"]
+String              Train_Next1_Status          "Nächster Zug Status [%s]"                  <if:mdi:train>                  (gTrains)  ["Status"]
+Number              Train_Next1_Delay           "Nächster Zug Verspätung [%d min]"          <if:mdi:clock-alert>            (gTrains)  ["Measurement"]
+
+String              Train_Next2_Type            "Übernächster Zug Typ [%s]"                 <if:mdi:train-variant>          (gTrains)  ["Status"]
+String              Train_Next2_Name            "Übernächster Zug Name [%s]"                <if:mdi:tag-text>               (gTrains)  ["Status"]
+DateTime            Train_Next2_Departure       "Übernächster Zug Abfahrt [%1$tH:%1$tM]"    <if:mdi:calendar-clock>         (gTrains)  ["Timestamp"]
+DateTime            Train_Next2_Arrival         "Übernächster Zug Ankunft [%1$tH:%1$tM]"    <if:mdi:calendar-check>         (gTrains)  ["Timestamp"]
+String              Train_Next2_Status          "Übernächster Zug Status [%s]"              <if:mdi:train>                  (gTrains)  ["Status"]
+Number              Train_Next2_Delay           "Übernächster Zug Verspätung [%d min]"      <if:mdi:clock-alert>            (gTrains)  ["Measurement"]
+
+
+// ============================================================================
 // OPTIONAL ITEMS (For enhanced functionality)
 // ============================================================================
 
