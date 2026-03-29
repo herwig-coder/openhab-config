@@ -7,7 +7,8 @@
       "WebFetch(domain:community.openhab.org)",
       "WebFetch(domain:v3.framework7.io)",
       "WebFetch(domain:framework7.io)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

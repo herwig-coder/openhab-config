@@ -10,22 +10,22 @@
 // ============================================================================
 
 // Delay in minutes (0 if on time)
-Number              TrainDelay_Minutes          "Train Delay [%d min]"                      <if:mdi:clock>                  (gTrains)  ["Measurement", "Duration"]
+Number              TrainDelay_Minutes          "Verspätung [%d min]"                       <if:mdi:clock>                  (gTrains)  ["Measurement", "Duration"]
 
 // Status text: ON_TIME, DELAYED, CANCELLED, NOT_FOUND, ERROR
-String              TrainStatus_Text            "Train Status [%s]"                         <if:mdi:train>                  (gTrains)  ["Status"]
+String              TrainStatus_Text            "Zug Status [%s]"                           <if:mdi:train>                  (gTrains)  ["Status"]
 
 // Train type (e.g., "REX", "S", "RJ", "IC")
-String              TrainType                   "Train Type [%s]"                           <if:mdi:train_variant>          (gTrains)  ["Status"]
+String              TrainType                   "Zug Typ [%s]"                              <if:mdi:train_variant>          (gTrains)  ["Status"]
 
 // Train name (e.g., "REX 3", "S1", "RJ 123")
-String              TrainName                   "Train Name [%s]"                           <if:mdi:tag_text>               (gTrains)  ["Status"]
+String              TrainName                   "Zug Name [%s]"                             <if:mdi:tag_text>               (gTrains)  ["Status"]
 
 // Actual departure time (ISO 8601 format)
-DateTime            TrainDeparture_Time         "Departure Time [%1$tH:%1$tM]"              <if:mdi:calendar_clock>         (gTrains)  ["Timestamp"]
+DateTime            TrainDeparture_Time         "Abfahrt [%1$tH:%1$tM]"                     <if:mdi:calendar_clock>         (gTrains)  ["Timestamp"]
 
 // Arrival time at destination (ISO 8601 format)
-DateTime            TrainArrival_Time           "Arrival Time [%1$tH:%1$tM]"                <if:mdi:calendar_check>         (gTrains)  ["Timestamp"]
+DateTime            TrainArrival_Time           "Ankunft [%1$tH:%1$tM]"                     <if:mdi:calendar_check>         (gTrains)  ["Timestamp"]
 
 
 // ============================================================================
