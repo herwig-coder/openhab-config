@@ -1,0 +1,162 @@
+uid: widget_next_trains
+tags:
+  - widget
+props:
+  parameters: []
+timestamp: Mar 29, 2026, 12:43:19 PM
+component: f7-card
+config:
+  style:
+    background: "=items['Train_Next1_Status'].state == 'CANCELLED' ? '#FFF3F3' :
+      items['Train_Next1_Status'].state == 'DELAYED' ? '#FFFBF0' : '#FDFAF6'"
+    border-radius: 12px
+    border: "=items['Train_Next1_Status'].state == 'CANCELLED' ? '1px solid #FFCDD2'
+      : items['Train_Next1_Status'].state == 'DELAYED' ? '1px solid #FFE082' :
+      '1px solid #E8E0D5'"
+    margin: "0"
+    box-shadow: 0 2px 8px rgba(156,79,30,0.08)
+    font-family: "'DM Sans', system-ui, sans-serif"
+slots:
+  default:
+    - component: f7-card-content
+      config:
+        style:
+          padding: 16px 20px 12px
+      slots:
+        default:
+          - component: f7-row
+            slots:
+              default:
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: ZUG
+                          style:
+                            font-size: 9px
+                            font-weight: "700"
+                            color: "#9C4F1E"
+                            letter-spacing: 2px
+                            text-transform: uppercase
+                            display: block
+          - component: f7-row
+          - component: Label
+            config:
+              text: Strasshof → Praterstern
+              style:
+                font-size: 19px
+                color: "#5A4A3A"
+                display: block
+                margin-bottom: 10px
+          - component: f7-block
+            config:
+              style:
+                border-top: "1px solid #E8E0D5"
+                margin: 0 0 10px 0
+                padding: "0"
+                height: "0"
+                min-height: "0"
+          - component: f7-row
+            slots:
+              default:
+                - component: Label
+                  config:
+                    text: "=items['Train_Next1_Status'].state == 'ON_TIME' ? '🟢' : items['Train_Next1_Status'].state == 'DELAYED' ? '🟡' : items['Train_Next1_Status'].state == 'CANCELLED' ? '🔴' : '⚪'"
+                    style:
+                      font-size: 11px
+                      color: "#A89880"
+                      display: block
+                      margin-top: 20px
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: Zugnummer
+                          style:
+                            font-size: 10px
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: =items['Train_Next1_Type'].state || '—'
+                          style:
+                            font-size: 18px
+                            font-weight: "600"
+                            color: "#3D2B1F"
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: Abfahrt
+                          style:
+                            font-size: 10px
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: =items['Train_Next1_Departure'].displayState || '—'
+                          style:
+                            font-size: 18px
+                            font-weight: "600"
+                            color: "=items['Train_Next1_Delay'].state > 0 ? '#F57F17' : '#3D2B1F'"
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: Ankunft
+                          style:
+                            font-size: 10px
+                            color: "#A89880"
+                            display: block
+                      - component: Label
+                        config:
+                          text: =items['Train_Next1_Arrival'].displayState || '—'
+                          style:
+                            font-size: 18px
+                            font-weight: "600"
+                            color: "#3D2B1F"
+          - component: f7-row
+            slots:
+              default:
+                - component: Label
+                  config:
+                    text: "=items['Train_Next2_Status'].state == 'ON_TIME' ? '🟢' : items['Train_Next2_Status'].state == 'DELAYED' ? '🟡' : items['Train_Next2_Status'].state == 'CANCELLED' ? '🔴' : '⚪'"
+                    style:
+                      font-size: 11px
+                      color: "#A89880"
+                      display: block
+                      margin-top: 6px
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: =items['Train_Next2_Type'].state || '—'
+                          style:
+                            font-size: 18px
+                            font-weight: "600"
+                            color: "#3D2B1F"
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: =items['Train_Next2_Departure'].displayState || '—'
+                          style:
+                            font-size: 18px
+                            font-weight: "600"
+                            color: "=items['Train_Next2_Delay'].state > 0 ? '#F57F17' : '#3D2B1F'"
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: Label
+                        config:
+                          text: =items['Train_Next2_Arrival'].displayState || '—'
+                          style:
+                            font-size: 18px
+                            font-weight: "600"
+                            color: "#3D2B1F"

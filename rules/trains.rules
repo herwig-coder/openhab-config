@@ -31,7 +31,7 @@ val String MAX_CHANGES = "0"  // Maximum train changes (0=direct only, 1=one tra
 
 rule "Next Trains Update"
 when
-    Time cron "0 0/15 8-9 ? * MON-FRI"
+    Time cron "0 0/15 8-20 ? * MON-FRI"
 then
     logInfo("NextTrains", "Fetching next 2 trains from now...")
 
