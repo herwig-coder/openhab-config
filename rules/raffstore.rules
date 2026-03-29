@@ -1,26 +1,35 @@
 
+var Timer BreakfastSun_TiltTimer = null   // file-level
+
 rule "BreakfastSun"
 when
-    Item Kitchen_Rollershutter_SunProtect changed 
-
+    Item Kitchen_Rollershutter_SunProtect changed
 then
-    logInfo("BreakfastSun", "Trigger: Breakfast Sun")
+    if (Kitchen_Rollershutter_SunProtect.state == NULL || Kitchen_Rollershutter_SunProtect.state == UNDEF) return;
+
+    if (BreakfastSun_TiltTimer !== null) {
+        BreakfastSun_TiltTimer.cancel()
+        BreakfastSun_TiltTimer = null
+    }
 
     if (Kitchen_Rollershutter_SunProtect.state == ON) {
-        logInfo("BreakfastSun", "Lower the Blinds")
-        // TEst Office_Herwig_Rollershutter.sendCommand("50")
+        logInfo("BreakfastSun", "Lower the Blinds — sending position commands")
+
         DiningRoom_Rollershutter_SidesRight.sendCommand("40")
         DiningRoom_Rollershutter_SidesLeft.sendCommand("40")
         DiningRoom_Rollershutter_Exit.sendCommand("40")
         Kitchen_Rollershutter.sendCommand("50")
-        DiningRoom_Rollershutter_SidesRight_Tilt.sendCommand("60")
-        DiningRoom_Rollershutter_SidesLeft_Tilt.sendCommand("60")
-        DiningRoom_Rollershutter_Exit_Tilt.sendCommand("60")
-        Kitchen_Rollershutter_Tilt.sendCommand("60")
-    } 
-    else {
+
+        BreakfastSun_TiltTimer = createTimer(now.plusSeconds(25)) [ |
+            logInfo("BreakfastSun", "Applying tilt after position settled")
+            DiningRoom_Rollershutter_SidesRight_Tilt.sendCommand("60")
+            DiningRoom_Rollershutter_SidesLeft_Tilt.sendCommand("60")
+            DiningRoom_Rollershutter_Exit_Tilt.sendCommand("60")
+            Kitchen_Rollershutter_Tilt.sendCommand("60")
+            BreakfastSun_TiltTimer = null
+        ]
+    } else {
         logInfo("BreakfastSun", "Lift the Blinds")
-        // Test Office_Herwig_Rollershutter.sendCommand("0")
         DiningRoom_Rollershutter_SidesRight_Tilt.sendCommand("0")
         DiningRoom_Rollershutter_SidesLeft_Tilt.sendCommand("0")
         DiningRoom_Rollershutter_Exit_Tilt.sendCommand("0")
@@ -29,38 +38,78 @@ then
         DiningRoom_Rollershutter_SidesRight.sendCommand("0")
         DiningRoom_Rollershutter_Exit.sendCommand("0")
         Kitchen_Rollershutter.sendCommand("0")
-
     }
 end
+// rule "BreakfastSun"
+// when
+//     Item Kitchen_Rollershutter_SunProtect changed 
 
+// then
+//     logInfo("BreakfastSun", "Trigger: Breakfast Sun")
 
+//     if (Kitchen_Rollershutter_SunProtect.state == ON) {
+//         logInfo("BreakfastSun", "Lower the Blinds")
+//         // TEst Office_Herwig_Rollershutter.sendCommand("50")
+//         DiningRoom_Rollershutter_SidesRight.sendCommand("40")
+//         DiningRoom_Rollershutter_SidesLeft.sendCommand("40")
+//         DiningRoom_Rollershutter_Exit.sendCommand("40")
+//         Kitchen_Rollershutter.sendCommand("50")
+//         DiningRoom_Rollershutter_SidesRight_Tilt.sendCommand("60")
+//         DiningRoom_Rollershutter_SidesLeft_Tilt.sendCommand("60")
+//         DiningRoom_Rollershutter_Exit_Tilt.sendCommand("60")
+//         Kitchen_Rollershutter_Tilt.sendCommand("60")
+//     } 
+//     else {
+//         logInfo("BreakfastSun", "Lift the Blinds")
+//         // Test Office_Herwig_Rollershutter.sendCommand("0")
+//         DiningRoom_Rollershutter_SidesRight_Tilt.sendCommand("0")
+//         DiningRoom_Rollershutter_SidesLeft_Tilt.sendCommand("0")
+//         DiningRoom_Rollershutter_Exit_Tilt.sendCommand("0")
+//         Kitchen_Rollershutter_Tilt.sendCommand("0")
+//         DiningRoom_Rollershutter_SidesLeft.sendCommand("0")
+//         DiningRoom_Rollershutter_SidesRight.sendCommand("0")
+//         DiningRoom_Rollershutter_Exit.sendCommand("0")
+//         Kitchen_Rollershutter.sendCommand("0")
+
+//     }
+// end
+
+var Timer NightPrivacy_TiltTimer = null   // file-level
 
 rule "NightPrivacy"
 when
-//    Item Rollershutter_Privacy changed or 
     Item Strasshof_Privacy changed
 then
-    logInfo("NightPrivacy", "Trigger: Night Privacy")
+    if (Strasshof_Privacy.state == NULL || Strasshof_Privacy.state == UNDEF) return;
 
-//    if (Rollershutter_Strasshof_Privacy.state == ON) {
+    // Cancel any pending tilt timer from a previous (possibly interrupted) run
+    if (NightPrivacy_TiltTimer !== null) {
+        NightPrivacy_TiltTimer.cancel()
+        NightPrivacy_TiltTimer = null
+    }
+
     if (Strasshof_Privacy.state == ON) {
-        logInfo("NightPrivacy", "Lower the Blinds")
-        // TEst Office_Herwig_Rollershutter.sendCommand("50")
+        logInfo("NightPrivacy", "Lower the Blinds — sending position commands")
 
-        DiningRoom_Rollershutter_SidesRight_Tilt.sendCommand("70")
-        DiningRoom_Rollershutter_SidesLeft_Tilt.sendCommand("70")
-        DiningRoom_Rollershutter_Exit_Tilt.sendCommand("70")
-        Livingroom_Rollershutter_Tilt.sendCommand("80")
-        Kitchen_Rollershutter_Tilt.sendCommand("70")
+        // 1. Send position commands first
         DiningRoom_Rollershutter_SidesRight.sendCommand("100")
         DiningRoom_Rollershutter_SidesLeft.sendCommand("100")
         DiningRoom_Rollershutter_Exit.sendCommand("100")
         Livingroom_Rollershutter.sendCommand("100")
         Kitchen_Rollershutter.sendCommand("90")
-    } 
-    else {
+
+        // 2. After blinds have had time to reach position, apply tilt
+        NightPrivacy_TiltTimer = createTimer(now.plusSeconds(25)) [ |
+            logInfo("NightPrivacy", "Applying tilt after position settled")
+            DiningRoom_Rollershutter_SidesRight_Tilt.sendCommand("70")
+            DiningRoom_Rollershutter_SidesLeft_Tilt.sendCommand("70")
+            DiningRoom_Rollershutter_Exit_Tilt.sendCommand("70")
+            Livingroom_Rollershutter_Tilt.sendCommand("80")
+            Kitchen_Rollershutter_Tilt.sendCommand("70")
+            NightPrivacy_TiltTimer = null
+        ]
+    } else {
         logInfo("NightPrivacy", "Lift the Blinds")
-        // Test Office_Herwig_Rollershutter.sendCommand("0")
         DiningRoom_Rollershutter_SidesRight_Tilt.sendCommand("0")
         DiningRoom_Rollershutter_SidesLeft_Tilt.sendCommand("0")
         DiningRoom_Rollershutter_Exit_Tilt.sendCommand("0")
@@ -71,10 +120,49 @@ then
         DiningRoom_Rollershutter_SidesRight.sendCommand("0")
         DiningRoom_Rollershutter_Exit.sendCommand("0")
         Kitchen_Rollershutter.sendCommand("0")
-
-
     }
 end
+
+// rule "NightPrivacy"
+// when
+// //    Item Rollershutter_Privacy changed or 
+//     Item Strasshof_Privacy changed
+// then
+//     logInfo("NightPrivacy", "Trigger: Night Privacy")
+
+// //    if (Rollershutter_Strasshof_Privacy.state == ON) {
+//     if (Strasshof_Privacy.state == ON) {
+//         logInfo("NightPrivacy", "Lower the Blinds")
+//         // TEst Office_Herwig_Rollershutter.sendCommand("50")
+
+//         DiningRoom_Rollershutter_SidesRight_Tilt.sendCommand("70")
+//         DiningRoom_Rollershutter_SidesLeft_Tilt.sendCommand("70")
+//         DiningRoom_Rollershutter_Exit_Tilt.sendCommand("70")
+//         Livingroom_Rollershutter_Tilt.sendCommand("80")
+//         Kitchen_Rollershutter_Tilt.sendCommand("70")
+//         DiningRoom_Rollershutter_SidesRight.sendCommand("100")
+//         DiningRoom_Rollershutter_SidesLeft.sendCommand("100")
+//         DiningRoom_Rollershutter_Exit.sendCommand("100")
+//         Livingroom_Rollershutter.sendCommand("100")
+//         Kitchen_Rollershutter.sendCommand("90")
+//     } 
+//     else {
+//         logInfo("NightPrivacy", "Lift the Blinds")
+//         // Test Office_Herwig_Rollershutter.sendCommand("0")
+//         DiningRoom_Rollershutter_SidesRight_Tilt.sendCommand("0")
+//         DiningRoom_Rollershutter_SidesLeft_Tilt.sendCommand("0")
+//         DiningRoom_Rollershutter_Exit_Tilt.sendCommand("0")
+//         Livingroom_Rollershutter_Tilt.sendCommand("0")
+//         Kitchen_Rollershutter_Tilt.sendCommand("0")
+//         Livingroom_Rollershutter.sendCommand("0")
+//         DiningRoom_Rollershutter_SidesLeft.sendCommand("0")
+//         DiningRoom_Rollershutter_SidesRight.sendCommand("0")
+//         DiningRoom_Rollershutter_Exit.sendCommand("0")
+//         Kitchen_Rollershutter.sendCommand("0")
+
+
+//     }
+// end
 
 // Move Rollershutter to top in case tilt was not set
 rule "Top up Rollershutter Kitchen"

@@ -1,76 +1,125 @@
 uid: page_status
-label: Status
 config:
   label: Status
   icon: oh:house
   order: "0"
-component: oh-grid-page
-slots:
-  default:
+  sidebar: true
+blocks:
+  - component: oh-block
+    config:
+      style:
+        padding: "4px 4px 4px 4px"
+        margin: "0"
+    slots:
+      default:
 
-    # ── ROW 1: Current weather (1/3) + Forecast (2/3) ────────────────────────
-    - component: oh-grid-row
-      config:
-        style:
-          margin-bottom: "12px"
-      slots:
-        default:
-          - component: oh-grid-col
-            config:
-              width: "33"
-            slots:
-              default:
-                - component: widget_weather_current
+        # ── ROW 1: Current weather (33%) + Forecast (66%) ────────────────────
+        - component: oh-grid-row
+          config:
+            style:
+              margin: "0 0 4px 0"
+              align-items: "stretch"
+          slots:
+            default:
+              - component: oh-grid-col
+                config:
+                  width: "100"
+                  medium: "33"
+                  style:
+                    padding: "0 2px 0 0"
+                    margin: "0"
+                    align-self: "stretch"
+                slots:
+                  default:
+                    - component: widget:widget_weather_current
+                      config: {}
+              - component: oh-grid-col
+                config:
+                  width: "100"
+                  medium: "66"
+                  style:
+                    padding: "0"
+                    margin: "0"
+                    align-self: "stretch"
+                slots:
+                  default:
+                    - component: widget:widget_weather_forecast
+                      config: {}
 
-          - component: oh-grid-col
-            config:
-              width: "67"
-            slots:
-              default:
-                - component: widget_weather_forecast
+        # ── ROW 2: Electricity prices (66%) + Energy meter (33%) ─────────────
+        - component: oh-grid-row
+          config:
+            style:
+              margin: "0 0 4px 0"
+              align-items: "stretch"
+          slots:
+            default:
+              - component: oh-grid-col
+                config:
+                  width: "100"
+                  medium: "66"
+                  style:
+                    padding: "0 2px 0 0"
+                    margin: "0"
+                    align-self: "stretch"
+                slots:
+                  default:
+                    - component: widget:widget_electricity_prices
+                      config: {}
+              - component: oh-grid-col
+                config:
+                  width: "100"
+                  medium: "33"
+                  style:
+                    padding: "0"
+                    margin: "0"
+                    align-self: "stretch"
+                slots:
+                  default:
+                    - component: widget:widget_energy_meter
+                      config: {}
 
-    # ── ROW 2: Electricity prices (2/3) + Energy meter (1/3) ─────────────────
-    - component: oh-grid-row
-      config:
-        style:
-          margin-bottom: "12px"
-      slots:
-        default:
-          - component: oh-grid-col
-            config:
-              width: "67"
-            slots:
-              default:
-                - component: widget_electricity_prices
-
-          - component: oh-grid-col
-            config:
-              width: "33"
-            slots:
-              default:
-                - component: widget_energy_meter
-
-    # ── ROW 3: Train (1/3) + Climate rooms (1/3) + Info/misc (1/3) ───────────
-    - component: oh-grid-row
-      slots:
-        default:
-          - component: oh-grid-col
-            config:
-              width: "33"
-            slots:
-              default:
-                - component: widget_train
-
-          - component: oh-grid-col
-            config:
-              width: "33"
-            slots:
-              default:
-                - component: widget_climate_rooms
-
-          - component: oh-grid-col
-            config:
-              width: "34"
-            slots:
-              default:
-                - component: widget_info_misc
+        # ── ROW 3: Train + Climate rooms + Info/misc (equal thirds) ──────────
+        - component: oh-grid-row
+          config:
+            style:
+              margin: "0"
+              align-items: "stretch"
+          slots:
+            default:
+              - component: oh-grid-col
+                config:
+                  width: "100"
+                  medium: "33"
+                  style:
+                    padding: "0 2px 0 0"
+                    margin: "0"
+                    align-self: "stretch"
+                slots:
+                  default:
+                    - component: widget:widget_train
+                      config: {}
+              - component: oh-grid-col
+                config:
+                  width: "100"
+                  medium: "33"
+                  style:
+                    padding: "0 2px 0 0"
+                    margin: "0"
+                    align-self: "stretch"
+                slots:
+                  default:
+                    - component: widget:widget_climate_rooms
+                      config: {}
+              - component: oh-grid-col
+                config:
+                  width: "100"
+                  medium: "33"
+                  style:
+                    padding: "0"
+                    margin: "0"
+                    align-self: "stretch"
+                slots:
+                  default:
+                    - component: widget:widget_info_misc
+                      config: {}
