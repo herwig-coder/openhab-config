@@ -1,5 +1,6 @@
 
 var Timer BreakfastSun_TiltTimer = null   // file-level
+var Timer NightPrivacy_TiltTimer = null   // file-level
 
 rule "BreakfastSun"
 when
@@ -40,6 +41,7 @@ then
         Kitchen_Rollershutter.sendCommand("0")
     }
 end
+
 // rule "BreakfastSun"
 // when
 //     Item Kitchen_Rollershutter_SunProtect changed 
@@ -74,7 +76,6 @@ end
 //     }
 // end
 
-var Timer NightPrivacy_TiltTimer = null   // file-level
 
 rule "NightPrivacy"
 when
