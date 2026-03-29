@@ -32,7 +32,7 @@ val String MAX_CHANGES = "0"  // Maximum train changes (0=direct only, 1=one tra
 rule "Update Train Status"
 when
     // Run every 15 minutes between 6 AM and 10 AM on weekdays
-    Time cron "0 */15 6-10 ? * MON-FRI"
+    Time cron "0 */15 6-18 ? * MON-FRI"
 then
     logInfo("TrainTracker", "Running train status check...")
 
