@@ -6,6 +6,17 @@ when
     Item Bathroom_DewPoint changed
 then
     logInfo("Bad_Dewpoint_Alert", "Trigger: Bathroom_Dewpoint changed")
+
+    // NULL guards - CRITICAL
+    if (Bathroom_DewPoint.state == NULL || Bathroom_DewPoint.state == UNDEF) {
+        logWarn("Bad_Dewpoint_Alert", "Bathroom_DewPoint is NULL/UNDEF, skipping")
+        return;
+    }
+    if (Weatherstation_Temperature_1.state == NULL || Weatherstation_Temperature_1.state == UNDEF) {
+        logWarn("Bad_Dewpoint_Alert", "Weatherstation_Temperature_1 is NULL/UNDEF, skipping")
+        return;
+    }
+
     if (Bathroom_DewPoint.state instanceof QuantityType ) {
         // Extract temperature and humidity values
         val temp = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
@@ -31,11 +42,11 @@ then
                 if (Bathroom_DewPoint_Alert.state != OFF){
                     telegramAction.sendTelegram(message)
                     logInfo("Bad_Dewpoint_Alert", "Alert off sent: {}", message)
-                    Bathroom_DewPoint_Alert.postUpdate("OFF")  
-                } 
-            }             
+                    Bathroom_DewPoint_Alert.postUpdate("OFF")
+                }
+            }
         }
-    } 
+    }
     else {
         logWarn("Bad_Dewpoint_Alert", "Invalid input: Bathroom_DewPoint or Weatherstation_Temperature_1 state is not a QuantityType")
     }
@@ -50,6 +61,17 @@ when
     Item ParentsBedroom_DewPoint changed
 then
     logInfo("Partentsbedroom_Dewpoint_Alert", "Trigger: Parents Bedroom Dewpoint changed")
+
+    // NULL guards - CRITICAL
+    if (ParentsBedroom_DewPoint.state == NULL || ParentsBedroom_DewPoint.state == UNDEF) {
+        logWarn("Partentsbedroom_Dewpoint_Alert", "ParentsBedroom_DewPoint is NULL/UNDEF, skipping")
+        return;
+    }
+    if (Weatherstation_Temperature_1.state == NULL || Weatherstation_Temperature_1.state == UNDEF) {
+        logWarn("Partentsbedroom_Dewpoint_Alert", "Weatherstation_Temperature_1 is NULL/UNDEF, skipping")
+        return;
+    }
+
     if (ParentsBedroom_DewPoint.state instanceof QuantityType ) {
         // Extract temperature and humidity values
         val temp = (ParentsBedroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
@@ -75,11 +97,11 @@ then
                 if (ParentsBedroom_DewPoint_Alert.state != OFF){
                     telegramAction.sendTelegram(message)
                     logInfo("Partentsbedroom_Dewpoint_Alert", "Alert off sent: {}", message)
-                    ParentsBedroom_DewPoint_Alert.postUpdate("OFF")  
-                } 
-            }             
+                    ParentsBedroom_DewPoint_Alert.postUpdate("OFF")
+                }
+            }
         }
-    } 
+    }
     else {
         logWarn("Partentsbedroom_Dewpoint_Alert", "Invalid input: ParentsBedroom_DewPoint or Weatherstation_Temperature_1 state is not a QuantityType")
     }
@@ -93,6 +115,17 @@ when
     Item ChildrenBedroom_DewPoint changed
 then
     logInfo("BedroomTommy_Dewpoint_Alert", "Trigger: Tommy Bedroom Dewpoint changed")
+
+    // NULL guards - CRITICAL
+    if (ChildrenBedroom_DewPoint.state == NULL || ChildrenBedroom_DewPoint.state == UNDEF) {
+        logWarn("BedroomTommy_Dewpoint_Alert", "ChildrenBedroom_DewPoint is NULL/UNDEF, skipping")
+        return;
+    }
+    if (Weatherstation_Temperature_1.state == NULL || Weatherstation_Temperature_1.state == UNDEF) {
+        logWarn("BedroomTommy_Dewpoint_Alert", "Weatherstation_Temperature_1 is NULL/UNDEF, skipping")
+        return;
+    }
+
     if (ChildrenBedroom_DewPoint.state instanceof QuantityType ) {
         // Extract temperature and humidity values
         val temp = (ChildrenBedroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
@@ -118,13 +151,12 @@ then
                 if (ChildrenBedroom_DewPoint_Alert.state != OFF){
                     telegramAction.sendTelegram(message)
                     logInfo("BedroomTommy_Dewpoint_Alert", "Alert off sent: {}", message)
-                    ChildrenBedroom_DewPoint_Alert.postUpdate("OFF")  
-                } 
-            }             
+                    ChildrenBedroom_DewPoint_Alert.postUpdate("OFF")
+                }
+            }
         }
-    } 
+    }
     else {
         logWarn("Partentsbedroom_Dewpoint_Alert", "Invalid input: ChildrenBedroom_DewPoint or Weatherstation_Temperature_1 state is not a QuantityType")
     }
 end
-
