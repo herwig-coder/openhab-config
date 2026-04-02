@@ -95,6 +95,7 @@ when
 then
     // get value in Java ZonedDateTime
     val currenttime = now
+    var muellmessage = ""
     logInfo("ulanzi_muell", "Trigger every 1 hour and 1 second: " + currenttime)
 
     // NULL guard - CRITICAL
@@ -107,7 +108,6 @@ then
     }
 
     // get value in Java ZonedDateTime
-    var muellmessage = ""
     val collectiondate = (Garbage_NextCollection.state as DateTimeType).getZonedDateTime(ZoneId.systemDefault())
     logInfo("ulanzi_muell", "Next CollectionDate: " + collectiondate)
     // get remaining hours in Type Duration
