@@ -99,7 +99,10 @@ then
 
     // NULL guard - CRITICAL
     if (Garbage_NextCollection.state == NULL || Garbage_NextCollection.state == UNDEF) {
-        logWarn("ulanzi_muell", "Garbage_NextCollection is NULL/UNDEF, skipping")
+        // clear ulanzi
+        Ulanzi_GarbageAlert.sendCommand("")
+        Garbage_Collection_Message.sendCommand(muellmessage)
+        logWarn("ulanzi_muell", "Clear Message and skip the rest Garbage_NextCollection is NULL/UNDEF, skipping")
         return;
     }
 
