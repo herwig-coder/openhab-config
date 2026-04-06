@@ -83,6 +83,6 @@ when
 then
     logInfo("WashingBedsheets", "Trigger: Wash Bed sheets")
     val telegramAction = getActions("telegram","telegram:telegramBot:TelegramWashbot_Bot")
-    val message = "Sissy, ask your Goddess nicely if you are allowed to wash her bedsheets today."
+    val message = "Bedsheets should be washed again."
     telegramAction.sendTelegram(message)  
 end
