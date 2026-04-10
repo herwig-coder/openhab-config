@@ -147,17 +147,31 @@ not parent/child pairs.
 POST /common_page/Localnet_WlanAdvanced_MACFilterACLPolicy_lua.lua
 Content-Type: application/x-www-form-urlencoded
 
-IF_ACTION=apply&ACLPolicy=Allow
+IF_ACTION=Apply&_InstNum=1&_InstID_0=DEV.WIFI.AP1&ACLPolicy_0=Allow&_sessionTOKEN=<token>
 ```
 
 or
 
 ```
-IF_ACTION=apply&ACLPolicy=Disabled
+IF_ACTION=Apply&_InstNum=1&_InstID_0=DEV.WIFI.AP1&ACLPolicy_0=Disabled&_sessionTOKEN=<token>
 ```
 
-The response has the same XML structure as the GET, with the new state
-reflected in `ACLPolicy`. Check `IF_ERRORTYPE=SUCC` to confirm success.
+**Critical:** `IF_ACTION` is **case-sensitive** in the Lua backend:
+- `IF_ACTION=apply` (lowercase) → treated as a read (GET equivalent), returns SUCC
+  but silently ignores the new value — the state never changes.
+- `IF_ACTION=Apply` (capital A) → actually applies the change.
+
+**Field naming:** The Lua backend expects the field names that the browser's
+`cloneWithSuffix(0, "_")` jQuery plugin produces — i.e., all instance fields
+are suffixed `_0`:
+- `_InstID_0` — instance path (from `<ParaName>_InstID</ParaName>` in the GET response)
+- `ACLPolicy_0` — the value to set (`Allow` or `Disabled`)
+- `_InstNum` — total number of SSID instances (1 on this device)
+
+Plain `ACLPolicy` (unsuffixed) is **not** recognised for writes.
+
+The Apply POST response is a short acknowledgement (~215 bytes), not a full
+state echo. Always verify the applied state with a follow-up GET.
 
 The `_sessionTOKEN` parameter **is required** to actually apply a change.
 Without it the router returns SUCC but silently ignores the new value.

@@ -286,31 +286,46 @@ class RouterACLController:
         """
         Set the MAC ACL to the desired state.
         Returns the verified state after the change (True = enabled).
+
+        The ZTE Lua backend distinguishes between IF_ACTION values by case:
+          - 'apply' (lowercase) → read-only GET equivalent (silently ignored)
+          - 'Apply' (capital A) → write (actually applies the change)
+        The POST must also include the suffixed field names that the browser JS
+        produces via cloneWithSuffix(0, "_"): _InstID_0, ACLPolicy_0, _InstNum.
         """
         value = self.acl_enable_value if enable else self.acl_disable_value
         logger.info('Setting ACLPolicy to %s …', value)
 
+        # Open WLAN page to establish context and capture _sessionTmpToken.
+        # Then GET the ACL API to read the current _InstID (needed in POST body).
+        self._open_wlan_page()
+        get_resp = self._get(self.acl_api_path)
+        get_root = _parse_xml(get_resp.text)
+        _xml_check_ok(get_root)
+        get_params = _parse_instance_params(get_root, 'OBJ_WLANACLCFG_ID')
+        inst_id = get_params.get('_InstID', 'DEV.WIFI.AP1')
+        logger.debug('Instance ID for POST: %s', inst_id)
+
+        # Re-open the WLAN page to get a fresh _sessionTmpToken for the write.
         self._open_wlan_page()
         post_data = {
-            'IF_ACTION':    'apply',
-            'ACLPolicy':    value,
+            'IF_ACTION':   'Apply',   # capital A — lowercase is a no-op read
+            '_InstNum':    '1',
+            '_InstID_0':   inst_id,
+            'ACLPolicy_0': value,
         }
         if self._session_tmp_token:
             post_data['_sessionTOKEN'] = self._session_tmp_token
-        resp = self._post(self.acl_api_path, post_data)
+        self._post(self.acl_api_path, post_data)
 
-        root = _parse_xml(resp.text)
-        _xml_check_ok(root)
-        params = _parse_instance_params(root, 'OBJ_WLANACLCFG_ID')
-        logger.debug('ACL params after set: %s', params)
-
-        verified_value = params.get('ACLPolicy', '')
-        verified = (verified_value == self.acl_enable_value)
+        # Verify by re-reading — the Apply POST response is a short ack,
+        # not a full state echo, so always verify with a fresh GET.
+        verified = self.get_acl_state()
 
         if verified != enable:
             logger.warning(
                 'State after submission (%r) does not match requested (%r).',
-                verified_value, value,
+                'Allow' if verified else 'Disabled', value,
             )
         return verified
 
