@@ -185,16 +185,20 @@ class RouterACLController:
             if not data.get('success', True):
                 raise RuntimeError(f'Login failed (JSON): {data}')
 
-        # Verify by fetching the WLAN Advanced page — unauthenticated returns ~69 bytes,
-        # authenticated returns several KB of HTML.
+        # ZTE Lua firmware checks the Referer header on all sub-pages.
+        # Set it now so every subsequent request in this session looks like it
+        # came from within the router UI.
+        self.session.headers['Referer'] = self.base_url + '/'
+
+        # Verify by fetching the WLAN Advanced page — unauthenticated (or missing
+        # Referer) returns a 69-byte JS redirect; authenticated returns several KB.
         verify = self.session.get(self._url(self.wlan_adv_path), timeout=10)
         logger.debug('Login verify page: %d bytes', len(verify.content))
         if len(verify.content) < 500:
             raise RuntimeError(
-                f'Login failed — WLAN Advanced page returned only {len(verify.content)} bytes '
-                f'(expected several KB when authenticated). '
-                'Check ROUTER_USERNAME / ROUTER_PASSWORD and field names in .env. '
-                'Run --probe --verbose to inspect the login POST.'
+                f'Login failed — WLAN Advanced page returned only {len(verify.content)} bytes. '
+                f'Body: {verify.text!r}. '
+                'Check ROUTER_USERNAME / ROUTER_PASSWORD in .env.'
             )
 
         logger.info('Login successful.')
