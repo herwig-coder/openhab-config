@@ -383,7 +383,16 @@ class RouterACLController:
                 'ROUTER_LOGIN_USER_FIELD, ROUTER_LOGIN_PASS_FIELD in .env',
                 file=sys.stderr,
             )
-            # Continue anyway so we can still show what the page returns unauthenticated
+
+        # Always show cookies so we can tell whether a session was established
+        cookies = dict(self.session.cookies)
+        print(f'  Session cookies after login: {cookies}', file=sys.stderr)
+        if not cookies:
+            print(
+                '  WARNING: no cookies set — the router may use a different login endpoint.',
+                file=sys.stderr,
+            )
+        # Continue so we can still show what the page returns
 
         # Try the configured WLAN Advanced path
         print(f'\n[3] Fetching WLAN Advanced page: {self.wlan_adv_path}', file=sys.stderr)
@@ -392,7 +401,10 @@ class RouterACLController:
             adv.raise_for_status()
             adv_soup = BeautifulSoup(adv.text, 'html.parser')
             forms_adv = adv_soup.find_all('form')
-            print(f'  HTTP {adv.status_code}  Forms: {len(forms_adv)}', file=sys.stderr)
+            print(f'  HTTP {adv.status_code}  size: {len(adv.content)} bytes  Forms: {len(forms_adv)}',
+                  file=sys.stderr)
+            if len(adv.content) < 500:
+                print(f'  Raw response body: {adv.text!r}', file=sys.stderr)
             for i, form in enumerate(forms_adv):
                 print(f'  Form {i}: action={form.get("action")}  method={form.get("method")}',
                       file=sys.stderr)
