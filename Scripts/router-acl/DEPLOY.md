@@ -59,7 +59,7 @@ On system start a `--status` call initialises the item.
 | `ROUTER_LOGIN_PATH` | `/` | Login form POST target |
 | `ROUTER_LOGIN_USER_FIELD` | `loginUsername` | Form field name |
 | `ROUTER_LOGIN_PASS_FIELD` | `loginPassword` | Form field name |
-| `ROUTER_WLAN_ADV_PATH` | `/html/advance/wlanAdvance.html` | Page with ACL toggle |
+| `ROUTER_WLAN_ADV_PATH` | `/getpage.lua?pid=123&nextpage=Localnet_WlanAdvanced_t.lp&Menu3Location=0` | Page with ACL toggle |
 | `ROUTER_ACL_FIELD` | `MACFilterMode` | HTML field name for ACL mode |
 | `ROUTER_ACL_ENABLE_VALUE` | `1` | Value for ACL on |
 | `ROUTER_ACL_DISABLE_VALUE` | `0` | Value for ACL off |
