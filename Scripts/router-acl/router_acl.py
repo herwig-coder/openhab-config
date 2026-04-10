@@ -91,8 +91,12 @@ class RouterACLController:
 
         # Login form
         self.login_path = _env('ROUTER_LOGIN_PATH', '/')
-        self.login_user_field = _env('ROUTER_LOGIN_USER_FIELD', 'loginUsername')
-        self.login_pass_field = _env('ROUTER_LOGIN_PASS_FIELD', 'loginPassword')
+        # ZTE Lua firmware uses UserName / UserPassword + IF_ACTION=login
+        self.login_user_field = _env('ROUTER_LOGIN_USER_FIELD', 'UserName')
+        self.login_pass_field = _env('ROUTER_LOGIN_PASS_FIELD', 'UserPassword')
+        # Extra action field sent with login POST (ZTE Lua requires IF_ACTION=login)
+        self.login_action_field = _env('ROUTER_LOGIN_ACTION_FIELD', 'IF_ACTION')
+        self.login_action_value = _env('ROUTER_LOGIN_ACTION_VALUE', 'login')
 
         # WLAN Advanced page
         self.wlan_adv_path = _env(
@@ -141,50 +145,56 @@ class RouterACLController:
         """Authenticate with the router and establish a session."""
         logger.info('Logging in as %s …', self.username)
 
-        # Fetch the login page first (may set initial cookies / CSRF tokens)
+        # Fetch the home page first — sets initial cookies and gives us existing
+        # form hidden fields (ZTE Lua needs IF_LogOff / IF_LanguageSwitch too)
         try:
             pre = self.session.get(self._url(self.login_path), timeout=10)
             pre.raise_for_status()
-            logger.debug('Login page status: %d', pre.status_code)
+            logger.debug('Home page status: %d  size: %d bytes', pre.status_code, len(pre.content))
         except requests.RequestException as exc:
             raise RuntimeError(f'Cannot reach router at {self.base_url}: {exc}') from exc
 
-        # Try to find the actual login form action from the page
+        # Build payload: start from existing form fields so hidden values are included
         soup = BeautifulSoup(pre.text, 'html.parser')
         login_form = soup.find('form')
+        payload = self._extract_form_data(login_form) if login_form else {}
+
+        # Determine submit URL from form action (empty action → post to same path)
         submit_path = self.login_path
-        if login_form and login_form.get('action'):
-            action = login_form['action']
+        if login_form:
+            action = login_form.get('action', '')
             if action.startswith('/'):
                 submit_path = action
             elif action.startswith('http'):
                 submit_path = action.replace(self.base_url, '')
-            logger.debug('Found login form action: %s', submit_path)
+        logger.debug('Login POST target: %s', submit_path)
 
-        credentials = {
-            self.login_user_field: self.username,
-            self.login_pass_field: self.password,
-        }
+        # Overlay credentials and action field
+        payload[self.login_user_field] = self.username
+        payload[self.login_pass_field] = self.password
+        if self.login_action_field:
+            payload[self.login_action_field] = self.login_action_value
+        logger.debug('Login payload keys: %s', list(payload.keys()))
 
-        resp = self._post(submit_path, credentials)
-        logger.debug('Login response status: %d', resp.status_code)
+        resp = self._post(submit_path, payload)
+        logger.debug('Login response status: %d  size: %d bytes', resp.status_code, len(resp.content))
 
         # Some routers respond with JSON on failed login
         if 'application/json' in resp.headers.get('Content-Type', ''):
             data = resp.json()
             if not data.get('success', True):
-                raise RuntimeError(f'Login failed (JSON error): {data}')
+                raise RuntimeError(f'Login failed (JSON): {data}')
 
-        # Heuristic: if the response still contains a login form we probably failed
-        soup2 = BeautifulSoup(resp.text, 'html.parser')
-        has_login_form = bool(
-            soup2.find('input', {'type': 'password'})
-        )
-        if has_login_form:
+        # Verify by fetching the WLAN Advanced page — unauthenticated returns ~69 bytes,
+        # authenticated returns several KB of HTML.
+        verify = self.session.get(self._url(self.wlan_adv_path), timeout=10)
+        logger.debug('Login verify page: %d bytes', len(verify.content))
+        if len(verify.content) < 500:
             raise RuntimeError(
-                'Login appears to have failed — still seeing a password field. '
-                'Check ROUTER_USERNAME / ROUTER_PASSWORD in .env, '
-                'or run --probe to inspect the login form fields.'
+                f'Login failed — WLAN Advanced page returned only {len(verify.content)} bytes '
+                f'(expected several KB when authenticated). '
+                'Check ROUTER_USERNAME / ROUTER_PASSWORD and field names in .env. '
+                'Run --probe --verbose to inspect the login POST.'
             )
 
         logger.info('Login successful.')
@@ -359,7 +369,21 @@ class RouterACLController:
                 wlan_links.append(href)
 
         if not wlan_links:
-            print('  (none found — try logging in first)', file=sys.stderr)
+            print('  (none found without auth — will try again after login)', file=sys.stderr)
+
+        # Log in before fetching authenticated pages
+        print('\n[2b] Logging in …', file=sys.stderr)
+        try:
+            self.login()
+            print('  Login OK', file=sys.stderr)
+        except RuntimeError as exc:
+            print(f'  Login FAILED: {exc}', file=sys.stderr)
+            print(
+                '  → Check ROUTER_USERNAME, ROUTER_PASSWORD, '
+                'ROUTER_LOGIN_USER_FIELD, ROUTER_LOGIN_PASS_FIELD in .env',
+                file=sys.stderr,
+            )
+            # Continue anyway so we can still show what the page returns unauthenticated
 
         # Try the configured WLAN Advanced path
         print(f'\n[3] Fetching WLAN Advanced page: {self.wlan_adv_path}', file=sys.stderr)
