@@ -396,6 +396,31 @@ class RouterACLController:
                 '  WARNING: no cookies set — the router may use a different login endpoint.',
                 file=sys.stderr,
             )
+
+        # Scan the authenticated home page for all getpage.lua URLs — the correct
+        # WLAN Advanced path (with the right pid) must be embedded in the JS somewhere.
+        print('\n[2c] Scanning authenticated home page for getpage.lua URLs …', file=sys.stderr)
+        import re
+        try:
+            auth_home = self.session.get(self._url('/'), timeout=10)
+            # Extract all unique getpage.lua?... patterns from the JS/HTML
+            raw_urls = re.findall(r'getpage\.lua\?[^\s\'"<>\\]+', auth_home.text)
+            raw_urls = sorted(set(raw_urls))
+            # Separate WLAN-related from others
+            wlan_urls = [u for u in raw_urls if re.search(r'[Ww][Ll][Aa][Nn]', u)]
+            other_urls = [u for u in raw_urls if u not in wlan_urls]
+            if wlan_urls:
+                print(f'  WLAN-related URLs ({len(wlan_urls)}):',  file=sys.stderr)
+                for u in wlan_urls:
+                    print(f'    /{u}', file=sys.stderr)
+            else:
+                print('  No WLAN getpage.lua URLs found in home page.', file=sys.stderr)
+            print(f'  All other getpage.lua URLs ({len(other_urls)}):',  file=sys.stderr)
+            for u in other_urls[:30]:   # cap at 30 to avoid flooding
+                print(f'    /{u}', file=sys.stderr)
+        except Exception as exc:
+            print(f'  ERROR scanning home page: {exc}', file=sys.stderr)
+
         # Continue so we can still show what the page returns
 
         # Try the configured WLAN Advanced path
