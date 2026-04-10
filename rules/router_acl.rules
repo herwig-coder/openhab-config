@@ -1,0 +1,110 @@
+/**
+ * Router MAC ACL control rules
+ *
+ * Keeps the Router_MacACL switch item in sync with the actual router setting.
+ *
+ * Trigger:  Item Router_MacACL receives a command (ON / OFF)
+ * Action:   Python script sets the ACL on the router, reads back the result,
+ *           and postUpdate()s the item to the verified state.
+ *
+ * Sync:     On system start the script reads the current router state and
+ *           initialises the item so OH reflects reality immediately.
+ */
+
+val String PYTHON_BIN   = "/etc/openhab/Scripts/router-acl/venv/bin/python"
+val String SCRIPT_PATH  = "/etc/openhab/Scripts/router-acl/router_acl.py"
+
+
+// ============================================================================
+// RULE 1: Apply switch state to router
+// ============================================================================
+
+rule "Router MAC ACL - apply switch"
+when
+    Item Router_MacACL received command
+then
+    val String desired = receivedCommand.toString   // "ON" or "OFF"
+    logInfo("RouterACL", "Setting MAC ACL to {}", desired)
+
+    val String result = executeCommandLine(
+        Duration.ofSeconds(20),
+        PYTHON_BIN, SCRIPT_PATH,
+        "--state", desired
+    )
+
+    if (result === null || result.equals("")) {
+        logError("RouterACL", "Script returned no output — check the server logs.")
+        return
+    }
+
+    logDebug("RouterACL", "Script output: {}", result)
+
+    try {
+        val String success = transform("JSONPATH", "$.success", result)
+        val String state   = transform("JSONPATH", "$.state",   result)
+
+        if (!"true".equals(success)) {
+            val String errMsg = transform("JSONPATH", "$.error", result)
+            logError("RouterACL", "Script reported failure: {}", errMsg)
+            // Revert the item to the last known state from the router
+            Router_MacACL.postUpdate(if ("ON".equals(state)) ON else OFF)
+            return
+        }
+
+        if (!state.equals("null") && state !== null) {
+            val newState = if ("ON".equals(state)) ON else OFF
+            Router_MacACL.postUpdate(newState)
+            logInfo("RouterACL", "MAC ACL is now: {}", state)
+
+            val String applied = transform("JSONPATH", "$.applied", result)
+            if ("false".equals(applied)) {
+                logWarn("RouterACL",
+                    "Router state ({}) differs from requested ({}) — " +
+                    "check .env paths (ROUTER_ACL_FIELD / ROUTER_ACL_SUBMIT_PATH).",
+                    state, desired)
+            }
+        }
+    } catch (Exception e) {
+        logError("RouterACL", "Error parsing script output: {}", e.getMessage())
+    }
+end
+
+
+// ============================================================================
+// RULE 2: Sync item state from router on startup
+// ============================================================================
+
+rule "Router MAC ACL - sync on startup"
+when
+    System started
+then
+    logInfo("RouterACL", "Reading MAC ACL state from router …")
+
+    val String result = executeCommandLine(
+        Duration.ofSeconds(20),
+        PYTHON_BIN, SCRIPT_PATH,
+        "--status"
+    )
+
+    if (result === null || result.equals("")) {
+        logWarn("RouterACL", "Could not read router state on startup (script returned no output).")
+        return
+    }
+
+    logDebug("RouterACL", "Startup sync output: {}", result)
+
+    try {
+        val String success = transform("JSONPATH", "$.success", result)
+        val String state   = transform("JSONPATH", "$.state",   result)
+
+        if ("true".equals(success) && state !== null && !state.equals("null")) {
+            Router_MacACL.postUpdate(if ("ON".equals(state)) ON else OFF)
+            logInfo("RouterACL", "Initial MAC ACL state: {}", state)
+        } else {
+            val String errMsg = transform("JSONPATH", "$.error", result)
+            logWarn("RouterACL", "Startup sync failed: {}", errMsg)
+        }
+    } catch (Exception e) {
+        logError("RouterACL", "Error parsing startup sync output: {}", e.getMessage())
+    }
+end
