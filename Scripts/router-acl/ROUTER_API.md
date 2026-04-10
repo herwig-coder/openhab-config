@@ -64,9 +64,11 @@ Content-Type: application/x-www-form-urlencoded
 Username=admin&Password=<sha256_hex>&action=login&_sessionTOKEN=<token_from_step1>
 ```
 
-A successful login sets a `SID` session cookie. The router returns
-the full home page (same 136 KB) regardless of success or failure — do
-**not** use the response body to detect success.
+A successful login returns **HTTP 302** and redirects to `/` (the
+authenticated 186 KB home page). A failed login returns HTTP 200
+with the same 136 KB login page. Use the HTTP status code or the
+final page size to detect success — not the response body directly.
+`requests.Session` follows the redirect automatically.
 
 ### Step 5 — Verify login
 
