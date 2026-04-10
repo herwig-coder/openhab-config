@@ -1,28 +1,31 @@
 # Router ACL Controller — Deployment
 
-Controls the WLAN MAC Access Control List on the ZTE A1 WLAN Box via its web UI.
+Controls the WLAN MAC Access Control List on the ZTE A1 WLAN Box via its XML API.
 Triggered by the `Router_MacACL` switch item in OpenHAB.
+
+## Authentication (how it works)
+
+The ZTE A1 WLAN Box uses a two-step challenge:
+1. A `_sessionTOKEN` is embedded in the home page JS on every load.
+2. A password salt is fetched from `/function_module/login_module/login_page/logintoken_lua.lua`.
+3. The password is sent as `SHA256(password + salt)`.
+
+This is handled automatically by the script.
 
 ## Server setup
 
 ```bash
 cd /etc/openhab/Scripts/router-acl
 bash setup.sh          # creates venv, installs deps, copies .env.example → .env
-nano .env              # set ROUTER_PASSWORD (and paths after probing)
+nano .env              # set ROUTER_PASSWORD when you change it from the default
 ```
 
-## Discover the router's form paths
-
-The default paths in `.env` are educated guesses. Run the probe once to find
-the real field names for your firmware:
-
-```bash
-source venv/bin/activate
-python router_acl.py --probe --verbose
+The `.env` only needs three lines:
 ```
-
-The probe logs in, dumps every form field on the WLAN Advanced page to stderr,
-and tells you what to put in `.env`.
+ROUTER_URL=http://10.0.0.138
+ROUTER_USERNAME=admin
+ROUTER_PASSWORD=
+```
 
 ## Test manually
 
@@ -55,12 +58,7 @@ On system start a `--status` call initialises the item.
 |---|---|---|
 | `ROUTER_URL` | `http://10.0.0.138` | Router IP |
 | `ROUTER_USERNAME` | `admin` | |
-| `ROUTER_PASSWORD` | *(blank)* | Set after changing router password |
-| `ROUTER_LOGIN_PATH` | `/` | Login form POST target |
-| `ROUTER_LOGIN_USER_FIELD` | `loginUsername` | Form field name |
-| `ROUTER_LOGIN_PASS_FIELD` | `loginPassword` | Form field name |
-| `ROUTER_WLAN_ADV_PATH` | `/getpage.lua?pid=123&nextpage=Localnet_WlanAdvanced_t.lp&Menu3Location=0` | Page with ACL toggle |
-| `ROUTER_ACL_FIELD` | `MACFilterMode` | HTML field name for ACL mode |
-| `ROUTER_ACL_ENABLE_VALUE` | `1` | Value for ACL on |
-| `ROUTER_ACL_DISABLE_VALUE` | `0` | Value for ACL off |
-| `ROUTER_ACL_SUBMIT_PATH` | *(auto)* | Leave empty to auto-detect from form action |
+| `ROUTER_PASSWORD` | *(blank)* | Update after changing router password |
+| `ROUTER_ACL_API_PATH` | `/common_page/Localnet_WlanAdvanced_MACFilterACLPolicy_lua.lua` | Should not need changing |
+| `ROUTER_ACL_ENABLE_VALUE` | `Allow` | Should not need changing |
+| `ROUTER_ACL_DISABLE_VALUE` | `Disabled` | Should not need changing |
