@@ -118,6 +118,13 @@ class RouterACLController:
         self.username = _env('ROUTER_USERNAME', 'admin')
         self.password = _env('ROUTER_PASSWORD', '')
 
+        # WLAN Advanced page — must be loaded before calling the ACL API.
+        # The router tracks page context server-side; direct API calls without
+        # this navigation step return SessionTimeout.
+        self.wlan_adv_path = _env(
+            'ROUTER_WLAN_ADV_PATH',
+            '/getpage.lua?pid=123&nextpage=Localnet_WlanAdvanced_t.lp&Menu3Location=0',
+        )
         self.acl_api_path = _env(
             'ROUTER_ACL_API_PATH',
             '/common_page/Localnet_WlanAdvanced_MACFilterACLPolicy_lua.lua',
@@ -150,6 +157,27 @@ class RouterACLController:
         r = self.session.post(url, data=data, timeout=10)
         r.raise_for_status()
         return r
+
+    def _open_wlan_page(self, raise_on_fail: bool = False) -> None:
+        """
+        Load the WLAN Advanced page to establish server-side page context.
+
+        The router requires this navigation step before any ACL API call —
+        direct API requests without it return SessionTimeout.
+        The authenticated page is ~67 KB; unauthenticated is ~69 bytes.
+        """
+        logger.debug('Opening WLAN Advanced page …')
+        resp = self.session.get(self._url(self.wlan_adv_path), timeout=10)
+        logger.debug('WLAN page: %d bytes', len(resp.content))
+        if len(resp.content) < 1000:
+            msg = (
+                f'WLAN Advanced page returned only {len(resp.content)} bytes — '
+                f'login may have failed or ROUTER_WLAN_ADV_PATH is wrong. '
+                f'Body: {resp.text!r}'
+            )
+            if raise_on_fail:
+                raise RuntimeError(msg)
+            logger.warning(msg)
 
     # ------------------------------------------------------------------
     # Login
@@ -203,16 +231,9 @@ class RouterACLController:
             '_sessionTOKEN': session_token,
         })
 
-        # Verify by reading the ACL API — an unauthenticated GET returns a
-        # redirect script (~69 bytes); authenticated returns several KB of XML.
-        verify = self.session.get(self._url(self.acl_api_path), timeout=10)
-        logger.debug('Login verify: %d bytes', len(verify.content))
-        if len(verify.content) < 200:
-            raise RuntimeError(
-                f'Login failed — ACL API returned {len(verify.content)} bytes '
-                f'({verify.text!r}). '
-                'Check ROUTER_USERNAME / ROUTER_PASSWORD in .env.'
-            )
+        # Verify by loading the WLAN Advanced page.
+        # Unauthenticated: ~69-byte JS redirect.  Authenticated: ~67 KB of HTML.
+        self._open_wlan_page(raise_on_fail=True)
 
         logger.info('Login successful.')
 
@@ -222,6 +243,7 @@ class RouterACLController:
     def get_acl_state(self) -> bool:
         """Return True if MAC ACL is currently enabled (ACLPolicy=Allow)."""
         logger.info('Reading ACL state …')
+        self._open_wlan_page()
         resp = self._get(self.acl_api_path)
         root = _parse_xml(resp.text)
         _xml_check_ok(root)
@@ -245,6 +267,7 @@ class RouterACLController:
         value = self.acl_enable_value if enable else self.acl_disable_value
         logger.info('Setting ACLPolicy to %s …', value)
 
+        self._open_wlan_page()
         resp = self._post(self.acl_api_path, {
             'IF_ACTION': 'apply',
             'ACLPolicy':  value,
