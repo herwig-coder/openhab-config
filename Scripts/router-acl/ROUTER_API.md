@@ -159,8 +159,15 @@ IF_ACTION=apply&ACLPolicy=Disabled
 The response has the same XML structure as the GET, with the new state
 reflected in `ACLPolicy`. Check `IF_ERRORTYPE=SUCC` to confirm success.
 
-The `_sessionTOKEN` parameter is **not required** for this endpoint
-(unlike the login POST).
+The `_sessionTOKEN` parameter **is required** to actually apply a change.
+Without it the router returns SUCC but silently ignores the new value.
+The token is extracted from the WLAN Advanced page JS after it is loaded:
+
+```javascript
+_sessionTmpToken = "\x31\x34\x32\x37…";   // hex-encoded digit string
+```
+
+Decode with: `re.sub(r'\\x([0-9a-fA-F]{2})', lambda m: chr(int(m.group(1), 16)), raw)`
 
 ---
 

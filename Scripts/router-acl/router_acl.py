@@ -37,10 +37,13 @@ from pathlib import Path
 import requests
 
 # ---------------------------------------------------------------------------
-# Logging — stderr only, stdout stays clean JSON
+# Logging — stderr only, stdout stays clean JSON.
+# Default level is ERROR so nothing reaches stderr during normal OH operation
+# (executeCommandLine combines stdout+stderr, which breaks JSONPATH parsing).
+# Pass --verbose to see INFO/DEBUG/WARNING output.
 # ---------------------------------------------------------------------------
 logging.basicConfig(
-    level=logging.WARNING,
+    level=logging.ERROR,
     format='%(asctime)s %(levelname)s %(message)s',
     stream=sys.stderr,
 )
@@ -132,6 +135,8 @@ class RouterACLController:
         self.acl_enable_value  = _env('ROUTER_ACL_ENABLE_VALUE',  'Allow')
         self.acl_disable_value = _env('ROUTER_ACL_DISABLE_VALUE', 'Disabled')
 
+        self._session_tmp_token: str = ''   # populated by _open_wlan_page()
+
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (compatible; OpenHAB-RouterACL)',
@@ -158,6 +163,11 @@ class RouterACLController:
         r.raise_for_status()
         return r
 
+    @staticmethod
+    def _decode_hex_escapes(s: str) -> str:
+        """Decode JavaScript \\xNN hex escapes (e.g. '\\x39\\x36' → '96')."""
+        return re.sub(r'\\x([0-9a-fA-F]{2})', lambda m: chr(int(m.group(1), 16)), s)
+
     def _open_wlan_page(self, raise_on_fail: bool = False) -> None:
         """
         Load the WLAN Advanced page to establish server-side page context.
@@ -165,6 +175,9 @@ class RouterACLController:
         The router requires this navigation step before any ACL API call —
         direct API requests without it return SessionTimeout.
         The authenticated page is ~67 KB; unauthenticated is ~69 bytes.
+
+        Also extracts _sessionTmpToken, which the router requires in the POST
+        body to apply setting changes (not needed for reads).
         """
         logger.debug('Opening WLAN Advanced page …')
         resp = self.session.get(self._url(self.wlan_adv_path), timeout=10)
@@ -178,6 +191,16 @@ class RouterACLController:
             if raise_on_fail:
                 raise RuntimeError(msg)
             logger.warning(msg)
+
+        # Extract _sessionTmpToken — required in POST body for write operations.
+        # It is embedded as a hex-escaped JS string: _sessionTmpToken = "\x39\x36…";
+        m = re.search(r'_sessionTmpToken\s*=\s*"([^"]+)"', resp.text)
+        if m:
+            self._session_tmp_token = self._decode_hex_escapes(m.group(1))
+            logger.debug('_sessionTmpToken: %s', self._session_tmp_token)
+        else:
+            self._session_tmp_token = ''
+            logger.warning('_sessionTmpToken not found in WLAN Advanced page')
 
     # ------------------------------------------------------------------
     # Login
@@ -268,10 +291,13 @@ class RouterACLController:
         logger.info('Setting ACLPolicy to %s …', value)
 
         self._open_wlan_page()
-        resp = self._post(self.acl_api_path, {
-            'IF_ACTION': 'apply',
-            'ACLPolicy':  value,
-        })
+        post_data = {
+            'IF_ACTION':    'apply',
+            'ACLPolicy':    value,
+        }
+        if self._session_tmp_token:
+            post_data['_sessionTOKEN'] = self._session_tmp_token
+        resp = self._post(self.acl_api_path, post_data)
 
         root = _parse_xml(resp.text)
         _xml_check_ok(root)
