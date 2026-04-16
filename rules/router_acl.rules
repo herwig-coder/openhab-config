@@ -103,7 +103,20 @@ end
 
 
 // ============================================================================
-// RULE 3: Sync item state from router on startup
+// RULE 3: Disable ACL at 07:00
+// ============================================================================
+
+rule "Router MAC ACL - disable at 07:00"
+when
+    Time cron "0 0 7 * * ?"
+then
+    Router_MacACL.sendCommand(OFF)
+    logInfo("RouterACL", "ACL disabled at 07:00")
+end
+
+
+// ============================================================================
+// RULE 4: Sync item state from router on startup
 // ============================================================================
 
 rule "Router MAC ACL - sync on startup"
