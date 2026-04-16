@@ -71,15 +71,34 @@ end
 
 
 // ============================================================================
-// RULE 2: Reset Internet_Minutes to 0 at 20:00
+// RULE 2: Enable ACL at 20:00 + Internet_Minutes delay, then reset counter
+//
+// At 20:00 the current value of Internet_Minutes is read.  A timer is
+// scheduled for that many minutes in the future.  When it fires:
+//   • Router_MacACL is switched ON (ACL enabled, internet blocked)
+//   • Internet_Minutes is reduced:
+//       > 60 min  →  Internet_Minutes - 60
+//       ≤ 60 min  →  0
 // ============================================================================
 
-rule "Internet Minutes - reset at 20:00"
+rule "Router MAC ACL - enable at 20:00 + Internet_Minutes delay"
 when
     Time cron "0 0 20 * * ?"
 then
-    Internet_Minutes.postUpdate(0)
-    logInfo("RouterACL", "Internet_Minutes reset to 0")
+    val int minutes = if (Internet_Minutes.state instanceof Number)
+        (Internet_Minutes.state as Number).intValue
+    else 0
+
+    logInfo("RouterACL", "Enabling ACL in {} min (at 20:{} approx)", minutes, String.format("%02d", minutes))
+
+    createTimer(now.plusMinutes(minutes)) [|
+        Router_MacACL.sendCommand(ON)
+        logInfo("RouterACL", "ACL enabled after {} min delay", minutes)
+
+        val int newValue = if (minutes > 60) minutes - 60 else 0
+        Internet_Minutes.postUpdate(newValue)
+        logInfo("RouterACL", "Internet_Minutes -> {}", newValue)
+    ]
 end
 
 
