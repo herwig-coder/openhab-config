@@ -2,6 +2,7 @@
 
 // MAC Access Control List — ON = ACL enabled (only listed MACs allowed)
 Switch  Router_MacACL  "WLAN MAC ACL [%s]"  <network>  (gRouter,gStrasshof)  ["Switch"]
+Number  Internet_Minues "[%d min] Extra Minuten Internet" (gRouter, gStrasshof)
 
 // Group
 Group   gRouter  "Router"  <network>
