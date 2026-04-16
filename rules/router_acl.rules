@@ -71,7 +71,20 @@ end
 
 
 // ============================================================================
-// RULE 2: Sync item state from router on startup
+// RULE 2: Reset Internet_Minutes to 0 at 20:00
+// ============================================================================
+
+rule "Internet Minutes - reset at 20:00"
+when
+    Time cron "0 0 20 * * ?"
+then
+    Internet_Minutes.postUpdate(0)
+    logInfo("RouterACL", "Internet_Minutes reset to 0")
+end
+
+
+// ============================================================================
+// RULE 3: Sync item state from router on startup
 // ============================================================================
 
 rule "Router MAC ACL - sync on startup"
