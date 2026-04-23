@@ -89,7 +89,8 @@ then
         (Internet_Minutes.state as Number).intValue
     else 0
 
-    logInfo("RouterACL", "Enabling ACL in {} min (at 20:{} approx)", minutes, String.format("%02d", minutes))
+    val fireTime = now.plusMinutes(minutes)
+    logInfo("RouterACL", "Enabling ACL in {} min (at {})", minutes, fireTime.toString.substring(11, 16))
 
     createTimer(now.plusMinutes(minutes)) [|
         Router_MacACL.sendCommand(ON)
