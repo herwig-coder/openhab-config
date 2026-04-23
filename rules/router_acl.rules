@@ -85,20 +85,21 @@ rule "Router MAC ACL - enable at 20:00 + Internet_Minutes delay"
 when
     Time cron "0 0 20 * * ?"
 then
-    val int minutes = if (Internet_Minutes.state instanceof Number)
+    val int total = if (Internet_Minutes.state instanceof Number)
         (Internet_Minutes.state as Number).intValue
     else 0
 
-    val fireTime = now.plusMinutes(minutes)
-    logInfo("RouterACL", "Enabling ACL in {} min (at {})", minutes, fireTime.toString.substring(11, 16))
+    val int delay = if (total > 60) 60 else total
+    val int credit = total - delay
 
-    createTimer(now.plusMinutes(minutes)) [|
+    val fireTime = now.plusMinutes(delay)
+    logInfo("RouterACL", "Enabling ACL in {} min (at {}), {} min credit for tomorrow", delay, fireTime.toString.substring(11, 16), credit)
+
+    Internet_Minutes.postUpdate(credit)
+
+    createTimer(now.plusMinutes(delay)) [|
         Router_MacACL.sendCommand(ON)
-        logInfo("RouterACL", "ACL enabled after {} min delay", minutes)
-
-        val int newValue = if (minutes > 60) minutes - 60 else 0
-        Internet_Minutes.postUpdate(newValue)
-        logInfo("RouterACL", "Internet_Minutes -> {}", newValue)
+        logInfo("RouterACL", "ACL enabled after {} min delay", delay)
     ]
 end
 
