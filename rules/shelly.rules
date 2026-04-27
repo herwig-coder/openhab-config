@@ -70,7 +70,7 @@ end
 // Strasshof_Privacy Esszimmer Gedrückt
 rule "Strasshof_Privacy Esszimmer"
 when
-    Channel "shelly:shellyplusi4:48f6ee8442dc:status3#button" triggered SHORT_PRESSED
+    Channel "shelly:shellyplusi4:48f6ee8442dc:status1#button" triggered SHORT_PRESSED
 then
     logInfo ("Strasshof_Privacy Esszimmer", "Trigger: Changed Strasshof_Privacy Esszimmer")
     if (Strasshof_Privacy.state == OFF ){
@@ -86,7 +86,7 @@ end
 
 rule "Morgensonne Esszimmer"
 when
-    Channel "shelly:shellyplusi4:48f6ee8442dc:status1#button" triggered SHORT_PRESSED
+    Channel "shelly:shellyplusi4:48f6ee8442dc:status3#button" triggered SHORT_PRESSED
 then
     logInfo ("Morgensonne Esszimmer", "Trigger: Changed Morgensonne Esszimmer")
     if (Kitchen_Rollershutter_SunProtect.state == OFF ){

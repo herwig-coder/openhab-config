@@ -8,7 +8,9 @@
       "WebFetch(domain:v3.framework7.io)",
       "WebFetch(domain:framework7.io)",
       "WebFetch(domain:github.com)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
