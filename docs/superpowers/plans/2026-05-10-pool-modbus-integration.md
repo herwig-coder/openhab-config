@@ -27,24 +27,33 @@
 
 - [ ] **Step 1: Power up Waveshare and discover IP**
 
-Connect Waveshare to LAN and 12 V supply. Default DHCP — check the router DHCP table for the new MAC, or use the official `Vircom` discovery tool (Windows). Note the discovered IP.
+Connect Waveshare to LAN and 12 V supply. Each of the two RS485 channels has its own network interface — the device exposes **two MAC addresses, two IPs**, both via DHCP by default. Check the router DHCP table for both new MACs, or use the official `Vircom` discovery tool (Windows). Note both discovered IPs.
 
-- [ ] **Step 2: Open Waveshare web UI**
+- [ ] **Step 2: Open Waveshare web UI for each interface**
 
-Browser → `http://<discovered-ip>`. Default credentials are usually `admin` / `admin` (printed on the device label otherwise).
+Browser → `http://<discovered-ip-1>` for channel 1 and `http://<discovered-ip-2>` for channel 2. Each interface has its own admin UI. Default credentials are usually `admin` / `admin` (printed on the device label otherwise).
 
-- [ ] **Step 3: Set static IP**
+- [ ] **Step 3: Set static IPs**
 
-Network settings → static IP `10.1.0.18`, netmask `255.255.255.0`, gateway `10.1.0.1`, DNS `10.1.0.1`. Apply, reconnect at the new IP.
+Configure each interface separately:
+
+| Channel | Static IP | Netmask | Gateway | DNS |
+|---|---|---|---|---|
+| 1 (Oxilife) | `10.1.0.18` | `255.255.255.0` | `10.1.0.1` | `10.1.0.1` |
+| 2 (Heat pump) | `10.1.0.21` | `255.255.255.0` | `10.1.0.1` | `10.1.0.1` |
+
+Apply each, reconnect at the new IPs.
 
 - [ ] **Step 4: Configure both serial channels**
 
-| Channel | Local TCP port | Mode | Baud | Parity | Stop |
-|---|---|---|---|---|---|
-| 1 | 502 | Modbus TCP server (TCP→RTU gateway) | 19200 | None (8N1) | 1 |
-| 2 | 503 | Modbus TCP server (TCP→RTU gateway) | 9600 | None (8N1) | 1 |
+Each interface has its own serial-port settings page. Both channels listen on the same Modbus TCP port `502` — IPs differ.
 
-If the Waveshare web UI uses different wording, the equivalent setting is "TCP Server" / "Modbus TCP" — explicitly **not** "transparent serial" or "RFC2217". Save and reboot.
+| Channel | IP | TCP port | Mode | Baud | Parity | Stop |
+|---|---|---|---|---|---|---|
+| 1 | 10.1.0.18 | 502 | Modbus TCP server (TCP→RTU gateway) | 19200 | None (8N1) | 1 |
+| 2 | 10.1.0.21 | 502 | Modbus TCP server (TCP→RTU gateway) | 9600 | None (8N1) | 1 |
+
+If the Waveshare web UI uses different wording, the equivalent setting is "TCP Server" / "Modbus TCP" — explicitly **not** "transparent serial" or "RFC2217". Save and reboot each interface.
 
 - [ ] **Step 5: Create commissioning skeleton document**
 
@@ -55,9 +64,8 @@ Create `docs/pool-modbus-commissioning.md` with this exact starting content:
 
 ## 1. Waveshare gateway
 
-- IP: 10.1.0.18
-- Channel 1 (port 502): Oxilife — 19200 8N1, slave id ?
-- Channel 2 (port 503): Poolsana heat pump — 9600 8N1, slave id ?
+- Channel 1: 10.1.0.18:502 → Oxilife — 19200 8N1, slave id ?
+- Channel 2: 10.1.0.21:502 → Poolsana heat pump — 9600 8N1, slave id ?
 
 ## 2. SugarValley Oxilife — verified registers
 
@@ -126,10 +134,10 @@ A live, plausible value (e.g. pH around 700 = 7.00 with /100 scaling, water temp
 
 - [ ] **Step 4: Read each Poolsana InverPower Ultra register**
 
-Repeat Step 3 against port 503 with the community-sourced addresses (search "InverPower Ultra Modbus" or "IPS Pro Modbus map" — Poolsana rebrands a Phnix/IPS-Pro inverter). For each address, sanity-check the read value before trusting it. If a register returns garbage or a Modbus exception 02 (illegal address) / 03 (illegal value), drop that datapoint from the design — YAGNI.
+Repeat Step 3 against `10.1.0.21:502` with the community-sourced addresses (search "InverPower Ultra Modbus" or "IPS Pro Modbus map" — Poolsana rebrands a Phnix/IPS-Pro inverter). For each address, sanity-check the read value before trusting it. If a register returns garbage or a Modbus exception 02 (illegal address) / 03 (illegal value), drop that datapoint from the design — YAGNI.
 
 ```bat
-modpoll -m tcp -a 1 -r <addr> -c 1 -t 4:int -1 10.1.0.18 -p 503
+modpoll -m tcp -a 1 -r <addr> -c 1 -t 4:int -1 10.1.0.21 -p 502
 ```
 
 - [ ] **Step 5: Fill in `docs/pool-modbus-commissioning.md`**
@@ -282,9 +290,10 @@ git commit -m "add: semantic groups for pool salt system and heat pump"
 - [ ] **Step 1: Create the things file with both bridges and the read pollers**
 
 ```xtend
-// Pool Modbus Integration — Waveshare 2-Channel Gateway @ 10.1.0.18
-// Channel 1 (port 502): SugarValley Oxilife salt chlorinator
-// Channel 2 (port 503): Poolsana InverPower Ultra heat pump
+// Pool Modbus Integration — Waveshare 2-Channel Gateway
+// Each RS485 channel exposes its own IP, both on Modbus TCP port 502.
+// Channel 1: 10.1.0.18 → SugarValley Oxilife salt chlorinator (19200 8N1)
+// Channel 2: 10.1.0.21 → Poolsana InverPower Ultra heat pump (9600 8N1)
 // Register addresses verified in docs/pool-modbus-commissioning.md
 
 // ---------- Salt System (Oxilife) ----------
@@ -314,8 +323,8 @@ Bridge modbus:tcp:oxilife "Oxilife TCP" [
 
 // ---------- Heat Pump (Poolsana InverPower Ultra) ----------
 Bridge modbus:tcp:heatpump "Heat Pump TCP" [
-    host="10.1.0.18",
-    port=503,
+    host="10.1.0.21",
+    port=502,
     id=1,
     timeBetweenTransactionsMillis=100,
     timeBetweenReconnectMillis=10000,
@@ -349,6 +358,7 @@ Expected lines within 10 s of saving:
 
 ```
 [INFO ] [...modbus.handler.ModbusTcpThingHandler] - About to connect ...10.1.0.18:502
+[INFO ] [...modbus.handler.ModbusTcpThingHandler] - About to connect ...10.1.0.21:502
 [INFO ] [...modbus.handler.ModbusPollerThingHandler] - Poller readings updating ...
 ```
 

@@ -35,23 +35,25 @@ official.
 ### Hardware & Network
 
 ```
-                        ┌─────────────────────────┐
-   OpenHAB              │ Waveshare 2-Ch          │
-   10.1.100.101 ───TCP──┤ Modbus Gateway          │
-                  502   │ 10.1.0.18               │
-                  503   │                         │
-                        │  Ch1 RS485 ─── Oxilife  │
-                        │  Ch2 RS485 ─── Heatpump │
-                        └─────────────────────────┘
+                        ┌─────────────────────────────────┐
+   OpenHAB              │ Waveshare 2-Ch                  │
+   10.1.100.101         │ Modbus Gateway                  │
+        │               │                                 │
+        │ TCP :502 ─────┤ Ch1 IP 10.1.0.18 ─ RS485 ─ Oxilife
+        │               │                                 │
+        └─ TCP :502 ────┤ Ch2 IP 10.1.0.21 ─ RS485 ─ Heatpump
+                        └─────────────────────────────────┘
 ```
 
-- **Waveshare IP:** `10.1.0.18` (static, IoT subnet — alongside KNX `10.1.0.16`,
-  MQTT `10.1.0.10`)
+- **Adapter exposes two IPs**, one per RS485 channel (each channel has its own
+  network interface). Both listen on the standard Modbus TCP port `502`.
+- IPs in the IoT subnet (alongside KNX `10.1.0.16`, MQTT `10.1.0.10`):
+  - **Channel 1:** `10.1.0.18` → SugarValley Oxilife
+  - **Channel 2:** `10.1.0.21` → Poolsana InverPower Ultra
 - **Mode:** Modbus TCP server / TCP-to-RTU gateway (not transparent serial)
-- **Channel 1, TCP port 502:** SugarValley Oxilife — typical RTU `19200 8N1`,
-  slave id `1`
-- **Channel 2, TCP port 503:** Poolsana InverPower Ultra — typical RTU `9600 8N1`,
-  slave id `1` (final values verified in Phase 1)
+- **Channel 1 RTU:** typical `19200 8N1`, slave id `1`
+- **Channel 2 RTU:** typical `9600 8N1`, slave id `1` (final values verified in
+  Phase 1)
 
 **RS485 wiring:** twisted pair for A/B + common GND, 120 Ω termination at both
 ends per channel if cable runs more than a few meters.
