@@ -35,14 +35,16 @@ Browser → `http://<discovered-ip-1>` for channel 1 and `http://<discovered-ip-
 
 - [ ] **Step 3: Set static IPs**
 
-Configure each interface separately:
+Configure each interface separately. Network is VLAN 200 "HomeAutomation" — `10.1.0.0/16` (subnet mask `255.255.0.0`, **not** `/24`). pfSense gateway at `10.1.0.1`. Both `10.1.0.18` and `10.1.0.21` are confirmed free in the pfSense static map (neighbours: `.16` KNX bridge, `.19` watermeter, `.20` Ulanzi).
 
 | Channel | Static IP | Netmask | Gateway | DNS |
 |---|---|---|---|---|
-| 1 (Oxilife) | `10.1.0.18` | `255.255.255.0` | `10.1.0.1` | `10.1.0.1` |
-| 2 (Heat pump) | `10.1.0.21` | `255.255.255.0` | `10.1.0.1` | `10.1.0.1` |
+| 1 (Oxilife) | `10.1.0.18` | `255.255.0.0` | `10.1.0.1` | `10.1.0.1` |
+| 2 (Heat pump) | `10.1.0.21` | `255.255.0.0` | `10.1.0.1` | `10.1.0.1` |
 
 Apply each, reconnect at the new IPs.
+
+**Recommended:** also add a static DHCP mapping in pfSense for each MAC → IP so the assignment is visible and protected even if someone factory-resets the adapter.
 
 - [ ] **Step 4: Configure both serial channels**
 

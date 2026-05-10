@@ -47,9 +47,15 @@ official.
 
 - **Adapter exposes two IPs**, one per RS485 channel (each channel has its own
   network interface). Both listen on the standard Modbus TCP port `502`.
-- IPs in the IoT subnet (alongside KNX `10.1.0.16`, MQTT `10.1.0.10`):
+- VLAN 200 "HomeAutomation" — `10.1.0.0/16`, gateway `10.1.0.1` (pfSense). Static
+  IPs are taken from the lower `10.1.0.x` range (DHCP scope is `10.1.100.100`–
+  `10.1.255.254`).
+- IPs alongside existing static assignments (KNX `10.1.0.16`, MQTT `10.1.0.10`,
+  watermeter `10.1.0.19`, Ulanzi `10.1.0.20`):
   - **Channel 1:** `10.1.0.18` → SugarValley Oxilife
   - **Channel 2:** `10.1.0.21` → Poolsana InverPower Ultra
+- Both confirmed free in the pfSense static map at design time. Plan also adds
+  a pfSense static DHCP mapping per channel for documentation.
 - **Mode:** Modbus TCP server / TCP-to-RTU gateway (not transparent serial)
 - **Channel 1 RTU:** typical `19200 8N1`, slave id `1`
 - **Channel 2 RTU:** typical `9600 8N1`, slave id `1` (final values verified in
