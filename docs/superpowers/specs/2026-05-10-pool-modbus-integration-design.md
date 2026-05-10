@@ -38,14 +38,14 @@ official.
                         ┌─────────────────────────┐
    OpenHAB              │ Waveshare 2-Ch          │
    10.1.100.101 ───TCP──┤ Modbus Gateway          │
-                  502   │ 10.1.0.20               │
+                  502   │ 10.1.0.18               │
                   503   │                         │
                         │  Ch1 RS485 ─── Oxilife  │
                         │  Ch2 RS485 ─── Heatpump │
                         └─────────────────────────┘
 ```
 
-- **Waveshare IP:** `10.1.0.20` (static, IoT subnet — alongside KNX `10.1.0.16`,
+- **Waveshare IP:** `10.1.0.18` (static, IoT subnet — alongside KNX `10.1.0.16`,
   MQTT `10.1.0.10`)
 - **Mode:** Modbus TCP server / TCP-to-RTU gateway (not transparent serial)
 - **Channel 1, TCP port 502:** SugarValley Oxilife — typical RTU `19200 8N1`,

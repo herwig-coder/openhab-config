@@ -35,7 +35,7 @@ Browser → `http://<discovered-ip>`. Default credentials are usually `admin` / 
 
 - [ ] **Step 3: Set static IP**
 
-Network settings → static IP `10.1.0.20`, netmask `255.255.255.0`, gateway `10.1.0.1`, DNS `10.1.0.1`. Apply, reconnect at the new IP.
+Network settings → static IP `10.1.0.18`, netmask `255.255.255.0`, gateway `10.1.0.1`, DNS `10.1.0.1`. Apply, reconnect at the new IP.
 
 - [ ] **Step 4: Configure both serial channels**
 
@@ -55,7 +55,7 @@ Create `docs/pool-modbus-commissioning.md` with this exact starting content:
 
 ## 1. Waveshare gateway
 
-- IP: 10.1.0.20
+- IP: 10.1.0.18
 - Channel 1 (port 502): Oxilife — 19200 8N1, slave id ?
 - Channel 2 (port 503): Poolsana heat pump — 9600 8N1, slave id ?
 
@@ -117,7 +117,7 @@ The user has noted official documentation exists. Fetch the PDF/spreadsheet (sea
 For every datapoint, run (substituting `<addr>` with the address from the doc, `<count>` = 1 or 2):
 
 ```bat
-modpoll -m tcp -a 1 -r <addr> -c <count> -t 4:int -1 10.1.0.20 -p 502
+modpoll -m tcp -a 1 -r <addr> -c <count> -t 4:int -1 10.1.0.18 -p 502
 ```
 
 `-t 4:int` reads holding registers as int16. Use `-t 3:int` for input registers, `-t 4:hex` for unknown content. `-1` performs one poll then exits.
@@ -129,7 +129,7 @@ A live, plausible value (e.g. pH around 700 = 7.00 with /100 scaling, water temp
 Repeat Step 3 against port 503 with the community-sourced addresses (search "InverPower Ultra Modbus" or "IPS Pro Modbus map" — Poolsana rebrands a Phnix/IPS-Pro inverter). For each address, sanity-check the read value before trusting it. If a register returns garbage or a Modbus exception 02 (illegal address) / 03 (illegal value), drop that datapoint from the design — YAGNI.
 
 ```bat
-modpoll -m tcp -a 1 -r <addr> -c 1 -t 4:int -1 10.1.0.20 -p 503
+modpoll -m tcp -a 1 -r <addr> -c 1 -t 4:int -1 10.1.0.18 -p 503
 ```
 
 - [ ] **Step 5: Fill in `docs/pool-modbus-commissioning.md`**
@@ -282,14 +282,14 @@ git commit -m "add: semantic groups for pool salt system and heat pump"
 - [ ] **Step 1: Create the things file with both bridges and the read pollers**
 
 ```xtend
-// Pool Modbus Integration — Waveshare 2-Channel Gateway @ 10.1.0.20
+// Pool Modbus Integration — Waveshare 2-Channel Gateway @ 10.1.0.18
 // Channel 1 (port 502): SugarValley Oxilife salt chlorinator
 // Channel 2 (port 503): Poolsana InverPower Ultra heat pump
 // Register addresses verified in docs/pool-modbus-commissioning.md
 
 // ---------- Salt System (Oxilife) ----------
 Bridge modbus:tcp:oxilife "Oxilife TCP" [
-    host="10.1.0.20",
+    host="10.1.0.18",
     port=502,
     id=1,
     timeBetweenTransactionsMillis=100,
@@ -314,7 +314,7 @@ Bridge modbus:tcp:oxilife "Oxilife TCP" [
 
 // ---------- Heat Pump (Poolsana InverPower Ultra) ----------
 Bridge modbus:tcp:heatpump "Heat Pump TCP" [
-    host="10.1.0.20",
+    host="10.1.0.18",
     port=503,
     id=1,
     timeBetweenTransactionsMillis=100,
@@ -348,7 +348,7 @@ ssh herwig@10.1.100.101 'tail -f /var/log/openhab/openhab.log'
 Expected lines within 10 s of saving:
 
 ```
-[INFO ] [...modbus.handler.ModbusTcpThingHandler] - About to connect ...10.1.0.20:502
+[INFO ] [...modbus.handler.ModbusTcpThingHandler] - About to connect ...10.1.0.18:502
 [INFO ] [...modbus.handler.ModbusPollerThingHandler] - Poller readings updating ...
 ```
 
