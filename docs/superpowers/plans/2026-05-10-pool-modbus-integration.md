@@ -33,29 +33,87 @@ Connect Waveshare to LAN and 12 V supply. Each of the two RS485 channels has its
 
 Browser → `http://<discovered-ip-1>` for channel 1 and `http://<discovered-ip-2>` for channel 2. Each interface has its own admin UI. Default credentials are usually `admin` / `admin` (printed on the device label otherwise).
 
-- [ ] **Step 3: Set static IPs**
+- [ ] **Step 3: Apply the full per-channel configuration in each interface's web UI**
 
-Configure each interface separately. Network is VLAN 200 "HomeAutomation" — `10.1.0.0/16` (subnet mask `255.255.0.0`, **not** `/24`). pfSense gateway at `10.1.0.1`. Both `10.1.0.18` and `10.1.0.21` are confirmed free in the pfSense static map (neighbours: `.16` KNX bridge, `.19` watermeter, `.20` Ulanzi).
+The Waveshare web UI presents these sections (verified against firmware V1.486):
+**Device Information**, **Network Settings**, **Serial Settings**, **Advanced Settings**, **Multi-Host Settings**, **Modify Web Login Key**.
 
-| Channel | Static IP | Netmask | Gateway | DNS |
-|---|---|---|---|---|
-| 1 (Oxilife) | `10.1.0.18` | `255.255.0.0` | `10.1.0.1` | `10.1.0.1` |
-| 2 (Heat pump) | `10.1.0.21` | `255.255.0.0` | `10.1.0.1` | `10.1.0.1` |
+Set every field per channel exactly as listed below. Fields marked **[CHANGE]** are different from the factory default and must be touched.
 
-Apply each, reconnect at the new IPs.
+#### Channel 1 — SugarValley Oxilife (web UI of interface 1)
 
-**Recommended:** also add a static DHCP mapping in pfSense for each MAC → IP so the assignment is visible and protected even if someone factory-resets the adapter.
+**Device Information**
+| Field | Value | Note |
+|---|---|---|
+| Device Name | `PoolSalt` | **[CHANGE]** rename from default `WSDEV0001` for clarity |
+| Firmware Version | (read-only) | expected ≥ V1.486 |
+| Device MAC | (read-only) | record in commissioning doc |
 
-- [ ] **Step 4: Configure both serial channels**
+**Network Settings**
+| Field | Value | Note |
+|---|---|---|
+| Device IP | `10.1.0.18` | static |
+| Device Port | `502` | **[CHANGE]** Modbus TCP standard port (factory default 4196) |
+| Device Web Port | `80` | leave default |
+| Work Mode | `TCP Server` | gateway listens for OpenHAB |
+| Subnet Mask | `255.255.0.0` | `/16` per pfSense |
+| Gateway | `10.1.0.1` | pfSense |
+| Destination IP/DNS | `0.0.0.0` (or leave) | unused in TCP Server mode |
+| Destination Port | `4196` (or leave) | unused in TCP Server mode |
+| IP mode | `Static` | **[CHANGE]** factory default `DHCP` would overwrite the IP above on reboot |
 
-Each interface has its own serial-port settings page. Both channels listen on the same Modbus TCP port `502` — IPs differ.
+**Serial Settings**
+| Field | Value |
+|---|---|
+| Baud Rate | `19200` |
+| Databits | `8` |
+| Parity | `None` |
+| Stopbits | `1` |
+| Flow control | `None` |
 
-| Channel | IP | TCP port | Mode | Baud | Parity | Stop |
-|---|---|---|---|---|---|---|
-| 1 | 10.1.0.18 | 502 | Modbus TCP server (TCP→RTU gateway) | 19200 | None (8N1) | 1 |
-| 2 | 10.1.0.21 | 502 | Modbus TCP server (TCP→RTU gateway) | 9600 | None (8N1) | 1 |
+**Advanced Settings**
+| Field | Value | Note |
+|---|---|---|
+| No-Data-Restart | `Disable` | leave default |
+| No Data Restart Time | `300` sec | leave default |
+| Reconnect-time | `12` sec | leave default |
 
-If the Waveshare web UI uses different wording, the equivalent setting is "TCP Server" / "Modbus TCP" — explicitly **not** "transparent serial" or "RFC2217". Save and reboot each interface.
+**Multi-Host Settings**
+| Field | Value | Note |
+|---|---|---|
+| Protocol | `Modbus TCP to RTU` | critical — this is the gateway mode |
+| Instruction Time out | `0` ms | auto when Multi-host disabled |
+| Enable Multi-host | `No` | only OpenHAB polls |
+| RS485 Conflict Time Gap | `0` ms | unused with single host |
+
+**Modify Web Login Key:** leave empty unless you want to change the admin password.
+
+#### Channel 2 — Poolsana InverPower Ultra (web UI of interface 2)
+
+Identical to Channel 1 **except** these fields:
+
+| Field | Value |
+|---|---|
+| Device Name | `PoolHeatPump` |
+| Device IP | `10.1.0.21` |
+| Baud Rate | `9600` |
+
+All other fields (Device Port `502`, Subnet Mask `255.255.0.0`, Gateway `10.1.0.1`, Work Mode `TCP Server`, IP mode `Static`, Databits `8`, Parity `None`, Stopbits `1`, Flow control `None`, Protocol `Modbus TCP to RTU`, Enable Multi-host `No`, etc.) are the **same** as Channel 1.
+
+- [ ] **Step 4: Click Submit on each interface and reboot the adapter**
+
+The web UI requires a reboot for IP-mode and IP-address changes to take effect. After reboot, both interfaces should be reachable at their new static IPs.
+
+Verify:
+
+```bat
+ping 10.1.0.18
+ping 10.1.0.21
+```
+
+Both should reply.
+
+**Recommended:** add a pfSense static DHCP mapping for each MAC → IP so the assignment is documented network-side and protected against an accidental factory reset.
 
 - [ ] **Step 5: Create commissioning skeleton document**
 
@@ -66,8 +124,21 @@ Create `docs/pool-modbus-commissioning.md` with this exact starting content:
 
 ## 1. Waveshare gateway
 
-- Channel 1: 10.1.0.18:502 → Oxilife — 19200 8N1, slave id ?
-- Channel 2: 10.1.0.21:502 → Poolsana heat pump — 9600 8N1, slave id ?
+Firmware: V1.486 (or later)
+
+| Channel | Device Name | IP        | Port | MAC                | Baud   | Parity | Slave id | Connected device           |
+|---------|-------------|-----------|------|--------------------|--------|--------|----------|----------------------------|
+| 1       | PoolSalt    | 10.1.0.18 | 502  | 04-EE-E8-13-A3-78  | 19200  | 8N1    | ?        | SugarValley Oxilife        |
+| 2       | PoolHeatPump| 10.1.0.21 | 502  | (record from UI)   | 9600   | 8N1    | ?        | Poolsana InverPower Ultra  |
+
+Common settings on both channels:
+- Work Mode: TCP Server
+- Subnet Mask: 255.255.0.0
+- Gateway: 10.1.0.1
+- IP mode: Static
+- Protocol: Modbus TCP to RTU
+- Enable Multi-host: No
+- Reconnect-time: 12 s
 
 ## 2. SugarValley Oxilife — verified registers
 
