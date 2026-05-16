@@ -49,5 +49,14 @@ then
     val message = "🚨 Bewegung im Vorraum während Abwesenheit: " + now
     logWarn("AwayMode", message)
     val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
-    telegramAction?.sendTelegram(message)
+    if (telegramAction === null) {
+        logError("AwayMode", "Telegram action ist null — Bot-Thing 'telegram:telegramBot:Telegram_Bot' nicht ONLINE oder UID falsch")
+    } else {
+        try {
+            telegramAction.sendTelegram(message)
+            logInfo("AwayMode", "Telegram gesendet")
+        } catch (Throwable t) {
+            logError("AwayMode", "Telegram-Versand fehlgeschlagen: " + t.toString)
+        }
+    }
 end
