@@ -1,20 +1,27 @@
 // Ambient Light
+// AwayMode-Guard: das Ambiente-Szenen-GA (0/0/3) sperrt im selben Telegramm
+// die drei Vorraum-BWMs über ihren Sperre-Eingang. Während Abwesenheit
+// würde das die Bewegungserkennung lahmlegen — daher überspringen.
 rule "Ambient Light"
-when 
+when
     //Time cron "0 08 20 * * *" or
     Item Strasshof_SunPhase changed
 then
    logInfo("AmbientLight", "Trigger: SunPhase Changed")
     // Test Strasshof_AmbientLight_On.sendCommand(ON)
     if (Strasshof_SunPhase.state == "SUN_SET") {
+        if (Strasshof_AwayMode.state == ON) {
+            logInfo("AmbientLight", "Sunset — übersprungen (AwayMode aktiv, würde BWMs sperren)")
+            return;
+        }
         logInfo("AmbientLight", "Sunset - switch on ambient light")
         Strasshof_AmbientLight_On.sendCommand(ON)
-    } 
+    }
     else {
       if (Strasshof_SunPhase.state == "SUN_RISE") {
         logInfo("AmbientLight", "Sunset - switch off ambient light")
         Strasshof_AmbientLight_On.sendCommand(OFF)
-    } 
+    }
     }
 end
 

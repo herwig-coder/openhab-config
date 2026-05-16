@@ -1,0 +1,53 @@
+// AwayMode = Niemand zuhause.
+// - Bei Aktivierung: Sperren der Vorraum-BWMs auf OFF (BWMs bleiben aktiv).
+// - Während aktiv: jeder Versuch eine Sperre zu setzen wird sofort widerrufen.
+// - Bei Bewegung im Vorraum (Corridor_Light geht durch BWM auf ON): Telegram.
+// Siehe items/awaymode.items und docs der Bewegungsmelder im KNX-Projekt.
+
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+
+// --- R1: AwayMode ON → BWMs sofort entsperren ---------------------------
+rule "AwayMode activated: unlock corridor BWMs"
+when
+    Item Strasshof_AwayMode changed to ON
+then
+    logInfo("AwayMode", "AwayMode aktiviert — Vorraum-BWM-Sperren werden gelöst")
+    Corridor_Lock.sendCommand(OFF)
+    Corridor_Lock_Motion.sendCommand(OFF)
+end
+
+// --- R2: Defensiv-Override — Sperr-Versuche während Away rückgängig machen
+// Reagiert auf: KNX-Szene "Ambiente Licht" (sperrt BWMs via 0/0/3), sowie
+// direkten Schreibversuch auf eine der Lock-GAs (1/0/3, 1/0/8).
+rule "AwayMode: override BWM lock attempts"
+when
+    Item Strasshof_AmbientLight_On changed to ON or
+    Item Corridor_Lock changed to ON or
+    Item Corridor_Lock_Motion changed to ON
+then
+    if (Strasshof_AwayMode.state != ON) {
+        return;
+    }
+    logInfo("AwayMode", "Sperr-Versuch erkannt während AwayMode aktiv — wird zurückgesetzt")
+    Corridor_Lock.sendCommand(OFF)
+    Corridor_Lock_Motion.sendCommand(OFF)
+end
+
+// --- R3: Bewegungs-Alarm — Corridor_Light geht ON während Abwesenheit ---
+// Corridor_Light (KNX 1/0/0) wird durch BWMs (VR GR + Eingangs-BWM) bei
+// Bewegung geschaltet. Manuelles Schalten löst ebenfalls aus — bei Abwesen-
+// heit ist auch das ein relevantes Ereignis.
+rule "AwayMode: corridor motion alarm"
+when
+    Item Corridor_Light changed to ON
+then
+    if (Strasshof_AwayMode.state != ON) {
+        return;
+    }
+    val now = ZonedDateTime.now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+    val message = "🚨 Bewegung im Vorraum während Abwesenheit: " + now
+    logWarn("AwayMode", message)
+    val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
+    telegramAction?.sendTelegram(message)
+end
