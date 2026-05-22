@@ -145,15 +145,27 @@ Start hier — einfachste Konfig (Schalten-Add, 1 BWM, 2-Min-Timer = schneller T
 
 - [ ] **Step 2: Set the following parameters** (gilt sinngemäß für alle vier BWMs)
 
-| Parameter | Value |
-|---|---|
-| Wert zu Beginn der Erfassung | Ein |
-| Wert nach Ende der Erfassung | **keine Aktion** *(was: Aus)* |
-| Nachlaufzeit Basis × Faktor | ~**30 s** total (e.g. Basis=1 s, Faktor=30) |
-| Zyklisches Senden bei Erfassung | **Ein** |
-| Zyklisches Senden Basis × Faktor | ~**60 s** (e.g. Basis=1 s, Faktor=60) |
-| Funktion des Sperrobjekts | Ein = Sperrung aktiviert *(unchanged)* |
-| Daemm_Stufe (Bewegungserfassung) | unchanged (whatever brightness threshold you currently have) |
+**Korrektur (2026-05-22):** Im App-Programm `211D-01` sind `Wert_Beginn` und `Wert_Ende` mit `Access="None"` hardcoded — wir können den BWM nicht stoppen, am Ende der Nachlaufzeit ein OFF zu schicken. Workaround: BWM-Nachlaufzeit länger als Aktor-Einschaltdauer setzen, damit der Aktor zuerst abläuft und der späte BWM-OFF ins Leere greift.
+
+| Parameter | Wert (VR KL) | Begründung |
+|---|---|---|
+| Bewegungserfassung | unchanged (z.B. "bis Helligkeitswert 5 Lux") | Lichtschwelle hat eigenen Zweck (nur Trigger im Dunkel), nicht in diesem Redesign anfassen |
+| Zyklisches Senden bei Erfassung | **freigegeben** | retriggert den Aktor-Zeitschalter während andauernder Bewegung |
+| Zyklisches Senden Basis | Zeitbasis 1,0 sek | |
+| Zyklisches Senden Faktor | 10 | alle 10s ein Retrigger — reicht für jede Zeitschalter-Einstellung |
+| **Nachlaufzeit Basis** | **Zeitbasis 17 sek** | |
+| **Nachlaufzeit Faktor** | **9** (= 153 s ≈ 2:33) | länger als Aktor-Einschaltdauer (2 Min) damit BWM-OFF zu spät kommt um Aktor-Timer abzubrechen |
+| Totzeit nach Ende der Erfassung | Basis 130 ms × Faktor 0 = 0 (unchanged) | nicht relevant |
+| Funktion des Sperrobjekts | "Aus = Betrieb, Ein = Sperrung aktiviert" (unchanged) | Sperre durch 0/0/3 funktioniert weiter |
+
+**Nachlaufzeit-Tabelle für alle BWMs:** (Faustregel = Aktor-Zeit + ~30s Puffer)
+
+| BWM | Aktor-Einschaltdauer | Nachlaufzeit Basis × Faktor | ≈ Sekunden |
+|---|---|---|---|
+| VR KL (1.1.102) | 2 min | 17 sek × 9 | 153 s |
+| WC (1.1.101) | 5 min | 17 sek × 20 | 340 s |
+| VR GR (1.1.100) | 3 min | 17 sek × 12 | 204 s |
+| Vorraum Eingang (1.1.106) | 3 min | 17 sek × 12 | 204 s |
 
 - [ ] **Step 3: Relink Schalten group object**
 
