@@ -87,7 +87,7 @@ Bridge knx:ip:bridge [
         // 1/0/9 (VR GR) auf Aktor Kanal C Schalten, 1/0/5 (Eingangs-BWM, oben) auf Verknüpfung.
         // Siehe docs/superpowers/specs/2026-05-22-knx-motion-redesign-design.md
         Type switch        : Corridor_Motion_VR                 "Motion"        [ga="1.001:1/0/9" ]
-        Type switch        : SmallCorridor_Motion               "Motion"        [ga="1.001:1/0/10" ]
+        Type switch        : Small_Corridor_Motion               "Motion"        [ga="1.001:1/0/10" ]
         Type switch        : WC_Motion                          "Motion"        [ga="1.001:1/0/11" ]
 
         //Bedroom
