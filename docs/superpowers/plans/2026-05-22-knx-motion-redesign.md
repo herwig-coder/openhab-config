@@ -299,7 +299,7 @@ After the corridor-lock block, add:
         // 1/0/9 (VR GR) auf Aktor Kanal C Schalten, 1/0/5 (Eingangs-BWM, oben) auf Verknüpfung.
         // Siehe docs/superpowers/specs/2026-05-22-knx-motion-redesign-design.md
         Type switch        : Corridor_Motion_VR                 "Motion"        [ga="1.001:1/0/9" ]
-        Type switch        : SmallCorridor_Motion               "Motion"        [ga="1.001:1/0/10" ]
+        Type switch        : Small_Corridor_Motion               "Motion"        [ga="1.001:1/0/10" ]
         Type switch        : WC_Motion                          "Motion"        [ga="1.001:1/0/11" ]
 ```
 
@@ -346,7 +346,7 @@ Switch  Corridor_Motion_VR     "Vorraum Bewegung (zentral) [%s]"   <if:mdi:motio
 Switch  Corridor_Motion_Entry  "Vorraum Bewegung (Eingang) [%s]"   <if:mdi:motion-sensor>  (gMainCorridor, gCorridor_Motion)  ["Status","Presence"]  {channel="knx:device:bridge:knx_main:Corridor_Motion_Entry"}
 
 // Kleiner Vorraum und WC — je ein BWM
-Switch  SmallCorridor_Motion   "Kleiner Vorraum Bewegung [%s]"     <if:mdi:motion-sensor>  (gSmallCorridor)   ["Status","Presence"]  {channel="knx:device:bridge:knx_main:SmallCorridor_Motion"}
+Switch  Small_Corridor_Motion   "Kleiner Vorraum Bewegung [%s]"     <if:mdi:motion-sensor>  (gSmallCorridor)   ["Status","Presence"]  {channel="knx:device:bridge:knx_main:Small_Corridor_Motion"}
 Switch  WC_Motion              "WC Bewegung [%s]"                  <if:mdi:motion-sensor>  (gWC)              ["Status","Presence"]  {channel="knx:device:bridge:knx_main:WC_Motion"}
 ```
 
@@ -381,7 +381,7 @@ Entry-BWM:
 Item 'Corridor_Motion_Entry' changed from OFF to ON
 Item 'gCorridor_Motion' changed from OFF to ON  (only if not already ON)
 ```
-Small corridor: `SmallCorridor_Motion changed from OFF to ON`
+Small corridor: `Small_Corridor_Motion changed from OFF to ON`
 WC: `WC_Motion changed from OFF to ON`
 
 After motion ends + BWM Nachlaufzeit: each item gets an OFF event, dann auch `gCorridor_Motion` wechselt zu OFF wenn beide Hauptvorraum-Items OFF sind.
@@ -514,4 +514,4 @@ git commit -m "fix: any lights.rules adjustment for motion redesign"
 - [x] **Placeholder scan:**
   - The "Force Nachtbetrieb dauerhaft EIN" step in Task 2.4 lists two options — that's a real conditional, not a placeholder. Engineer picks based on what the actuator UI exposes.
   - Address `1/4/0` for WC light is marked "confirm address in ETS" — true uncertainty (extracted from raw .knxproj; final verification on the device is appropriate).
-- [x] **Type consistency:** Item names `Corridor_Motion`, `SmallCorridor_Motion`, `WC_Motion` used consistently from Task 10 onwards. Channel names `Corridor_Motion`, `SmallCorridor_Motion`, `WC_Motion` match between Task 9 and Task 10. `Strasshof_AwayMode` and `Strasshof_AmbientLight_On` referenced from existing files (already exist).
+- [x] **Type consistency:** Item names `Corridor_Motion`, `Small_Corridor_Motion`, `WC_Motion` used consistently from Task 10 onwards. Channel names `Corridor_Motion`, `Small_Corridor_Motion`, `WC_Motion` match between Task 9 and Task 10. `Strasshof_AwayMode` and `Strasshof_AmbientLight_On` referenced from existing files (already exist).
