@@ -1,7 +1,7 @@
 // AwayMode = Niemand zuhause.
 // - Bei Aktivierung: Sperren der Vorraum-BWMs auf OFF (BWMs bleiben aktiv).
 // - Während aktiv: jeder Versuch eine Sperre zu setzen wird sofort widerrufen.
-// - Bei Bewegung im Vorraum (Corridor_Light geht durch BWM auf ON): Telegram.
+// - Bei Bewegung im Vorraum (gCorridor_Motion geht via BWM-OR-Gruppe auf ON): Telegram.
 // Siehe items/awaymode.items und docs der Bewegungsmelder im KNX-Projekt.
 
 import java.time.ZonedDateTime
@@ -34,10 +34,10 @@ then
     Corridor_Lock_Motion.sendCommand(OFF)
 end
 
-// --- R3: Bewegungs-Alarm — Corridor_Light geht ON während Abwesenheit ---
-// Corridor_Light (KNX 1/0/0) wird durch BWMs (VR GR + Eingangs-BWM) bei
-// Bewegung geschaltet. Manuelles Schalten löst ebenfalls aus — bei Abwesen-
-// heit ist auch das ein relevantes Ereignis.
+// --- R3: Bewegungs-Alarm — gCorridor_Motion geht ON während Abwesenheit ---
+// gCorridor_Motion (OR-Gruppe: Corridor_Motion_VR 1/0/9 + Corridor_Motion_Entry 1/0/5)
+// feuert ausschließlich bei echter BWM-Erfassung — manuelles Schalten löst nicht aus.
+// Beide Hauptvorraum-BWMs müssen Nachlauf beendet haben, bevor Alarm erneut möglich ist.
 rule "AwayMode: corridor motion alarm"
 when
     Item gCorridor_Motion changed to ON

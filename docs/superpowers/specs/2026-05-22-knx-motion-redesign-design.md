@@ -19,16 +19,17 @@ The redesign keeps all main lighting logic in KNX. OpenHAB only needs to:
 1. Expose the three new motion GAs as items (for the AwayMode telegram alarm,
    visualization, future analytics)
 2. Rewire the existing AwayMode telegram rule from `Corridor_Light` (light-state
-   proxy) to the new `Corridor_Motion` item (true motion signal)
+   proxy) to the new `gCorridor_Motion` group item (true motion signal, OR-aggregator
+   of `Corridor_Motion_VR` and `Corridor_Motion_Entry`)
 3. Clean up the now-obsolete `Corridor_lights_lock_Motion_Entry` channel (which
    was historically a misuse of GA `1/0/5`)
 
 ## In Scope (this spec)
 
 - New KNX channels in `things/KNX_tunnel.things` for `1/0/9`, `1/0/10`, `1/0/11`
-- New items in `items/awaymode.items` (or a new `items/motion.items`):
-  `Corridor_Motion`, `SmallCorridor_Motion`, `WC_Motion`
-- Update `rules/awaymode.rules` R3: trigger on `Corridor_Motion` not on `Corridor_Light`
+- New items in `items/motion.items`: `Corridor_Motion_VR`, `Corridor_Motion_Entry`,
+  `Small_Corridor_Motion`, `WC_Motion`, plus a Group:Switch:OR aggregator `gCorridor_Motion`
+- Update `rules/awaymode.rules` R3: trigger on `gCorridor_Motion` (the OR-aggregator) not on `Corridor_Light`
 - Deprecate `Corridor_lights_lock_Motion_Entry` channel (still bound to `1/0/5` —
   after ETS migration that GA carries nothing meaningful)
 - Commissioning notes / verification steps in OpenHAB (events.log + UI sanity)
@@ -51,21 +52,29 @@ lock channels (~line 79–82):
 // Bewegungs-Trigger der Vorraum- und WC-BWMs (neu 2026-05-22, siehe
 // docs/superpowers/specs/2026-05-22-knx-motion-redesign-design.md und
 // persönliche Doku smart-home/knx-motion-logic.md)
-Type switch        : Corridor_Motion                    "Motion"        [ga="1.001:1/0/9" ]
-Type switch        : SmallCorridor_Motion               "Motion"        [ga="1.001:1/0/10" ]
+Type switch        : Corridor_Motion_Entry              "Motion"        [ga="1.001:1/0/5" ]
+Type switch        : Corridor_Motion_VR                 "Motion"        [ga="1.001:1/0/9" ]
+Type switch        : Small_Corridor_Motion               "Motion"        [ga="1.001:1/0/10" ]
 Type switch        : WC_Motion                          "Motion"        [ga="1.001:1/0/11" ]
 ```
 
 ### New items (`items/motion.items`)
 
 ```xtend
-Switch Corridor_Motion       "Vorraum Bewegung [%s]"          <if:mdi:motion-sensor>  (gMainCorridor)   ["Status","Presence"]  {channel="knx:device:bridge:knx_main:Corridor_Motion"}
-Switch SmallCorridor_Motion  "Kleiner Vorraum Bewegung [%s]"  <if:mdi:motion-sensor>  (gSmallCorridor)  ["Status","Presence"]  {channel="knx:device:bridge:knx_main:SmallCorridor_Motion"}
-Switch WC_Motion             "WC Bewegung [%s]"               <if:mdi:motion-sensor>  (gWC)             ["Status","Presence"]  {channel="knx:device:bridge:knx_main:WC_Motion"}
+// OR-Aggregation der zwei Hauptvorraum-BWMs — feuert wenn entweder
+// VR GR oder Vorraum Eingang Bewegung melden. Trigger für AwayMode.
+Group:Switch:OR(ON,OFF)  gCorridor_Motion  "Vorraum Bewegung gesamt [%s]"  <if:mdi:motion-sensor>  (gMainCorridor)   ["Status","Presence"]
+
+// Hauptvorraum — zwei BWMs als getrennte Items, beide Mitglieder von gCorridor_Motion
+Switch  Corridor_Motion_VR     "Vorraum Bewegung (zentral) [%s]"   <if:mdi:motion-sensor>  (gMainCorridor, gCorridor_Motion)  ["Status","Presence"]  {channel="knx:device:bridge:knx_main:Corridor_Motion_VR"}
+Switch  Corridor_Motion_Entry  "Vorraum Bewegung (Eingang) [%s]"   <if:mdi:motion-sensor>  (gMainCorridor, gCorridor_Motion)  ["Status","Presence"]  {channel="knx:device:bridge:knx_main:Corridor_Motion_Entry"}
+
+// Kleiner Vorraum und WC — je ein BWM
+Switch  Small_Corridor_Motion  "Kleiner Vorraum Bewegung [%s]"     <if:mdi:motion-sensor>  (gSmallCorridor)   ["Status","Presence"]  {channel="knx:device:bridge:knx_main:Small_Corridor_Motion"}
+Switch  WC_Motion              "WC Bewegung [%s]"                  <if:mdi:motion-sensor>  (gWC)              ["Status","Presence"]  {channel="knx:device:bridge:knx_main:WC_Motion"}
 ```
 
-`gWC` exists in semantic model (verify before commit). The items can stay in their
-own file `items/motion.items` rather than being added to `awaymode.items`, since
+The items live in `items/motion.items` rather than `awaymode.items`, since
 their primary purpose is broader than just away-mode (future: presence-aware
 heating, illumination logic, etc.).
 
@@ -80,7 +89,7 @@ when
 
 // After:
 when
-    Item Corridor_Motion changed to ON
+    Item gCorridor_Motion changed to ON
 ```
 
 The body of the rule is unchanged. Message text could be adjusted to mention
@@ -119,9 +128,10 @@ so we don't have stale channels around if anything in the KNX side gets rolled b
 
 ## Acceptance Criteria
 
-1. After full migration, `events.log` shows `Corridor_Motion changed from OFF to ON`
-   events when someone passes either VR GR or Eingangs-BWM.
-2. AwayMode telegram alarm fires on `Corridor_Motion` ON (not on light state change).
+1. After full migration, `events.log` shows `Corridor_Motion_VR changed from OFF to ON`
+   or `Corridor_Motion_Entry changed from OFF to ON` (and consequently
+   `gCorridor_Motion changed from OFF to ON`) when someone passes either BWM.
+2. AwayMode telegram alarm fires on `gCorridor_Motion` ON (not on light state change).
 3. Hauptlicht Vorraum (1/0/0) goes ON when motion detected, stays ON for actuator's
    night-mode duration (~3 min), then goes OFF cleanly — no flapping on subsequent
    2-3 minute observation windows.
@@ -133,6 +143,6 @@ so we don't have stale channels around if anything in the KNX side gets rolled b
 | Risk | Mitigation |
 |---|---|
 | New motion items receive no traffic after migration | Verify with manual BWM trigger before swapping AwayMode rule; check `events.log` |
-| AwayMode rule double-fires (old trigger on `Corridor_Light` + new on `Corridor_Motion`) | Replace, do not duplicate — single trigger per rule |
+| AwayMode rule double-fires (old trigger on `Corridor_Light` + new on `gCorridor_Motion`) | Replace, do not duplicate — single trigger per rule |
 | Channel deprecation breaks something | Confirm no item linked to old channel before deletion (grep done) |
 | KNX migration rollback needed mid-way | OpenHAB changes are backwards-compatible: old GAs still exist; new items just stay NULL until BWMs send |
