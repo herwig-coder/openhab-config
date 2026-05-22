@@ -78,29 +78,33 @@ Verified against live UI (2026-05-22): N567/22 Zeitschalter mode does **not** ex
 
 `Relaisbetrieb = Schließer` (Default), `Blinken vor Ausschalten = Nein` (oder Ja — Geschmackssache, optional Vorwarnung 30s vor Aus). `Einschaltverzögerung` und `Ausschaltverzögerung` bleiben `gesperrt`. Startwert nach Netzspannungswiederkehr bleibt `wie vor Spannungsausfall`.
 
-### Task 3 — Link new motion GAs (mixed approach per channel) [ETS]
+### Task 3 — Link new motion GAs per channel [ETS]
 
-The N567's Verknüpfung-Funktion is already in use for Kanal C (OR-mode, with `1/0/5` from the Eingangs-BWM). We exploit this and use **different attachment points per channel**:
+**Korrektur 2026-05-22 (Zwei-Zonen-Design):** Mit zwei BWMs auf eine gemeinsame GA hätten wir das gleiche Race-Problem nur woanders — sobald der erste BWM Nachlaufzeit-OFF schickt, würde der gemeinsame Eingangs-State auf 0 fallen, auch wenn der zweite BWM noch sendet. Lösung: für die Hauptvorraum-Zone die **zwei BWMs auf zwei unabhängige Aktor-Eingänge** (Schalten + Verknüpfung) verteilen, OR-mäßig kombiniert. Jeder Eingang hält seinen State unabhängig — OFF von einem killt den anderen nicht.
 
-| Channel | New GA | Attach to | Why |
-|---|---|---|---|
-| Hauptvorraum (C) | `1/0/9` | **Verknüpfung-Objekt (Nr. 12)** — *replace* `1/0/5` | Existing OR-logic from old design; minimal change, cleanest semantic separation (Schalten = manual/scenes, Verknüpfung = motion) |
-| Kl. Vorraum (a) | `1/0/10` | **Schalten-Objekt (Nr. 35)** — *add as additional listener* | No existing Verknüpfung setup; simpler to add to Schalten |
-| WC (D) | `1/0/11` | **Schalten-Objekt (Nr. 15)** — *add as additional listener* | dito |
+| Channel | GA → Aktor-Eingang | Begründung |
+|---|---|---|
+| Hauptvorraum (C) — **zwei Eingänge!** | `1/0/9` → Schalten (Nr. 11)<br>`1/0/5` → Verknüpfung (Nr. 12), OR-Modus | VR GR und Vorraum Eingang teilen sich Kanal C, brauchen aber getrennte State-Speicher — siehe Diskussion oben |
+| Kl. Vorraum (a) | `1/0/10` → Schalten (Nr. 35) | Nur 1 BWM, kein Race, Schalten reicht |
+| WC (D) | `1/0/11` → Schalten (Nr. 15) | dito |
 
-- [ ] **Step 1: Kanal C — Verknüpfung-Objekt (Nr. 12) update**
+- [ ] **Step 1: Kanal C — Schalten-Objekt (Nr. 11) erweitern**
 
-In the actuator's Group Objects view, find Nr. 12 "Verknüpfung, Kanal C". Currently linked to `1/0/5`. Remove `1/0/5`, drag `1/0/9` onto the object. Verknüpfungsfunktion-Parameter for Kanal C stays at "ODER (OR)". Schalten-Objekt (Nr. 11) stays untouched (`1/0/0`, `0/0/2`, `0/0/4`).
+Currently: `1/0/0`, `0/0/2`, `0/0/4`. **Add `1/0/9`** als zusätzlichen Listener. List nachher: `1/0/0`, `0/0/2`, `0/0/4`, `1/0/9`. Hauptadresse bleibt `1/0/0`.
 
-- [ ] **Step 2: Kanal a — Schalten-Objekt (Nr. 35) addition**
+- [ ] **Step 2: Kanal C — Verknüpfung-Objekt (Nr. 12) unverändert lassen**
 
-Currently linked: `1/0/2`, `0/0/2`, `0/0/4`. Add `1/0/10` as additional listener. Hauptadresse stays `1/0/2`.
+`1/0/5` ist bereits dort verlinkt und wird durch den Vorraum Eingang BWM (1.1.106) gespeist. **Nicht entfernen, nicht ergänzen.** Verknüpfungsfunktion: **ODER-Verknüpfung** (am Parameter-Tab von Kanal C setzen — beim Umschalten von Normalbetrieb auf Zeitschalter wurde sie evtl. auf "keine Verknüpfung" zurückgesetzt, dann wieder auf "ODER" stellen).
 
-- [ ] **Step 3: Kanal D — Schalten-Objekt (Nr. 15) addition**
+- [ ] **Step 3: Kanal a — Schalten-Objekt (Nr. 35) erweitern**
 
-Currently linked: `1/4/0`, `0/0/2`, `0/0/4`. Add `1/0/11` as additional listener. Hauptadresse stays `1/4/0`.
+Currently: `1/0/2`, `0/0/2`, `0/0/4`. Add `1/0/10` als zusätzlichen Listener. Hauptadresse bleibt `1/0/2`.
 
-**Important:** all other linked GAs at all channels (especially `0/0/2`, `0/0/4` scene receivers) must stay — those are listeners for the "Alle aus" scenes that drive multiple channels.
+- [ ] **Step 4: Kanal D — Schalten-Objekt (Nr. 15) erweitern**
+
+Currently: `1/4/0`, `0/0/2`, `0/0/4`. Add `1/0/11` als zusätzlichen Listener. Hauptadresse bleibt `1/4/0`.
+
+**Important:** Alle anderen verlinkten GAs (Szenen `0/0/2`, `0/0/4`, sonstige) bleiben **unangetastet** — sie sind Listener für "Alle aus"-Szenen die mehrere Kanäle treiben.
 
 ### Task 4 — Download actuator + smoke-test with wall buttons [ETS][VERIFY]
 
@@ -238,8 +242,8 @@ Zweiter Hauptvorraum-BWM. Validiert die OR-Fusion zwischen beiden BWMs.
 - [ ] **Step 3: Relink Schalten group object**
 
 Currently: `Schalten` → `1/0/0` + `1/0/5`.
-New: `Schalten` → `1/0/9` (entfernt beide alten Verlinkungen).
-Damit wird `1/0/5` GA endgültig obsolet — Cleanup in Task 13.
+**New (Zwei-Zonen-Design): `Schalten` → nur `1/0/5`** (entfernt `1/0/0`, behält `1/0/5` als Eingangs-BWM-Signal).
+`1/0/5` ist NICHT obsolet — es ist jetzt das dedizierte Bewegungs-Signal des Vorraum-Eingangs-BWMs, das im Aktor an der Verknüpfung-OR landet (siehe Task 3).
 
 - [ ] **Step 4: Download + walk-test single**
 
@@ -261,10 +265,12 @@ Das ist die ursprüngliche Anforderung "Bewegung von beliebigem Sensor → Licht
 
 ## Phase 3 — OpenHAB: Expose Motion GAs
 
-### Task 9 — Add KNX channels for the three motion GAs [CFG]
+### Task 9 — Add/rename KNX channels for motion GAs [CFG]
 
 **Files:**
-- Modify: `things/KNX_tunnel.things` (after line 82, near existing corridor lock channels)
+- Modify: `things/KNX_tunnel.things`
+
+**Korrektur 2026-05-22:** Im Zwei-Zonen-Design werden für den Hauptvorraum **zwei** GAs als Bewegungs-Quellen benötigt: `1/0/9` (VR GR) und `1/0/5` (Vorraum Eingang). Der `1/0/5`-Channel existiert bereits als `Corridor_lights_lock_Motion_Entry` — wird **umbenannt**, nicht gelöscht (war historisch falsch benannt — ist und war immer der Schalt-Output des Eingangs-BWMs, kein Lock).
 
 - [ ] **Step 1: Read current things file around the corridor lock section**
 
@@ -272,71 +278,88 @@ Das ist die ursprüngliche Anforderung "Bewegung von beliebigem Sensor → Licht
 grep -n "Corridor_lights_lock_Motion" things/KNX_tunnel.things
 ```
 
-Expected: lines 81–82 with the two existing lock channels.
+Expected: lines 81–82 with the two existing channels for `1/0/5` and `1/0/8`.
 
-- [ ] **Step 2: Append the three new motion channels**
+- [ ] **Step 2: Rename existing `Corridor_lights_lock_Motion_Entry` channel + add the three new motion channels**
 
-After the line containing `Corridor_lights_lock_Motion`, add:
-
+In the existing block (lines 81–82), find:
 ```xtend
-        // Bewegungs-Trigger der Vorraum- und WC-BWMs (neu 2026-05-22).
-        // BWMs senden hier ON-Pulse; N567-Aktor läuft im Nachtbetrieb und
-        // hält den retriggerbaren Timer pro Zone. Siehe
-        // docs/superpowers/specs/2026-05-22-knx-motion-redesign-design.md
-        Type switch        : Corridor_Motion                    "Motion"        [ga="1.001:1/0/9" ]
+Type switch        : Corridor_lights_lock_Motion_Entry  "Light"         [ga="1.001:1/0/5" ]
+```
+Rename to:
+```xtend
+Type switch        : Corridor_Motion_Entry              "Motion"        [ga="1.001:1/0/5" ]
+```
+
+After the corridor-lock block, add:
+```xtend
+        // Bewegungs-Trigger der Vorraum- und WC-BWMs (Zwei-Zonen-Design 2026-05-22).
+        // BWMs senden ON-Pulse, der N567-Aktor läuft im Zeitschalter und hält den
+        // retriggerbaren Timer pro Zone. Hauptvorraum hat zwei Quellen:
+        // 1/0/9 (VR GR) auf Aktor Kanal C Schalten, 1/0/5 (Eingangs-BWM, oben) auf Verknüpfung.
+        // Siehe docs/superpowers/specs/2026-05-22-knx-motion-redesign-design.md
+        Type switch        : Corridor_Motion_VR                 "Motion"        [ga="1.001:1/0/9" ]
         Type switch        : SmallCorridor_Motion               "Motion"        [ga="1.001:1/0/10" ]
         Type switch        : WC_Motion                          "Motion"        [ga="1.001:1/0/11" ]
 ```
 
-- [ ] **Step 3: Verify file still parses**
-
-Push the change to git and pull on the server. Then tail openhab.log:
+- [ ] **Step 3: Commit and deploy**
 
 ```bash
 git add things/KNX_tunnel.things
-git commit -m "add: knx channels for vorraum + wc motion ga (1/0/9-11)"
+git commit -m "knx: motion channels for two-zone corridor redesign + WC"
 git push
 ssh herwig@10.1.100.101 'cd /etc/openhab && sudo git pull'
 ssh herwig@10.1.100.101 'sudo tail -30 /var/log/openhab/openhab.log | grep -iE "KNX|error|exception"'
 ```
 
-Expected: no parse errors related to KNX_tunnel.things. Existing channels still loaded.
+Expected: no parse errors. KNX bridge stays ONLINE.
 
-### Task 10 — Add motion items [CFG]
+### Task 10 — Add motion items with Group aggregation [CFG]
 
 **Files:**
 - Create: `items/motion.items`
 
-- [ ] **Step 1: Verify `gWC` exists in semantic model**
+- [ ] **Step 1: Verify `gWC` and corridor groups exist in semantic model**
 
 ```bash
-grep -n "gWC " items/semantic_model.items
+grep -nE "gWC |gMainCorridor |gSmallCorridor " items/semantic_model.items
 ```
 
-Expected: line 33 (or wherever) defines `gWC`. If missing, add as part of this task.
+Expected: all three groups already defined.
 
 - [ ] **Step 2: Create `items/motion.items`**
 
+Vier Switch-Items, plus eine Group für die Hauptvorraum-OR-Aggregation:
+
 ```xtend
 // Bewegungs-Status-Items für Vorraum + WC. Empfangen ON-Pulse von den
-// KNX-Bewegungsmeldern (siehe docs/superpowers/specs/2026-05-22-knx-motion-redesign-design.md).
-// Verwendung: AwayMode-Telegram-Alarm, künftig auch Präsenz-abhängige Logik.
+// KNX-Bewegungsmeldern. Siehe
+// docs/superpowers/specs/2026-05-22-knx-motion-redesign-design.md
 
-Switch  Corridor_Motion       "Vorraum Bewegung [%s]"          <if:mdi:motion-sensor>  (gMainCorridor)   ["Status","Presence"]  {channel="knx:device:bridge:knx_main:Corridor_Motion"}
-Switch  SmallCorridor_Motion  "Kleiner Vorraum Bewegung [%s]"  <if:mdi:motion-sensor>  (gSmallCorridor)  ["Status","Presence"]  {channel="knx:device:bridge:knx_main:SmallCorridor_Motion"}
-Switch  WC_Motion             "WC Bewegung [%s]"               <if:mdi:motion-sensor>  (gWC)             ["Status","Presence"]  {channel="knx:device:bridge:knx_main:WC_Motion"}
+// OR-Aggregation der zwei Hauptvorraum-BWMs — feuert wenn entweder
+// VR GR oder Vorraum Eingang Bewegung melden. Trigger für AwayMode.
+Group:Switch:OR(ON,OFF)  gCorridor_Motion  "Vorraum Bewegung gesamt [%s]"  <if:mdi:motion-sensor>  (gMainCorridor)   ["Status","Presence"]
+
+// Hauptvorraum — zwei BWMs als getrennte Items, beide Mitglieder von gCorridor_Motion
+Switch  Corridor_Motion_VR     "Vorraum Bewegung (zentral) [%s]"   <if:mdi:motion-sensor>  (gMainCorridor, gCorridor_Motion)  ["Status","Presence"]  {channel="knx:device:bridge:knx_main:Corridor_Motion_VR"}
+Switch  Corridor_Motion_Entry  "Vorraum Bewegung (Eingang) [%s]"   <if:mdi:motion-sensor>  (gMainCorridor, gCorridor_Motion)  ["Status","Presence"]  {channel="knx:device:bridge:knx_main:Corridor_Motion_Entry"}
+
+// Kleiner Vorraum und WC — je ein BWM
+Switch  SmallCorridor_Motion   "Kleiner Vorraum Bewegung [%s]"     <if:mdi:motion-sensor>  (gSmallCorridor)   ["Status","Presence"]  {channel="knx:device:bridge:knx_main:SmallCorridor_Motion"}
+Switch  WC_Motion              "WC Bewegung [%s]"                  <if:mdi:motion-sensor>  (gWC)              ["Status","Presence"]  {channel="knx:device:bridge:knx_main:WC_Motion"}
 ```
 
-- [ ] **Step 3: Deploy and verify items show up**
+- [ ] **Step 3: Deploy**
 
 ```bash
 git add items/motion.items
-git commit -m "add: motion items for vorraum + wc (linked to 1/0/9-11)"
+git commit -m "add: motion items for two-zone corridor + small corridor + WC"
 git push
 ssh herwig@10.1.100.101 'cd /etc/openhab && sudo git pull'
 ```
 
-OH5 UI → Items → search "Motion" — should see the three new items, each linked to one channel.
+OH5 UI → Items → search "Motion" — five Items sichtbar (zwei für Hauptvorraum + Group, plus SmallCorridor, plus WC).
 
 ### Task 11 — Verify motion events arrive [VERIFY]
 
@@ -348,32 +371,32 @@ ssh herwig@10.1.100.101 'sudo tail -f /var/log/openhab/events.log'
 
 - [ ] **Step 2: Walk past each BWM in turn**
 
-Expected event sequence per walk:
+Expected per walk (Hauptvorraum zentral):
 ```
-Item 'Corridor_Motion' received command ON          (or similar — depends on KNX binding semantics)
-Item 'Corridor_Motion' predicted to become ON
-Item 'Corridor_Motion' changed from OFF to ON
+Item 'Corridor_Motion_VR' changed from OFF to ON
+Item 'gCorridor_Motion' changed from OFF to ON
 ```
-
-And after a minute (cyclic re-send from BWM):
+Entry-BWM:
 ```
-Item 'Corridor_Motion' received update ON
+Item 'Corridor_Motion_Entry' changed from OFF to ON
+Item 'gCorridor_Motion' changed from OFF to ON  (only if not already ON)
 ```
+Small corridor: `SmallCorridor_Motion changed from OFF to ON`
+WC: `WC_Motion changed from OFF to ON`
 
-After motion stops + BWM Nachlaufzeit: no further events (BWM does not send OFF).
+After motion ends + BWM Nachlaufzeit: each item gets an OFF event, dann auch `gCorridor_Motion` wechselt zu OFF wenn beide Hauptvorraum-Items OFF sind.
 
-- [ ] **Step 3: If no events arrive**
+- [ ] **Step 3: Diagnose if missing**
+- Telegramm auf KNX-Bus vorhanden (ETS Group Monitor) aber kein OH-Event: Channel-Name in items != things → grep beides.
+- Auch kein KNX-Telegramm: BWM noch nicht umkonfiguriert / Aktor-Programmierung unvollständig.
 
-- Confirm `1/0/9` traffic in ETS Group Monitor first (rules out KNX wiring issue)
-- If telegrams on bus but not in OH: channel name in items file ≠ name in things file. Grep both.
-
-**Gate:** All three motion items produce `changed to ON` events when their respective BWMs trigger. Don't proceed to AwayMode rewiring before this works.
+**Gate:** alle vier Motion-Items + Group emit `changed to ON` Events korrekt. Erst dann Task 12.
 
 ---
 
 ## Phase 4 — OpenHAB: Rewire AwayMode Rule
 
-### Task 12 — Swap AwayMode R3 trigger from Corridor_Light to Corridor_Motion [CFG]
+### Task 12 — Swap AwayMode R3 trigger to gCorridor_Motion [CFG]
 
 **Files:**
 - Modify: `rules/awaymode.rules`
@@ -402,17 +425,17 @@ to:
 ```xtend
 rule "AwayMode: corridor motion alarm"
 when
-    Item Corridor_Motion changed to ON
+    Item gCorridor_Motion changed to ON
 then
 ```
 
-Also update the message text inside the rule body for clarity:
+`gCorridor_Motion` ist die OR-Group beider Hauptvorraum-BWMs — wechselt auf ON sobald entweder VR GR oder Vorraum Eingang Bewegung melden, geht erst auf OFF wenn beide ihre Nachlaufzeit beendet haben. Ein einzelner Telegram-Alarm pro Bewegungs-Episode, kein Doppel-Trigger.
+
+Auch die Message anpassen für Klarheit:
 
 ```xtend
     val message = "🚨 Bewegung erkannt im Vorraum (BWM) während Abwesenheit: " + now
 ```
-
-(Previously said "Bewegung im Vorraum" generically — now we know it's the BWM channel, not manual switching.)
 
 - [ ] **Step 3: Deploy and test**
 
@@ -443,40 +466,19 @@ If you actually want manual switching to also alarm during away mode, that's a f
 
 ## Phase 5 — Cleanup
 
-### Task 13 — Deprecate Corridor_lights_lock_Motion_Entry channel [CFG]
+### Task 13 — Verify no dangling references to old channel name [VERIFY]
 
-**Files:**
-- Modify: `things/KNX_tunnel.things` (remove the obsolete channel line)
+Im Zwei-Zonen-Design wird der Channel `Corridor_lights_lock_Motion_Entry` (GA `1/0/5`) nicht entfernt sondern in **Task 9 umbenannt** zu `Corridor_Motion_Entry`. Hier nur prüfen dass keine Items oder Rules unter dem alten Namen verlinken.
 
-After ETS migration, `1/0/5` carries no traffic anymore — Vorraum Eingangs-BWM sends on `1/0/9` instead.
-
-- [ ] **Step 1: Confirm no item references the channel**
+- [ ] **Step 1: Search for old channel name in items**
 
 ```bash
-grep -n "Corridor_lights_lock_Motion_Entry" items/
+grep -rn "Corridor_lights_lock_Motion_Entry" items/ rules/
 ```
 
-Expected: no matches (this channel never had an item bound to it).
+Expected: keine Treffer. Falls Treffer → manuell auf `Corridor_Motion_Entry` umbenennen.
 
-- [ ] **Step 2: Remove the channel line**
-
-In `things/KNX_tunnel.things`, delete:
-
-```xtend
-        Type switch        : Corridor_lights_lock_Motion_Entry  "Light"         [ga="1.001:1/0/5" ]
-```
-
-- [ ] **Step 3: Verify no error after reload**
-
-```bash
-git add things/KNX_tunnel.things
-git commit -m "remove: obsolete Corridor_lights_lock_Motion_Entry channel (1/0/5 unused post-migration)"
-git push
-ssh herwig@10.1.100.101 'cd /etc/openhab && sudo git pull'
-ssh herwig@10.1.100.101 'sudo tail -30 /var/log/openhab/openhab.log | grep -iE "knx|error"'
-```
-
-Expected: no errors mentioning a missing channel. KNX bridge stays ONLINE.
+- [ ] **Step 2: No code change to commit unless Step 1 found something**
 
 ### Task 14 — Verify lights.rules unaffected [VERIFY]
 
