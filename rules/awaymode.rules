@@ -40,13 +40,13 @@ end
 // heit ist auch das ein relevantes Ereignis.
 rule "AwayMode: corridor motion alarm"
 when
-    Item Corridor_Light changed to ON
+    Item gCorridor_Motion changed to ON
 then
     if (Strasshof_AwayMode.state != ON) {
         return;
     }
     val now = ZonedDateTime.now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-    val message = "🚨 Bewegung im Vorraum während Abwesenheit: " + now
+    val message = "🚨 Bewegung erkannt im Vorraum (BWM) während Abwesenheit: " + now
     logWarn("AwayMode", message)
     val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
     if (telegramAction === null) {
