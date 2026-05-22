@@ -1,7 +1,7 @@
 // AwayMode "Niemand zuhause" — Master-Switch
 // Wenn ON: BWM-Sperren werden überschrieben (BWMs bleiben aktiv),
-// Bewegung im Vorraum (Corridor_Light wird durch BWM auf 1/0/0 geschaltet)
-// löst Telegram-Alarm aus. Siehe rules/awaymode.rules.
+// Bewegung im Vorraum (gCorridor_Motion OR-Gruppe via BWM-Signale 1/0/5 + 1/0/9,
+// definiert in items/motion.items) löst Telegram-Alarm aus. Siehe rules/awaymode.rules.
 Switch  Strasshof_AwayMode      "Niemand zuhause [%s]"          <if:mdi:shield-home>      (gStrasshof)                          ["Switchable"]
 
 // KNX-Lock-Items für Vorraum-BWMs (Channels existieren bereits in KNX_tunnel.things).
