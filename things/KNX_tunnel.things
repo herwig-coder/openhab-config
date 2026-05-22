@@ -78,8 +78,17 @@ Bridge knx:ip:bridge [
         //lock all lights
         Type switch        : Corridor_lights_lock               "Light"         [ga="1.001:1/0/3" ]
         Type switch        : Small_Corridor_lights_lock         "Light"         [ga="1.001:1/0/4" ]
-        Type switch        : Corridor_lights_lock_Motion_Entry  "Light"         [ga="1.001:1/0/5" ]
+        Type switch        : Corridor_Motion_Entry              "Motion"        [ga="1.001:1/0/5" ]
         Type switch        : Corridor_lights_lock_Motion        "Light"         [ga="1.001:1/0/8" ]
+
+        // Bewegungs-Trigger der Vorraum- und WC-BWMs (Zwei-Zonen-Design 2026-05-22).
+        // BWMs senden ON-Pulse, der N567-Aktor läuft im Zeitschalter und hält den
+        // retriggerbaren Timer pro Zone. Hauptvorraum hat zwei Quellen:
+        // 1/0/9 (VR GR) auf Aktor Kanal C Schalten, 1/0/5 (Eingangs-BWM, oben) auf Verknüpfung.
+        // Siehe docs/superpowers/specs/2026-05-22-knx-motion-redesign-design.md
+        Type switch        : Corridor_Motion_VR                 "Motion"        [ga="1.001:1/0/9" ]
+        Type switch        : SmallCorridor_Motion               "Motion"        [ga="1.001:1/0/10" ]
+        Type switch        : WC_Motion                          "Motion"        [ga="1.001:1/0/11" ]
 
         //Bedroom
         Type switch        : Parents_Bedroom_Main_Light         "Light"         [ga="1.001:1/3/3" ]        
