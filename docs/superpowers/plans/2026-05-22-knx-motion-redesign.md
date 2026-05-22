@@ -62,19 +62,21 @@ In the Parameter tab of the channel, find the `Betriebsart` setting. Default is 
 | Kleiner Vorraum | a | 2 min |
 | WC | D | 5 min |
 
-- [ ] **Step 3: Configure retrigger + manual-off behavior**
+- [ ] **Step 3: Set `Verknüpfung` per channel**
 
-Typical labels (may vary slightly):
+Verified against live UI (2026-05-22): N567/22 Zeitschalter mode does **not** expose explicit retrigger/manual-off parameters. Retrigger is default on (any new ON during running timer restarts it). Manual OFF aborts the timer.
 
-| Parameter | Recommended |
+| Channel | Verknüpfung-Funktion |
 |---|---|
-| `Verhalten bei erneutem EIN während Timer läuft` | Zeit neu starten (retriggerbar) — so motion during ON-time extends it |
-| `Verhalten bei AUS während Timer läuft` | Timer beenden, sofort aus — so manual wall-switch OFF works as expected |
-| `Vorwarnung vor Aus` (Blinken / kurzes Aus-An) | optional — comfort feature, set if desired |
+| C (Hauptvorraum) | **ODER-Verknüpfung** — required so the Verknüpfung-Objekt (with `1/0/9`) actually drives the output |
+| a (Kl. Vorraum) | keine Verknüpfung (oder ODER — egal, wir nutzen Schalten für `1/0/10`) |
+| D (WC) | keine Verknüpfung (egal, wir nutzen Schalten für `1/0/11`) |
 
-- [ ] **Step 4: Leave Verknüpfung settings as-is**
+⚠ **Wichtig zu wissen:** Der Wechsel `Betriebsart` von Normalbetrieb auf Zeitschalter setzt im N567/22 die `Verknüpfung`-Einstellung auf `keine Verknüpfung` zurück. Nach dem Umschalten auf Zeitschalter explizit wieder auf `ODER-Verknüpfung` setzen für Kanal C.
 
-`Verknüpfung = ODER-Verknüpfung` already correct (confirmed on Kanal C). `Einschaltverzögerung` and `Ausschaltverzögerung` stay `gesperrt`. Startwert nach Netzspannungswiederkehr stays `wie vor Spannungsausfall`.
+- [ ] **Step 4: Other channel parameters**
+
+`Relaisbetrieb = Schließer` (Default), `Blinken vor Ausschalten = Nein` (oder Ja — Geschmackssache, optional Vorwarnung 30s vor Aus). `Einschaltverzögerung` und `Ausschaltverzögerung` bleiben `gesperrt`. Startwert nach Netzspannungswiederkehr bleibt `wie vor Spannungsausfall`.
 
 ### Task 3 — Link new motion GAs (mixed approach per channel) [ETS]
 
@@ -102,6 +104,14 @@ Currently linked: `1/4/0`, `0/0/2`, `0/0/4`. Add `1/0/11` as additional listener
 
 ### Task 4 — Download actuator + smoke-test with wall buttons [ETS][VERIFY]
 
+⚠ **Übergangs-Stolperstein erwartet:** In dieser Phase haben die BWMs noch ihre alte Konfiguration. Wenn ein BWM während des Tests Bewegung erkennt, sendet er nach Ablauf seiner eigenen Nachlaufzeit (~60s default) `1/0/0 = OFF` — und das bricht den Zeitschalter-Timer des Aktors ab. Symptom: Licht geht nach ~60s aus statt nach den eingestellten 3 Min.
+
+Saubere Test-Optionen:
+- (a) **BWMs vor Test sperren:** `0/0/3 = ON` senden (Ambiente-Szene sperrt alle Vorraum-BWMs). Nach Test mit `0/0/2 = ON` wieder entsperren.
+- (b) **Test verschieben** bis BWMs umkonfiguriert sind (Phase 2 vorziehen, dann gesamtsystem testen).
+
+
+
 - [ ] **Step 1: ETS → Programmieren → Applikation only (not Adressen, not Alle)**
 
 Reduces download time and avoids resetting unrelated parameters.
@@ -125,11 +135,15 @@ Switch on via wall button → wait 1 min → switch on again → timer should re
 
 Repeat the BWM procedure four times, **one device at a time**, with a verification step in between each. If something breaks, you only have one device misconfigured to roll back.
 
-### Task 5 — Reconfigure VR GR Bewegungsmelder (1.1.100) [ETS]
+**Reihenfolge:** Vom Einfachen zum Komplexen. Erst Single-BWM-Zonen mit Schalten-Add (Kl. Vorraum 2-Min-Timer, WC 5-Min), dann die Hauptvorraum-Zone mit Verknüpfung-OR und zwei BWMs.
 
-- [ ] **Step 1: Open device `1.1.100` parameter view**
+### Task 5 — Reconfigure VR KL Bewegungsmelder (1.1.102) [ETS]
 
-- [ ] **Step 2: Set the following parameters**
+Start hier — einfachste Konfig (Schalten-Add, 1 BWM, 2-Min-Timer = schneller Test-Zyklus). Wenn das funktioniert, ist das Pattern für WC + Hauptvorraum validiert.
+
+- [ ] **Step 1: Open device `1.1.102` parameter view**
+
+- [ ] **Step 2: Set the following parameters** (gilt sinngemäß für alle vier BWMs)
 
 | Parameter | Value |
 |---|---|
@@ -143,27 +157,67 @@ Repeat the BWM procedure four times, **one device at a time**, with a verificati
 
 - [ ] **Step 3: Relink Schalten group object**
 
-Currently: `Schalten` → `1/0/0` (Hauptlicht Vorraum).
-New: `Schalten` → `1/0/9` (Vorraum Bewegung BWM).
-Remove the link to `1/0/0`. Add the link to `1/0/9`. Verify `1/0/9` is the only sending GA on Schalten.
+Currently: `Schalten` → `1/0/2` (Kleiner Vorraum Hauptlicht).
+New: `Schalten` → `1/0/10`.
+Remove `1/0/2`, add `1/0/10`. Verify `1/0/10` is the only GA on Schalten.
 
-- [ ] **Step 4: Leave Sperrung group object unchanged**
-
-It still hears on `0/0/2`, `0/0/3`, `1/0/3`, `1/0/8`.
+- [ ] **Step 4: Sperrung group object unchanged** — hört weiter auf `0/0/3`, `0/0/2`, `1/0/8`.
 
 - [ ] **Step 5: Download device (Applikation only)**
 
 - [ ] **Step 6: Walk-test**
 
-Walk in front of VR GR's detection cone → in ETS Group Monitor, observe a telegram on `1/0/9` (ON) → Hauptlicht Vorraum should switch on (because actuator listens to `1/0/9` too) → wait 3 min → light goes off.
+Im Kleinen Vorraum vor BWM-Erfassungskegel laufen → in ETS Group Monitor `1/0/10 = ON` beobachten → Kleiner Vorraum Hauptlicht muss angehen → Bewegung beenden, ~2:30 stehen bleiben (außerhalb Erfassung) → Licht muss nach **exakt 2 Min Aktor-Timer** ausgehen, NICHT schon nach 30s (das wäre die alte BWM-Nachlaufzeit).
 
-If light doesn't come on: check the actuator's Verknüpfung-Verlinkung to `1/0/9` (Task 3 Step 1).
-If light comes on but doesn't go off: check that Betriebsart = Zeitschalter (Task 2 Step 1).
-If light flickers: check `Wert nach Ende der Erfassung` = "keine Aktion" (Task 5 Step 2).
+Diagnose:
+- Licht kommt nicht: Schalten-Verlinkung auf `1/0/10` falsch / Kanal-a Zeitschalter nicht aktiv
+- Licht geht zu früh aus (~30s): `Wert nach Ende der Erfassung` noch auf "Aus" → BWM sendet doch OFF
+- Licht geht gar nicht aus: Aktor Kanal a noch im Normalbetrieb / Einschaltdauer nicht gesetzt
 
-### Task 6 — Reconfigure Vorraum Eingang Bewegungsmelder (1.1.106) [ETS]
+**Gate:** dieser Test muss sauber durchlaufen, bevor du mit Task 6 weitermachst.
 
-Same procedure as Task 5, but for device `1.1.106`:
+### Task 6 — Reconfigure WC Bewegungsmelder (1.1.101) [ETS]
+
+Selbes Pattern wie Task 5, längerer Timer.
+
+- [ ] **Step 1: Open device `1.1.101` parameter view**
+
+- [ ] **Step 2: Set parameters identical to Task 5 Step 2**
+
+- [ ] **Step 3: Relink Schalten group object**
+
+Currently: `Schalten` → `1/4/0` "Licht WC".
+New: `Schalten` → `1/0/11`.
+
+- [ ] **Step 4: Download + walk-test**
+
+WC betreten → Licht muss kommen → WC verlassen, 5-6 Min warten → Licht muss nach genau 5 Min ausgehen.
+
+### Task 7 — Reconfigure VR GR Bewegungsmelder (1.1.100) [ETS]
+
+Erster der zwei Hauptvorraum-BWMs. Pattern wechselt: jetzt **Verknüpfung-OR** statt Schalten-Add, weil Kanal C diese Logik schon eingerichtet hat.
+
+- [ ] **Step 1: Open device `1.1.100` parameter view**
+
+- [ ] **Step 2: Set parameters identical to Task 5 Step 2**
+
+- [ ] **Step 3: Relink Schalten group object**
+
+Currently: `Schalten` → `1/0/0` (Hauptlicht Vorraum).
+New: `Schalten` → `1/0/9` (Vorraum Bewegung BWM).
+Remove `1/0/0`, add `1/0/9`. Verify `1/0/9` is the only GA on Schalten.
+
+- [ ] **Step 4: Sperrung group object unchanged**
+
+- [ ] **Step 5: Download + walk-test**
+
+Vor VR GR-Erfassung laufen → `1/0/9 = ON` im Group Monitor → Hauptlicht Vorraum geht an (über Aktor Kanal C Verknüpfung-OR) → Timer 3 Min läuft → Licht aus.
+
+Wenn das nicht klappt: Verknüpfung Kanal C steht ggf. nicht auf "ODER-Verknüpfung" oder `1/0/9` ist nicht auf Verknüpfung-Objekt (Nr. 12) verlinkt — siehe Phase 1 Task 3.
+
+### Task 8 — Reconfigure Vorraum Eingang Bewegungsmelder (1.1.106) [ETS]
+
+Zweiter Hauptvorraum-BWM. Validiert die OR-Fusion zwischen beiden BWMs.
 
 - [ ] **Step 1: Open device `1.1.106` parameter view**
 
@@ -172,50 +226,18 @@ Same procedure as Task 5, but for device `1.1.106`:
 - [ ] **Step 3: Relink Schalten group object**
 
 Currently: `Schalten` → `1/0/0` + `1/0/5`.
-New: `Schalten` → `1/0/9` (single GA, removes both old links).
-This frees `1/0/5` to be deprecated entirely.
+New: `Schalten` → `1/0/9` (entfernt beide alten Verlinkungen).
+Damit wird `1/0/5` GA endgültig obsolet — Cleanup in Task 13.
 
-- [ ] **Step 4: Download device**
+- [ ] **Step 4: Download + walk-test single**
 
-- [ ] **Step 5: Walk-test the Eingangs-detection-cone**
+Eingangsbereich BWM-Cone → `1/0/9 = ON` → Hauptlicht an → 3 Min → aus.
 
-Hauptlicht Vorraum must respond identically to Task 5 — both BWMs now feed the same `1/0/9` motion bus.
+- [ ] **Step 5: Combined retrigger test (der echte Härtetest)**
 
-- [ ] **Step 6: Combined retrigger test**
+Vor VR GR bewegen → Licht an, Timer läuft. Nach 2 Min zum Eingang gehen, Eingangs-BWM triggern → Aktor empfängt neues ON auf `1/0/9` → Timer **startet neu** (retriggerbar) → Licht bleibt insgesamt 2 + 3 = 5 Min an, NICHT vorzeitig aus, NICHT flackernd.
 
-VR GR trigger → wait 2 min → Eingangs-BWM trigger (jemand kommt durch die Tür) → actuator timer restarts → total on-time extends. No flapping.
-
-### Task 7 — Reconfigure VR KL Bewegungsmelder (1.1.102) [ETS]
-
-- [ ] **Step 1: Open device `1.1.102` parameter view**
-
-- [ ] **Step 2: Set parameters identical to Task 5 Step 2**
-
-- [ ] **Step 3: Relink Schalten group object**
-
-Currently: `Schalten` → `1/0/2` (Kleiner Vorraum Hauptlicht).
-New: `Schalten` → `1/0/10`.
-
-- [ ] **Step 4: Download + walk-test**
-
-Kl. Vorraum light should switch on/off with 2-min timer.
-
-### Task 8 — Reconfigure WC Bewegungsmelder (1.1.101) [ETS]
-
-- [ ] **Step 1: Open device `1.1.101` parameter view**
-
-- [ ] **Step 2: Set parameters identical to Task 5 Step 2**
-
-ON-time will be 5 min in the actuator already — BWM's Nachlaufzeit still 30 s.
-
-- [ ] **Step 3: Relink Schalten group object**
-
-Currently: `Schalten` → `1/4/0` "Licht WC" (was GA-57 in earlier analysis — confirm address in ETS).
-New: `Schalten` → `1/0/11`.
-
-- [ ] **Step 4: Download + walk-test**
-
-WC light should switch on/off with 5-min timer.
+Das ist die ursprüngliche Anforderung "Bewegung von beliebigem Sensor → Licht an, Nachlauf nach letzter Bewegung von irgendeinem Sensor". Wenn das durchläuft, ist das Re-Design technisch verifiziert.
 
 **Gate:** All four BWMs reprogrammed and individually tested. Now also run the **Sperre-Test** for all of them:
 1. Send `0/0/3` = ON (e.g. via OH `Strasshof_AmbientLight_On`)
