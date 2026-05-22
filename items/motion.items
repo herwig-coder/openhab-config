@@ -1,0 +1,15 @@
+// Bewegungs-Status-Items für Vorraum + WC. Empfangen ON-Pulse von den
+// KNX-Bewegungsmeldern. Siehe
+// docs/superpowers/specs/2026-05-22-knx-motion-redesign-design.md
+
+// OR-Aggregation der zwei Hauptvorraum-BWMs — feuert wenn entweder
+// VR GR oder Vorraum Eingang Bewegung melden. Trigger für AwayMode.
+Group:Switch:OR(ON,OFF)  gCorridor_Motion  "Vorraum Bewegung gesamt [%s]"  <if:mdi:motion-sensor>  (gMainCorridor)   ["Status","Presence"]
+
+// Hauptvorraum — zwei BWMs als getrennte Items, beide Mitglieder von gCorridor_Motion
+Switch  Corridor_Motion_VR     "Vorraum Bewegung (zentral) [%s]"   <if:mdi:motion-sensor>  (gMainCorridor, gCorridor_Motion)  ["Status","Presence"]  {channel="knx:device:bridge:knx_main:Corridor_Motion_VR"}
+Switch  Corridor_Motion_Entry  "Vorraum Bewegung (Eingang) [%s]"   <if:mdi:motion-sensor>  (gMainCorridor, gCorridor_Motion)  ["Status","Presence"]  {channel="knx:device:bridge:knx_main:Corridor_Motion_Entry"}
+
+// Kleiner Vorraum und WC — je ein BWM
+Switch  Small_Corridor_Motion  "Kleiner Vorraum Bewegung [%s]"     <if:mdi:motion-sensor>  (gSmallCorridor)   ["Status","Presence"]  {channel="knx:device:bridge:knx_main:Small_Corridor_Motion"}
+Switch  WC_Motion              "WC Bewegung [%s]"                  <if:mdi:motion-sensor>  (gWC)              ["Status","Presence"]  {channel="knx:device:bridge:knx_main:WC_Motion"}
