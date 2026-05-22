@@ -26,16 +26,19 @@
 
 - [ ] **Step 1: Open `UnserHaus.knxproj` in ETS 6**
 
-Topology view → device `1.0.2` (Siemens N 567/12). This is the actuator that drives `1/0/0` (Hauptlicht Vorraum), and will also drive `1/0/2` and `1/4/0`.
+Topology view → device `1.1.2` (Siemens N 567/12). This is the actuator that drives `1/0/0` (Hauptlicht Vorraum), and will also drive `1/0/2` and `1/4/0`.
 
-- [ ] **Step 2: Confirm which channel drives which light**
+- [ ] **Step 2: Channel assignment (confirmed 2026-05-22)**
 
-Click the device, open Group Objects. Identify:
-- Channel that has `Schalten` linked to `1/0/0` "Hauptlicht Vorraum" → **Zone Hauptvorraum**
-- Channel that has `Schalten` linked to `1/0/2` "Kleiner Vorraum Hauptlicht" → **Zone Kl. Vorraum**
-- Channel that has `Schalten` linked to `1/4/0` "Licht WC" → **Zone WC**
+The N567 12-fach Schaltaktor enthält 12 Kanäle A–H + a–d. Folgende Zuordnung gilt:
 
-Note the channel letters (A–H). Earlier analysis suggested Channel C = Hauptvorraum; verify the other two in ETS.
+| Zone | N567-Kanal | Licht-GA |
+|---|---|---|
+| Hauptvorraum | **C** | `1/0/0` Hauptlicht Vorraum |
+| Kleiner Vorraum | **a** (Lowercase!) | `1/0/2` Kleiner Vorraum Hauptlicht |
+| WC | **D** | `1/4/0` Licht WC |
+
+Wichtig: Kanal "a" (klein) ist ein eigener Kanal, nicht zu verwechseln mit Kanal "A" (groß). Die Group-Object-Nummern im ETS unterscheiden sich (höhere Nummern für die Kleinbuchstaben-Kanäle).
 
 - [ ] **Step 3: Note current parameters as rollback baseline**
 
@@ -118,9 +121,9 @@ Switch on via wall button → wait 1 min → switch on again → timer should re
 
 Repeat the BWM procedure four times, **one device at a time**, with a verification step in between each. If something breaks, you only have one device misconfigured to roll back.
 
-### Task 5 — Reconfigure VR GR Bewegungsmelder (1.0.100) [ETS]
+### Task 5 — Reconfigure VR GR Bewegungsmelder (1.1.100) [ETS]
 
-- [ ] **Step 1: Open device `1.0.100` parameter view**
+- [ ] **Step 1: Open device `1.1.100` parameter view**
 
 - [ ] **Step 2: Set the following parameters**
 
@@ -154,11 +157,11 @@ If light doesn't come on: check the actuator's Schalten link to `1/0/9` (Task 3 
 If light comes on but doesn't go off: check Nachtbetrieb (Task 2).
 If light flickers: check `Wert nach Ende der Erfassung` = "keine Aktion" (Task 5 Step 2).
 
-### Task 6 — Reconfigure Vorraum Eingang Bewegungsmelder (1.0.106) [ETS]
+### Task 6 — Reconfigure Vorraum Eingang Bewegungsmelder (1.1.106) [ETS]
 
-Same procedure as Task 5, but for device `1.0.106`:
+Same procedure as Task 5, but for device `1.1.106`:
 
-- [ ] **Step 1: Open device `1.0.106` parameter view**
+- [ ] **Step 1: Open device `1.1.106` parameter view**
 
 - [ ] **Step 2: Set parameters identical to Task 5 Step 2**
 
@@ -178,9 +181,9 @@ Hauptlicht Vorraum must respond identically to Task 5 — both BWMs now feed the
 
 VR GR trigger → wait 2 min → Eingangs-BWM trigger (jemand kommt durch die Tür) → actuator timer restarts → total on-time extends. No flapping.
 
-### Task 7 — Reconfigure VR KL Bewegungsmelder (1.0.102) [ETS]
+### Task 7 — Reconfigure VR KL Bewegungsmelder (1.1.102) [ETS]
 
-- [ ] **Step 1: Open device `1.0.102` parameter view**
+- [ ] **Step 1: Open device `1.1.102` parameter view**
 
 - [ ] **Step 2: Set parameters identical to Task 5 Step 2**
 
@@ -193,9 +196,9 @@ New: `Schalten` → `1/0/10`.
 
 Kl. Vorraum light should switch on/off with 2-min timer.
 
-### Task 8 — Reconfigure WC Bewegungsmelder (1.0.101) [ETS]
+### Task 8 — Reconfigure WC Bewegungsmelder (1.1.101) [ETS]
 
-- [ ] **Step 1: Open device `1.0.101` parameter view**
+- [ ] **Step 1: Open device `1.1.101` parameter view**
 
 - [ ] **Step 2: Set parameters identical to Task 5 Step 2**
 
