@@ -21,8 +21,10 @@ The redesign keeps all main lighting logic in KNX. OpenHAB only needs to:
 2. Rewire the existing AwayMode telegram rule from `Corridor_Light` (light-state
    proxy) to the new `gCorridor_Motion` group item (true motion signal, OR-aggregator
    of `Corridor_Motion_VR` and `Corridor_Motion_Entry`)
-3. Clean up the now-obsolete `Corridor_lights_lock_Motion_Entry` channel (which
-   was historically a misuse of GA `1/0/5`)
+3. Rename the misnamed `Corridor_lights_lock_Motion_Entry` channel — it was
+   always the Eingangs-BWM signal on GA `1/0/5`, never a lock. In the two-zone
+   design that GA stays active as the Vorraum-Eingangs-BWM motion source feeding
+   the Aktor Kanal C Verknüpfung-Eingang
 
 ## In Scope (this spec)
 
@@ -30,8 +32,9 @@ The redesign keeps all main lighting logic in KNX. OpenHAB only needs to:
 - New items in `items/motion.items`: `Corridor_Motion_VR`, `Corridor_Motion_Entry`,
   `Small_Corridor_Motion`, `WC_Motion`, plus a Group:Switch:OR aggregator `gCorridor_Motion`
 - Update `rules/awaymode.rules` R3: trigger on `gCorridor_Motion` (the OR-aggregator) not on `Corridor_Light`
-- Deprecate `Corridor_lights_lock_Motion_Entry` channel (still bound to `1/0/5` —
-  after ETS migration that GA carries nothing meaningful)
+- Rename `Corridor_lights_lock_Motion_Entry` → `Corridor_Motion_Entry` (same GA
+  `1/0/5`, label `"Light"` → `"Motion"`). Channel is NOT deprecated — `1/0/5`
+  remains the Vorraum-Eingangs-BWM signal in the two-zone design
 - Commissioning notes / verification steps in OpenHAB (events.log + UI sanity)
 
 ## Out of Scope (covered in personal docs)
@@ -98,19 +101,27 @@ The body of the rule is unchanged. Message text could be adjusted to mention
 R1 and R2 (lock override) stay completely as-is — they react to `Strasshof_AwayMode`
 changes and to lock-attempt items, none of which are affected.
 
-### Deprecation
+### Channel rename (no deprecation)
 
-After the ETS migration, `1/0/5` "Vorraum Hauptlicht Eingang BWM" carries no
-traffic anymore (the Eingangs-BWM now sends only to `1/0/9`). Remove the now-misleading
-channel from `things/KNX_tunnel.things`:
+In the two-zone design, `1/0/5` "Vorraum Hauptlicht Eingang BWM" stays active —
+it's now the dedicated Vorraum-Eingangs-BWM motion signal, feeding the Aktor
+Kanal C Verknüpfung-Input alongside `1/0/9` on Schalten. The OpenHAB channel was
+historically misnamed (`Corridor_lights_lock_Motion_Entry`, label `"Light"`),
+but the underlying GA was always the Eingangs-BWM Schalt-Output.
+
+Rename in `things/KNX_tunnel.things`:
 
 ```xtend
-// REMOVE:
+// Before:
 Type switch        : Corridor_lights_lock_Motion_Entry  "Light"         [ga="1.001:1/0/5" ]
+// After:
+Type switch        : Corridor_Motion_Entry              "Motion"        [ga="1.001:1/0/5" ]
 ```
 
-No item references this channel in the current configuration (verified during
-brainstorm).
+The renamed channel becomes the back-end of the `Corridor_Motion_Entry` Item,
+which is a member of the `gCorridor_Motion` OR-group.
+
+Pre-rename grep confirmed no Item or Rule referenced the old channel name.
 
 ## Migration Sequencing (OpenHAB perspective)
 
