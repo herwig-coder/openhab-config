@@ -26,7 +26,7 @@
 
 - [ ] **Step 1: Open `UnserHaus.knxproj` in ETS 6**
 
-Topology view → device `1.1.2` (Siemens N 567/12). This is the actuator that drives `1/0/0` (Hauptlicht Vorraum), and will also drive `1/0/2` and `1/4/0`.
+Topology view → device `1.1.2` (Siemens N 567/22, 16-fach Schaltaktor). This is the actuator that drives `1/0/0` (Hauptlicht Vorraum), `1/0/2` (Kleiner Vorraum), and `1/4/0` (Licht WC).
 
 - [ ] **Step 2: Channel assignment (confirmed 2026-05-22)**
 
@@ -44,57 +44,61 @@ Wichtig: Kanal "a" (klein) ist ein eigener Kanal, nicht zu verwechseln mit Kanal
 
 For each of the three channels, before changing anything: open the parameter view, screenshot or note the current setting of `Nachtbetrieb`, `ON-time during night mode`, and any logic operations. This is your rollback reference.
 
-### Task 2 — Enable Nachtbetrieb (staircase) per zone channel [ETS]
+### Task 2 — Switch each zone channel to Zeitschalter mode [ETS]
 
-For each of the three channels identified in Task 1:
+The N567 calls its staircase function **"Betriebsart = Zeitschalter"** (not "Nachtbetrieb"). Confirmed against actual UI on the user's Kanal C config screen (2026-05-22).
 
-- [ ] **Step 1: Set `Nachtbetrieb en/di (individuell)` = Ja for this channel**
+For each of the three zone channels (C, a, D):
 
-So the channel has its own night-mode behavior independent of the global setting.
+- [ ] **Step 1: Set `Betriebsart` = Zeitschalter**
 
-- [ ] **Step 2: Set `ON-time during night mode`**
+In the Parameter tab of the channel, find the `Betriebsart` setting. Default is `Normalbetrieb`. Change to `Zeitschalter`. New time-related parameters become visible after this change.
 
-| Zone | ON-time |
+- [ ] **Step 2: Set the Einschaltdauer (ON-time)**
+
+| Zone | Channel | Einschaltdauer |
+|---|---|---|
+| Hauptvorraum | C | 3 min |
+| Kleiner Vorraum | a | 2 min |
+| WC | D | 5 min |
+
+- [ ] **Step 3: Configure retrigger + manual-off behavior**
+
+Typical labels (may vary slightly):
+
+| Parameter | Recommended |
 |---|---|
-| Hauptvorraum | 3 min |
-| Kleiner Vorraum | 2 min |
-| WC | 5 min |
+| `Verhalten bei erneutem EIN während Timer läuft` | Zeit neu starten (retriggerbar) — so motion during ON-time extends it |
+| `Verhalten bei AUS während Timer läuft` | Timer beenden, sofort aus — so manual wall-switch OFF works as expected |
+| `Vorwarnung vor Aus` (Blinken / kurzes Aus-An) | optional — comfort feature, set if desired |
 
-- [ ] **Step 3: Optional — `Blinking before OFF in night mode` = Ja**
+- [ ] **Step 4: Leave Verknüpfung settings as-is**
 
-30-second warning blink before auto-off. Comfort feature.
+`Verknüpfung = ODER-Verknüpfung` already correct (confirmed on Kanal C). `Einschaltverzögerung` and `Ausschaltverzögerung` stay `gesperrt`. Startwert nach Netzspannungswiederkehr stays `wie vor Spannungsausfall`.
 
-- [ ] **Step 4: Force Nachtbetrieb dauerhaft EIN**
+### Task 3 — Link new motion GAs (mixed approach per channel) [ETS]
 
-Two options — pick whichever the actuator app exposes cleanly:
-- (a) Parameter "Initialwert Nachtbetrieb" = EIN, no external Nachtbetrieb-Telegramm needed
-- (b) Link the `Nachtbetrieb` group object to a GA that always carries 1 (e.g. add a virtual GA `0/0/15` "Always ON" and have the actuator read it once at start)
+The N567's Verknüpfung-Funktion is already in use for Kanal C (OR-mode, with `1/0/5` from the Eingangs-BWM). We exploit this and use **different attachment points per channel**:
 
-If neither works cleanly, fall back to a sunset-cron rule in openhab that sends Nachtbetrieb=ON every evening — but try the parameter route first.
+| Channel | New GA | Attach to | Why |
+|---|---|---|---|
+| Hauptvorraum (C) | `1/0/9` | **Verknüpfung-Objekt (Nr. 12)** — *replace* `1/0/5` | Existing OR-logic from old design; minimal change, cleanest semantic separation (Schalten = manual/scenes, Verknüpfung = motion) |
+| Kl. Vorraum (a) | `1/0/10` | **Schalten-Objekt (Nr. 35)** — *add as additional listener* | No existing Verknüpfung setup; simpler to add to Schalten |
+| WC (D) | `1/0/11` | **Schalten-Objekt (Nr. 15)** — *add as additional listener* | dito |
 
-### Task 3 — Link new motion GAs to Schalten input [ETS]
+- [ ] **Step 1: Kanal C — Verknüpfung-Objekt (Nr. 12) update**
 
-For each zone channel, on the **Schalten** group object:
+In the actuator's Group Objects view, find Nr. 12 "Verknüpfung, Kanal C". Currently linked to `1/0/5`. Remove `1/0/5`, drag `1/0/9` onto the object. Verknüpfungsfunktion-Parameter for Kanal C stays at "ODER (OR)". Schalten-Objekt (Nr. 11) stays untouched (`1/0/0`, `0/0/2`, `0/0/4`).
 
-- [ ] **Step 1: Confirm existing light-GA stays as Hauptadresse (sending GA)**
+- [ ] **Step 2: Kanal a — Schalten-Objekt (Nr. 35) addition**
 
-| Channel | Hauptadresse (must stay first) |
-|---|---|
-| Hauptvorraum | `1/0/0` |
-| Kl. Vorraum | `1/0/2` |
-| WC | `1/4/0` |
+Currently linked: `1/0/2`, `0/0/2`, `0/0/4`. Add `1/0/10` as additional listener. Hauptadresse stays `1/0/2`.
 
-- [ ] **Step 2: Add the new motion GA as additional listener**
+- [ ] **Step 3: Kanal D — Schalten-Objekt (Nr. 15) addition**
 
-Drag the new motion GA onto the same `Schalten` object. ETS will add it as a secondary linkage.
+Currently linked: `1/4/0`, `0/0/2`, `0/0/4`. Add `1/0/11` as additional listener. Hauptadresse stays `1/4/0`.
 
-| Channel | Add this GA as secondary |
-|---|---|
-| Hauptvorraum | `1/0/9` |
-| Kl. Vorraum | `1/0/10` |
-| WC | `1/0/11` |
-
-Verify: in the link list, the existing light GA is at position 1, the new motion GA below.
+**Important:** all other linked GAs at all channels (especially `0/0/2`, `0/0/4` scene receivers) must stay — those are listeners for the "Alle aus" scenes that drive multiple channels.
 
 ### Task 4 — Download actuator + smoke-test with wall buttons [ETS][VERIFY]
 
@@ -153,8 +157,8 @@ It still hears on `0/0/2`, `0/0/3`, `1/0/3`, `1/0/8`.
 
 Walk in front of VR GR's detection cone → in ETS Group Monitor, observe a telegram on `1/0/9` (ON) → Hauptlicht Vorraum should switch on (because actuator listens to `1/0/9` too) → wait 3 min → light goes off.
 
-If light doesn't come on: check the actuator's Schalten link to `1/0/9` (Task 3 Step 2).
-If light comes on but doesn't go off: check Nachtbetrieb (Task 2).
+If light doesn't come on: check the actuator's Verknüpfung-Verlinkung to `1/0/9` (Task 3 Step 1).
+If light comes on but doesn't go off: check that Betriebsart = Zeitschalter (Task 2 Step 1).
 If light flickers: check `Wert nach Ende der Erfassung` = "keine Aktion" (Task 5 Step 2).
 
 ### Task 6 — Reconfigure Vorraum Eingang Bewegungsmelder (1.1.106) [ETS]
