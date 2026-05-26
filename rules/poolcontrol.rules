@@ -1,13 +1,13 @@
 var Timer delaytimer = null
 
 rule "delayed UV on"
-when 
+when
     Item Pool_Filtering changed
 then
     if (Pool_Filtering.state == ON)
     {
         logInfo ("Poolfilter", "Turn on Poolfilter.")
-        delaytimer=createTimer(now.plusSeconds(10)) [|   // wait 5 seconds 
+        delaytimer=createTimer(now.plusSeconds(10)) [|   // wait 5 seconds
             logInfo ("Poolfilter", "Turn on Poolfilter. UV on.")
             Pool_UV.sendCommand(ON)
         ]
@@ -16,11 +16,32 @@ then
     }
     else{
         logInfo ("Poolfilter", "Turn off Poolfilter.")
-        delaytimer=createTimer(now.plusSeconds(10)) [|   // wait 5 seconds 
+        delaytimer=createTimer(now.plusSeconds(10)) [|   // wait 5 seconds
             logInfo ("Poolfilter", "Turn on Poolfilter. Pump off.")
             Pool_Pump.sendCommand(OFF)
 	    ]
         logInfo ("Poolfilter", "Turn off Poolfilter. UV off.")
         Pool_UV.sendCommand(OFF)
     }
+end
+
+// --- Scheduler — Pool Filterzeiten am günstigen Netztarif ausrichten ---
+// 09:00 ON, 17:00 OFF, täglich. Die obige "delayed UV on" Rule kümmert
+// sich danach automatisch um Pool_Pump und Pool_UV. Manuelles Schalten
+// außerhalb des Zeitfensters bleibt möglich (kein Override durch diese Rules).
+
+rule "Pool Filter ON — cheap tariff window start (09:00)"
+when
+    Time cron "0 0 9 * * ?"
+then
+    logInfo("PoolSchedule", "Cheap tariff window start — Pool Filter ON")
+    Pool_Filtering.sendCommand(ON)
+end
+
+rule "Pool Filter OFF — cheap tariff window end (17:00)"
+when
+    Time cron "0 0 17 * * ?"
+then
+    logInfo("PoolSchedule", "Cheap tariff window end — Pool Filter OFF")
+    Pool_Filtering.sendCommand(OFF)
 end
