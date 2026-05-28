@@ -1,0 +1,8 @@
+// Aqara Wireless Switches — steuern Raffstores oder Lichter über MQTT/Zigbee2MQTT.
+// Aktions-Logik in rules/aqara_switches.rules.
+
+// --- Aqara Switch Büro Zorina — steuert OfficeBig_Rollershutter + Tilt ---
+String                  OfficeBig_AqaraSwitch_Action       "Aqara Büro Zorina Action [%s]"             <if:mdi:gesture-double-tap>  (gOfficeBig)                       ["Status"]               { channel="mqtt:topic:mqtt_AquaraSwitchOfficeZorina:action", autoupdate="false" }
+Number:Dimensionless    OfficeBig_AqaraSwitch_Battery      "Aqara Büro Zorina Batterie [%d %%]"        <if:mdi:battery-10>          (gOfficeBig, gBattery)             ["Battery"]              { unit="%", channel="mqtt:topic:mqtt_AquaraSwitchOfficeZorina:battery" }
+Number                  OfficeBig_AqaraSwitch_LinkQuality  "Aqara Büro Zorina Link Quality [%d]"       <if:mdi:wifi-strength-2>     (gOfficeBig)                       ["Status"]               { channel="mqtt:topic:mqtt_AquaraSwitchOfficeZorina:linkquality" }
+Number                  OfficeBig_AqaraSwitch_Voltage      "Aqara Büro Zorina Spannung [%d mV]"        <if:mdi:battery>             (gOfficeBig)                       ["Status"]               { channel="mqtt:topic:mqtt_AquaraSwitchOfficeZorina:voltage" }

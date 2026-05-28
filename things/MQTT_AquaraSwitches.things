@@ -1,0 +1,10 @@
+// Aqara Wireless Switches über Zigbee2MQTT → Mosquitto.
+// Topic-Format: zigbee2mqtt/<DeviceName>  JSON-Payload mit {action, battery, linkquality, voltage}
+
+Thing mqtt:topic:mqtt_AquaraSwitchOfficeZorina "Aqara Switch Büro Zorina"  (mqtt:broker:mqttbroker) @ "Büro Zorina" {
+    Channels:
+    Type string : action       "Action"        [ stateTopic="zigbee2mqtt/AquaraSwitchOfficeZorina", transformationPattern="JSONPATH:$.action" ]
+    Type number : battery      "Battery"       [ stateTopic="zigbee2mqtt/AquaraSwitchOfficeZorina", transformationPattern="JSONPATH:$.battery" ]
+    Type number : linkquality  "Link Quality"  [ stateTopic="zigbee2mqtt/AquaraSwitchOfficeZorina", transformationPattern="JSONPATH:$.linkquality" ]
+    Type number : voltage      "Voltage"       [ stateTopic="zigbee2mqtt/AquaraSwitchOfficeZorina", transformationPattern="JSONPATH:$.voltage" ]
+}

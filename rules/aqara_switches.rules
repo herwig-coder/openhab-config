@@ -1,0 +1,79 @@
+// Aqara Wireless Switches — Aktions-Mapping auf Raffstores / Lichter.
+// Items in items/aqara_switches.items, Channels in things/MQTT_AquaraSwitches.things.
+
+import org.openhab.core.library.types.DecimalType
+import org.openhab.core.library.types.StopMoveType
+import org.openhab.core.library.types.UpDownType
+
+// --- Büro Zorina ----------------------------------------------------------
+// Aqara 2-Wippen-Switch steuert OfficeBig_Rollershutter + Tilt.
+// Mapping:
+//   single_left  → UP (oder STOP wenn gerade in Bewegung — Toggle-Muster)
+//   single_right → DOWN (oder STOP wenn gerade in Bewegung)
+//   hold_left    → Tilt −10 % (mehr offen)
+//   hold_right   → Tilt +10 % (mehr zu)
+//
+// Bewegungs-Detektion erfolgt über einen Soft-Timer (typische Raffstore-
+// Laufzeit ca. 25–40 s). Nach Ablauf wird "Moving" automatisch zurückgesetzt
+// damit ein erneuter Klick wieder eine Bewegung startet.
+
+var Boolean OfficeBig_Rollershutter_Moving = false
+var Timer   OfficeBig_Rollershutter_MovingTimer = null
+
+rule "Aqara Office Zorina — Action Mapping"
+when
+    Item OfficeBig_AqaraSwitch_Action received update
+then
+    val action = OfficeBig_AqaraSwitch_Action.state.toString
+    logInfo("AqaraZorina", "Action: " + action)
+
+    switch (action) {
+        case "single_left": {
+            if (OfficeBig_Rollershutter_Moving) {
+                OfficeBig_Rollershutter.sendCommand(StopMoveType.STOP)
+                OfficeBig_Rollershutter_Moving = false
+                if (OfficeBig_Rollershutter_MovingTimer !== null) OfficeBig_Rollershutter_MovingTimer.cancel()
+                logInfo("AqaraZorina", "  → STOP (war in Bewegung)")
+            } else {
+                OfficeBig_Rollershutter.sendCommand(UpDownType.UP)
+                OfficeBig_Rollershutter_Moving = true
+                if (OfficeBig_Rollershutter_MovingTimer !== null) OfficeBig_Rollershutter_MovingTimer.cancel()
+                OfficeBig_Rollershutter_MovingTimer = createTimer(now.plusSeconds(40)) [|
+                    OfficeBig_Rollershutter_Moving = false
+                ]
+                logInfo("AqaraZorina", "  → UP")
+            }
+        }
+        case "single_right": {
+            if (OfficeBig_Rollershutter_Moving) {
+                OfficeBig_Rollershutter.sendCommand(StopMoveType.STOP)
+                OfficeBig_Rollershutter_Moving = false
+                if (OfficeBig_Rollershutter_MovingTimer !== null) OfficeBig_Rollershutter_MovingTimer.cancel()
+                logInfo("AqaraZorina", "  → STOP (war in Bewegung)")
+            } else {
+                OfficeBig_Rollershutter.sendCommand(UpDownType.DOWN)
+                OfficeBig_Rollershutter_Moving = true
+                if (OfficeBig_Rollershutter_MovingTimer !== null) OfficeBig_Rollershutter_MovingTimer.cancel()
+                OfficeBig_Rollershutter_MovingTimer = createTimer(now.plusSeconds(40)) [|
+                    OfficeBig_Rollershutter_Moving = false
+                ]
+                logInfo("AqaraZorina", "  → DOWN")
+            }
+        }
+        case "hold_left": {
+            val currentTilt = (OfficeBig_Rollershutter_Tilt.state as DecimalType).intValue
+            val newTilt = Math::max(0, currentTilt - 10)
+            OfficeBig_Rollershutter_Tilt.sendCommand(newTilt)
+            logInfo("AqaraZorina", "  → Tilt " + currentTilt + " → " + newTilt + " (mehr offen)")
+        }
+        case "hold_right": {
+            val currentTilt = (OfficeBig_Rollershutter_Tilt.state as DecimalType).intValue
+            val newTilt = Math::min(100, currentTilt + 10)
+            OfficeBig_Rollershutter_Tilt.sendCommand(newTilt)
+            logInfo("AqaraZorina", "  → Tilt " + currentTilt + " → " + newTilt + " (mehr zu)")
+        }
+        default: {
+            logInfo("AqaraZorina", "  → Action unbekannt, ignoriert")
+        }
+    }
+end
