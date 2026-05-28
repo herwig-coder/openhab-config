@@ -7,11 +7,12 @@ import org.openhab.core.library.types.UpDownType
 
 // --- Büro Zorina ----------------------------------------------------------
 // Aqara 2-Wippen-Switch steuert OfficeBig_Rollershutter + Tilt.
-// Mapping:
-//   single_left  → UP (oder STOP wenn gerade in Bewegung — Toggle-Muster)
-//   single_right → DOWN (oder STOP wenn gerade in Bewegung)
-//   hold_left    → Tilt −10 % (mehr offen)
-//   hold_right   → Tilt +10 % (mehr zu)
+// Mapping (kurz = kleiner Schritt, lang = große Aktion — matcht Shelly-Stil
+// aus shelly.rules / Esszimmer):
+//   single_left  → Tilt −10 % (mehr offen)
+//   single_right → Tilt +10 % (mehr zu)
+//   hold_left    → UP (oder STOP wenn gerade in Bewegung — Toggle-Muster)
+//   hold_right   → DOWN (oder STOP wenn gerade in Bewegung)
 //
 // Bewegungs-Detektion erfolgt über einen Soft-Timer (typische Raffstore-
 // Laufzeit ca. 25–40 s). Nach Ablauf wird "Moving" automatisch zurückgesetzt
@@ -29,6 +30,18 @@ then
 
     switch (action) {
         case "single_left": {
+            val currentTilt = (OfficeBig_Rollershutter_Tilt.state as DecimalType).intValue
+            val newTilt = Math::max(0, currentTilt - 10)
+            OfficeBig_Rollershutter_Tilt.sendCommand(newTilt)
+            logInfo("AqaraZorina", "  → Tilt " + currentTilt + " → " + newTilt + " (mehr offen)")
+        }
+        case "single_right": {
+            val currentTilt = (OfficeBig_Rollershutter_Tilt.state as DecimalType).intValue
+            val newTilt = Math::min(100, currentTilt + 10)
+            OfficeBig_Rollershutter_Tilt.sendCommand(newTilt)
+            logInfo("AqaraZorina", "  → Tilt " + currentTilt + " → " + newTilt + " (mehr zu)")
+        }
+        case "hold_left": {
             if (OfficeBig_Rollershutter_Moving) {
                 OfficeBig_Rollershutter.sendCommand(StopMoveType.STOP)
                 OfficeBig_Rollershutter_Moving = false
@@ -44,7 +57,7 @@ then
                 logInfo("AqaraZorina", "  → UP")
             }
         }
-        case "single_right": {
+        case "hold_right": {
             if (OfficeBig_Rollershutter_Moving) {
                 OfficeBig_Rollershutter.sendCommand(StopMoveType.STOP)
                 OfficeBig_Rollershutter_Moving = false
@@ -59,18 +72,6 @@ then
                 ]
                 logInfo("AqaraZorina", "  → DOWN")
             }
-        }
-        case "hold_left": {
-            val currentTilt = (OfficeBig_Rollershutter_Tilt.state as DecimalType).intValue
-            val newTilt = Math::max(0, currentTilt - 10)
-            OfficeBig_Rollershutter_Tilt.sendCommand(newTilt)
-            logInfo("AqaraZorina", "  → Tilt " + currentTilt + " → " + newTilt + " (mehr offen)")
-        }
-        case "hold_right": {
-            val currentTilt = (OfficeBig_Rollershutter_Tilt.state as DecimalType).intValue
-            val newTilt = Math::min(100, currentTilt + 10)
-            OfficeBig_Rollershutter_Tilt.sendCommand(newTilt)
-            logInfo("AqaraZorina", "  → Tilt " + currentTilt + " → " + newTilt + " (mehr zu)")
         }
         default: {
             logInfo("AqaraZorina", "  → Action unbekannt, ignoriert")
