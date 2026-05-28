@@ -6,3 +6,7 @@ String                  OfficeBig_AqaraSwitch_Action       "Aqara Büro Zorina A
 Number:Dimensionless    OfficeBig_AqaraSwitch_Battery      "Aqara Büro Zorina Batterie [%d %%]"        <if:mdi:battery-10>          (gOfficeBig, gBattery)             ["Battery"]              { unit="%", channel="mqtt:topic:mqtt_AquaraSwitchOfficeZorina:battery" }
 Number                  OfficeBig_AqaraSwitch_LinkQuality  "Aqara Büro Zorina Link Quality [%d]"       <if:mdi:wifi-strength-2>     (gOfficeBig)                       ["Status"]               { channel="mqtt:topic:mqtt_AquaraSwitchOfficeZorina:linkquality" }
 Number                  OfficeBig_AqaraSwitch_Voltage      "Aqara Büro Zorina Spannung [%d mV]"        <if:mdi:battery>             (gOfficeBig)                       ["Status"]               { channel="mqtt:topic:mqtt_AquaraSwitchOfficeZorina:voltage" }
+
+// Virtual State-Item für Toggle-Stop-Logik (kein Channel, persistiert in OH-State).
+// Wird in rules/aqara_switches.rules zwischen Bewegungs-Start und -Stop gesetzt.
+Switch                  OfficeBig_Rollershutter_Moving     "Raffstore Büro Zorina in Bewegung [%s]"    <if:mdi:cog-sync>            (gOfficeBig)                       ["Status"]
