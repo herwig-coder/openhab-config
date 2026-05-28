@@ -7,18 +7,18 @@ import org.openhab.core.library.types.UpDownType
 
 // --- Büro Zorina ----------------------------------------------------------
 // Aqara 2-Wippen-Switch steuert OfficeBig_Rollershutter + Tilt.
-// Mapping (kurz = kleiner Schritt, lang = große Aktion — matcht Shelly-Stil
-// aus shelly.rules / Esszimmer):
+//
+// Wand-Taster-Verhalten: **jeder** Tastendruck während Bewegung wirkt als STOP
+// (egal ob single oder hold). Erst wenn Raffstore still steht, machen weitere
+// Drücke ihre eigentliche Aktion:
 //   single_left  → Tilt −10 % (mehr offen)
 //   single_right → Tilt +10 % (mehr zu)
-//   hold_left    → UP (oder STOP wenn gerade in Bewegung — Toggle-Muster)
-//   hold_right   → DOWN (oder STOP wenn gerade in Bewegung)
+//   hold_left    → UP
+//   hold_right   → DOWN
 //
 // State-Tracking über das virtuelle Switch-Item OfficeBig_Rollershutter_Moving.
-// Vorteil ggü. file-level var: in OH5-UI sichtbar zum Debuggen, übersteht
-// Rule-Reloads. Soft-Timer setzt Moving nach typischer Raffstore-Laufzeit
-// (40 s) automatisch zurück damit ein erneuter Klick wieder eine Bewegung
-// startet falls der Stop-Press verpasst wurde.
+// Sichtbar in OH5-UI. Soft-Timer (40 s) setzt Moving automatisch zurück falls
+// der Stop-Press verpasst wurde oder die Bewegung von alleine zu Ende ist.
 
 var Timer OfficeBig_Rollershutter_MovingTimer = null
 
@@ -30,6 +30,20 @@ then
     val movingState = OfficeBig_Rollershutter_Moving.state
     logInfo("AqaraZorina", "Action: " + action + "  (Moving=" + movingState + ")")
 
+    // Wenn Raffstore gerade in Bewegung ist: ANY press = STOP, sonst nichts.
+    // Nutzer muss erneut drücken um die gewünschte Aktion auszulösen.
+    if (movingState == ON) {
+        OfficeBig_Rollershutter.sendCommand(StopMoveType.STOP)
+        OfficeBig_Rollershutter_Moving.postUpdate(OFF)
+        if (OfficeBig_Rollershutter_MovingTimer !== null) {
+            OfficeBig_Rollershutter_MovingTimer.cancel()
+            OfficeBig_Rollershutter_MovingTimer = null
+        }
+        logInfo("AqaraZorina", "  → STOP (war in Bewegung) — weitere Action ignoriert")
+        return;
+    }
+
+    // Nicht in Bewegung — Aktion normal abarbeiten
     switch (action) {
         case "single_left": {
             val currentTilt = (OfficeBig_Rollershutter_Tilt.state as DecimalType).intValue
@@ -44,44 +58,24 @@ then
             logInfo("AqaraZorina", "  → Tilt " + currentTilt + " → " + newTilt + " (mehr zu)")
         }
         case "hold_left": {
-            if (movingState == ON) {
-                OfficeBig_Rollershutter.sendCommand(StopMoveType.STOP)
+            OfficeBig_Rollershutter.sendCommand(UpDownType.UP)
+            OfficeBig_Rollershutter_Moving.postUpdate(ON)
+            if (OfficeBig_Rollershutter_MovingTimer !== null) OfficeBig_Rollershutter_MovingTimer.cancel()
+            OfficeBig_Rollershutter_MovingTimer = createTimer(now.plusSeconds(40)) [|
                 OfficeBig_Rollershutter_Moving.postUpdate(OFF)
-                if (OfficeBig_Rollershutter_MovingTimer !== null) {
-                    OfficeBig_Rollershutter_MovingTimer.cancel()
-                    OfficeBig_Rollershutter_MovingTimer = null
-                }
-                logInfo("AqaraZorina", "  → STOP (war in Bewegung)")
-            } else {
-                OfficeBig_Rollershutter.sendCommand(UpDownType.UP)
-                OfficeBig_Rollershutter_Moving.postUpdate(ON)
-                if (OfficeBig_Rollershutter_MovingTimer !== null) OfficeBig_Rollershutter_MovingTimer.cancel()
-                OfficeBig_Rollershutter_MovingTimer = createTimer(now.plusSeconds(40)) [|
-                    OfficeBig_Rollershutter_Moving.postUpdate(OFF)
-                    logInfo("AqaraZorina", "  Moving-Timeout — Flag zurückgesetzt")
-                ]
-                logInfo("AqaraZorina", "  → UP")
-            }
+                logInfo("AqaraZorina", "  Moving-Timeout — Flag zurückgesetzt")
+            ]
+            logInfo("AqaraZorina", "  → UP")
         }
         case "hold_right": {
-            if (movingState == ON) {
-                OfficeBig_Rollershutter.sendCommand(StopMoveType.STOP)
+            OfficeBig_Rollershutter.sendCommand(UpDownType.DOWN)
+            OfficeBig_Rollershutter_Moving.postUpdate(ON)
+            if (OfficeBig_Rollershutter_MovingTimer !== null) OfficeBig_Rollershutter_MovingTimer.cancel()
+            OfficeBig_Rollershutter_MovingTimer = createTimer(now.plusSeconds(40)) [|
                 OfficeBig_Rollershutter_Moving.postUpdate(OFF)
-                if (OfficeBig_Rollershutter_MovingTimer !== null) {
-                    OfficeBig_Rollershutter_MovingTimer.cancel()
-                    OfficeBig_Rollershutter_MovingTimer = null
-                }
-                logInfo("AqaraZorina", "  → STOP (war in Bewegung)")
-            } else {
-                OfficeBig_Rollershutter.sendCommand(UpDownType.DOWN)
-                OfficeBig_Rollershutter_Moving.postUpdate(ON)
-                if (OfficeBig_Rollershutter_MovingTimer !== null) OfficeBig_Rollershutter_MovingTimer.cancel()
-                OfficeBig_Rollershutter_MovingTimer = createTimer(now.plusSeconds(40)) [|
-                    OfficeBig_Rollershutter_Moving.postUpdate(OFF)
-                    logInfo("AqaraZorina", "  Moving-Timeout — Flag zurückgesetzt")
-                ]
-                logInfo("AqaraZorina", "  → DOWN")
-            }
+                logInfo("AqaraZorina", "  Moving-Timeout — Flag zurückgesetzt")
+            ]
+            logInfo("AqaraZorina", "  → DOWN")
         }
         default: {
             logInfo("AqaraZorina", "  → Action unbekannt, ignoriert")
