@@ -12,6 +12,7 @@ val Number AIR_STALL_DROP      = 0.3   // °C min drop over the trial window to 
 val Number AIR_MAX_OPEN_MINUTES = 90   // minutes hard cap on how long the window stays open
 val Number AIR_CLOSE_DELTA     = 1.0   // °C indoor-over-outdoor at/below which airing is done (success close)
 val Number AIR_CLOSE_FLOOR     = 16.0  // °C indoor dewpoint below which moisture is harmless (success close)
+val Number AIR_MAX_OUTDOOR_TEMP = 30.0 // °C hard override: never air the bathroom when it is hotter than this outside
 
 // On startup, reset airing state to safe defaults. rrd4j is numeric-only and
 // cannot restore the DateTime Bathroom_Airing_Started, so a restoreOnStartup
@@ -62,9 +63,16 @@ then
     logInfo("bathroom_airing", "Trigger: dewpointalert changed")
     //val tempnow = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
     // check if bathroomwindow is locked or gekippt
+    // Heat override: never auto-air when it is hotter than AIR_MAX_OUTDOOR_TEMP outside.
+    var outdoorTooHot = false
+    if (OneCallAPIweatherandforecast_Current_Temperature.state instanceof QuantityType) {
+        val ot = (OneCallAPIweatherandforecast_Current_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
+        if (ot > AIR_MAX_OUTDOOR_TEMP.doubleValue) outdoorTooHot = true
+    }
     if (Bathroom_Alarm_Tilted.state == OFF && Bathroom_Alarm_Locked.state==OFF){
-        // Don't (re)open if airing was just judged ineffective (waiting for a new shower / daily reset).
-        if (Bathroom_DewPoint_Alert.state == ON && Bathroom_Someone_Showering.state == OFF && Bathroom_Airing_Suspended.state != ON) {
+        // Don't (re)open if airing was just judged ineffective (waiting for a new shower / daily reset)
+        // or if it is too hot outside.
+        if (Bathroom_DewPoint_Alert.state == ON && Bathroom_Someone_Showering.state == OFF && Bathroom_Airing_Suspended.state != ON && !outdoorTooHot) {
             logInfo("bathroom_airing", "Trigger: turn airing on")
             Bathroom_Airing_Open_Request.sendCommand(ON)
             Bathroom_Airing_Close_Request.sendCommand(OFF)
@@ -125,6 +133,18 @@ then
     }
     logInfo("bathroom_airing_watchdog", "indoor {} °C, outdoor {} °C, delta {}, open {} min, drop/{}min {}, trend {}",
         indoorDP, outdoorDP, delta, elapsedMin, AIR_TRIAL_MINUTES, dropOverTrial, hasTrend)
+
+    // 0) Heat override: too hot outside to air at all (dumping heat in) -> close + suspend.
+    if (OneCallAPIweatherandforecast_Current_Temperature.state instanceof QuantityType) {
+        val outdoorTemp = (OneCallAPIweatherandforecast_Current_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
+        if (outdoorTemp > AIR_MAX_OUTDOOR_TEMP.doubleValue) {
+            logInfo("bathroom_airing_watchdog", "outside too hot ({} °C) -> close, suspend", outdoorTemp)
+            Bathroom_Airing_Close_Request.sendCommand(ON)
+            Bathroom_Airing_Open_Request.sendCommand(OFF)
+            Bathroom_Airing_Suspended.postUpdate(ON)
+            return;
+        }
+    }
 
     // 1) Success: aired down to the practical floor or harmless level -> close quietly.
     if (delta <= AIR_CLOSE_DELTA.doubleValue || indoorDP <= AIR_CLOSE_FLOOR.doubleValue) {
