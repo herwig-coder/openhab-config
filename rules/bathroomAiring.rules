@@ -46,14 +46,25 @@ then
     }
 end
 
-// Close Window when dew point is below 17°
+// Close window once airing reaches the practical floor (indoor dewpoint near
+// outdoor dewpoint) or moisture is harmless. Year-round, self-seasoning:
+// the old absolute "<= 17 °C" never triggered in summer (outdoor dewpoint
+// ~16-20 °C), so the window stayed open. Keep thresholds in sync with the
+// AIR_DELTA_OFF / AIR_MOLD_FLOOR constants in senddewpointalert.rules.
 rule "bathroom_airing_done"
 when
     Item Bathroom_DewPoint changed
 then
-    val tempnow = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
-        logInfo("bathroom_airing_done", "Dewpoint check dew point:" + tempnow )
-    if (tempnow <= 17) {
+    if (Bathroom_DewPoint.state == NULL || Bathroom_DewPoint.state == UNDEF ||
+        Weatherstation_Dewpoint_1.state == NULL || Weatherstation_Dewpoint_1.state == UNDEF) {
+        logWarn("bathroom_airing_done", "Bathroom_DewPoint or Weatherstation_Dewpoint_1 is NULL/UNDEF, skipping")
+        return;
+    }
+    val tempnow     = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
+    val outdewpoint = (Weatherstation_Dewpoint_1.state as QuantityType<Number>).toUnit("°C").doubleValue
+    val delta       = tempnow - outdewpoint
+    logInfo("bathroom_airing_done", "Dewpoint: " + tempnow + " °C, outside: " + outdewpoint + " °C, delta: " + delta)
+    if (delta <= 1.0 || tempnow <= 16.0) {
         logInfo("bathroom_airing_done", "aired enough")
         Bathroom_Airing_Close_Request.sendCommand(ON)
         Bathroom_Airing_Open_Request.sendCommand(OFF)
