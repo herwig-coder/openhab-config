@@ -30,15 +30,15 @@ then
         logWarn("Bad_Dewpoint_Alert", "Bathroom_DewPoint is NULL/UNDEF, skipping")
         return;
     }
-    if (Weatherstation_Dewpoint_1.state == NULL || Weatherstation_Dewpoint_1.state == UNDEF) {
-        logWarn("Bad_Dewpoint_Alert", "Weatherstation_Dewpoint_1 is NULL/UNDEF, skipping")
+    if (OneCallAPIweatherandforecast_Current_Dewpoint.state == NULL || OneCallAPIweatherandforecast_Current_Dewpoint.state == UNDEF) {
+        logWarn("Bad_Dewpoint_Alert", "OneCallAPIweatherandforecast_Current_Dewpoint is NULL/UNDEF, skipping")
         return;
     }
 
     if (Bathroom_DewPoint.state instanceof QuantityType ) {
         // Indoor vs. outdoor dewpoint: airing only removes moisture when indoor > outdoor.
         val temp        = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
-        val outdewpoint = (Weatherstation_Dewpoint_1.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val outdewpoint = (OneCallAPIweatherandforecast_Current_Dewpoint.state as QuantityType<Number>).toUnit("°C").doubleValue
         val delta       = temp - outdewpoint
         logInfo("Bad_Dewpoint_Alert", "Indoor dewpoint: {} °C, Outdoor: {} °C, Delta: {} °C", temp, outdewpoint, delta)
 
@@ -87,21 +87,21 @@ then
         logWarn("Partentsbedroom_Dewpoint_Alert", "ParentsBedroom_DewPoint is NULL/UNDEF, skipping")
         return;
     }
-    if (Weatherstation_Dewpoint_1.state == NULL || Weatherstation_Dewpoint_1.state == UNDEF) {
-        logWarn("Partentsbedroom_Dewpoint_Alert", "Weatherstation_Dewpoint_1 is NULL/UNDEF, skipping")
+    if (OneCallAPIweatherandforecast_Current_Dewpoint.state == NULL || OneCallAPIweatherandforecast_Current_Dewpoint.state == UNDEF) {
+        logWarn("Partentsbedroom_Dewpoint_Alert", "OneCallAPIweatherandforecast_Current_Dewpoint is NULL/UNDEF, skipping")
         return;
     }
 
     if (ParentsBedroom_DewPoint.state instanceof QuantityType &&
         ParentsBedroom_Temperature.state instanceof QuantityType &&
-        Weatherstation_Temperature_1.state instanceof QuantityType) {
+        OneCallAPIweatherandforecast_Current_Temperature.state instanceof QuantityType) {
         // Indoor vs. outdoor dewpoint: airing only removes moisture when indoor > outdoor.
         val temp        = (ParentsBedroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
-        val outdewpoint = (Weatherstation_Dewpoint_1.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val outdewpoint = (OneCallAPIweatherandforecast_Current_Dewpoint.state as QuantityType<Number>).toUnit("°C").doubleValue
         val delta       = temp - outdewpoint
         // Heat guard: don't air if incoming air would warm the room, or it's simply hot outside.
         val intemp  = (ParentsBedroom_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
-        val outtemp = (Weatherstation_Temperature_1.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val outtemp = (OneCallAPIweatherandforecast_Current_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
         val canCool = (outtemp <= intemp + AIR_HEAT_MARGIN.doubleValue) && (outtemp <= AIR_MAX_OUTDOOR.doubleValue)
         logInfo("Partentsbedroom_Dewpoint_Alert", "Dewpoint in/out: {}/{} °C (delta {}), Temp in/out: {}/{} °C, canCool: {}", temp, outdewpoint, delta, intemp, outtemp, canCool)
 
@@ -152,21 +152,21 @@ then
         logWarn("BedroomTommy_Dewpoint_Alert", "ChildrenBedroom_DewPoint is NULL/UNDEF, skipping")
         return;
     }
-    if (Weatherstation_Dewpoint_1.state == NULL || Weatherstation_Dewpoint_1.state == UNDEF) {
-        logWarn("BedroomTommy_Dewpoint_Alert", "Weatherstation_Dewpoint_1 is NULL/UNDEF, skipping")
+    if (OneCallAPIweatherandforecast_Current_Dewpoint.state == NULL || OneCallAPIweatherandforecast_Current_Dewpoint.state == UNDEF) {
+        logWarn("BedroomTommy_Dewpoint_Alert", "OneCallAPIweatherandforecast_Current_Dewpoint is NULL/UNDEF, skipping")
         return;
     }
 
     if (ChildrenBedroom_DewPoint.state instanceof QuantityType &&
         ChildrenBedroom_Temperature.state instanceof QuantityType &&
-        Weatherstation_Temperature_1.state instanceof QuantityType) {
+        OneCallAPIweatherandforecast_Current_Temperature.state instanceof QuantityType) {
         // Indoor vs. outdoor dewpoint: airing only removes moisture when indoor > outdoor.
         val temp        = (ChildrenBedroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
-        val outdewpoint = (Weatherstation_Dewpoint_1.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val outdewpoint = (OneCallAPIweatherandforecast_Current_Dewpoint.state as QuantityType<Number>).toUnit("°C").doubleValue
         val delta       = temp - outdewpoint
         // Heat guard: don't air if incoming air would warm the room, or it's simply hot outside.
         val intemp  = (ChildrenBedroom_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
-        val outtemp = (Weatherstation_Temperature_1.state as QuantityType<Number>).toUnit("°C").doubleValue
+        val outtemp = (OneCallAPIweatherandforecast_Current_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
         val canCool = (outtemp <= intemp + AIR_HEAT_MARGIN.doubleValue) && (outtemp <= AIR_MAX_OUTDOOR.doubleValue)
         logInfo("BedroomTommy_Dewpoint_Alert", "Dewpoint in/out: {}/{} °C (delta {}), Temp in/out: {}/{} °C, canCool: {}", temp, outdewpoint, delta, intemp, outtemp, canCool)
 
