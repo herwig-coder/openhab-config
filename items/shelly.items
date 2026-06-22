@@ -38,6 +38,9 @@ Number:Energy         Bathroom_Airing_Energy                "Bad Fenster Energie
 Switch                Bathroom_Airing_Open_Request          "Bad Fenster öffnen Anforderung"                 <switch>                             (gBathroom)                            ["Switch"]
 Switch                Bathroom_Airing_Close_Request         "Bad Fenster schliessen Anforderung"             <switch>                             (gBathroom)                            ["Switch"]
 DateTime              Bathroom_Motor_On                     "Motor eingeschaltet"                            <Time>                                                                      ["Point"]
+Switch                Bathroom_Airing_Active                "Bad Lüftung aktiv"                              <switch>                             (gBathroom)                            ["Switch"]
+Switch                Bathroom_Airing_Suspended             "Bad Lüftung ausgesetzt (ineffektiv)"            <switch>                             (gBathroom)                            ["Switch"]
+DateTime              Bathroom_Airing_Started               "Bad Lüftung gestartet"                          <Time>                               (gBathroom)                            ["Point"]
 
 
 //Esszimmer

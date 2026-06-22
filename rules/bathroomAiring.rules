@@ -1,5 +1,33 @@
+// ────────────────────────────────────────────────────────────────────────────
+// Airing watchdog config — passive window airing is weak in summer (little air
+// exchange when in/out temps are similar) and can't dry below the OUTDOOR
+// dewpoint. So instead of holding the window open to an absolute setpoint, we
+// air after a shower, watch whether the indoor dewpoint actually falls, and
+// stop (with a "use fan/dehumidifier" notice) if it stalls. Outdoor reference
+// is OpenWeatherMap (the local weather station's humidity reads far too low).
+// ────────────────────────────────────────────────────────────────────────────
+val Number AIR_SHOWER_RISE     = 0.5   // °C single-step dewpoint rise that counts as shower activity
+val Number AIR_TRIAL_MINUTES   = 30    // minutes of open window before judging effectiveness
+val Number AIR_STALL_DROP      = 0.3   // °C min drop over the trial window to count as "still working"
+val Number AIR_MAX_OPEN_MINUTES = 90   // minutes hard cap on how long the window stays open
+val Number AIR_CLOSE_DELTA     = 1.0   // °C indoor-over-outdoor at/below which airing is done (success close)
+val Number AIR_CLOSE_FLOOR     = 16.0  // °C indoor dewpoint below which moisture is harmless (success close)
+
+// On startup, reset airing state to safe defaults. rrd4j is numeric-only and
+// cannot restore the DateTime Bathroom_Airing_Started, so a restoreOnStartup
+// would leave a half-restored state (Active=ON but no start time) that the
+// watchdog can't act on. A clean reset is the robust alternative.
+rule "bathroom_airing_init"
+when
+    System started
+then
+    logInfo("bathroom_airing", "System started -> reset airing state to safe defaults")
+    Bathroom_Airing_Active.postUpdate(OFF)
+    Bathroom_Airing_Suspended.postUpdate(OFF)
+end
+
 rule "someone_showering"
-when 
+when
     Item Bathroom_DewPoint changed
 then
     if (Bathroom_DewPoint.state == NULL || Bathroom_DewPoint.state == UNDEF ||
@@ -10,6 +38,11 @@ then
     val tempnow = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
     val tempold = (Bathroom_DewPoint_Previous.state as QuantityType<Number>).toUnit("°C").doubleValue
     logInfo("bathroom_airing", "Showercheck current dew point:" + tempnow + " previous dew point: " + tempold)
+    // A genuine shower (sharp rise) clears any "airing ineffective" suspension so we try again.
+    if ((tempnow - tempold) >= AIR_SHOWER_RISE.doubleValue && Bathroom_Airing_Suspended.state == ON) {
+        logInfo("bathroom_airing", "New shower detected -> clearing airing suspension")
+        Bathroom_Airing_Suspended.postUpdate(OFF)
+    }
     if (tempnow >= tempold && Bathroom_DewPoint_Alert.state==ON) {
         logInfo("bathroom_airing", "Someone is showering")
         Bathroom_Someone_Showering.sendCommand(ON)
@@ -30,7 +63,8 @@ then
     //val tempnow = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
     // check if bathroomwindow is locked or gekippt
     if (Bathroom_Alarm_Tilted.state == OFF && Bathroom_Alarm_Locked.state==OFF){
-        if (Bathroom_DewPoint_Alert.state == ON && Bathroom_Someone_Showering.state == OFF) {
+        // Don't (re)open if airing was just judged ineffective (waiting for a new shower / daily reset).
+        if (Bathroom_DewPoint_Alert.state == ON && Bathroom_Someone_Showering.state == OFF && Bathroom_Airing_Suspended.state != ON) {
             logInfo("bathroom_airing", "Trigger: turn airing on")
             Bathroom_Airing_Open_Request.sendCommand(ON)
             Bathroom_Airing_Close_Request.sendCommand(OFF)
@@ -39,35 +73,99 @@ then
             logInfo("bathroom_airing", "Trigger: turn airing on")
             Bathroom_Airing_Close_Request.sendCommand(ON)
             Bathroom_Airing_Open_Request.sendCommand(OFF)
-        } 
+        }
     }
     else{
         logInfo("bathroom_airing", "BLOCKED since window is locked or gekippt")
     }
 end
 
-// Close window once airing reaches the practical floor (indoor dewpoint near
-// outdoor dewpoint) or moisture is harmless. Year-round, self-seasoning:
-// the old absolute "<= 17 °C" never triggered in summer (outdoor dewpoint
-// ~16-20 °C), so the window stayed open. Keep thresholds in sync with the
-// AIR_DELTA_OFF / AIR_MOLD_FLOOR constants in senddewpointalert.rules.
-rule "bathroom_airing_done"
+// Airing watchdog: runs while the window is open and decides when to close.
+//   1) success  -> indoor dewpoint reached the practical floor (near outdoor, or harmless)
+//   2) stalled  -> open long enough but the indoor dewpoint is barely dropping
+//                  (passive airing can't help: outside too humid or poor circulation) -> notify
+//   3) timeout  -> hard cap so it never stays open indefinitely
+// The stall check uses the INDOOR dewpoint trend (persistence), so it stays correct
+// even if the outdoor reading is unreliable.
+rule "bathroom_airing_watchdog"
 when
-    Item Bathroom_DewPoint changed
+    Time cron "0 */5 * * * ?"
 then
-    if (Bathroom_DewPoint.state == NULL || Bathroom_DewPoint.state == UNDEF ||
-        Weatherstation_Dewpoint_1.state == NULL || Weatherstation_Dewpoint_1.state == UNDEF) {
-        logWarn("bathroom_airing_done", "Bathroom_DewPoint or Weatherstation_Dewpoint_1 is NULL/UNDEF, skipping")
+    if (Bathroom_Airing_Active.state != ON) {
         return;
     }
-    val tempnow     = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
-    val outdewpoint = (Weatherstation_Dewpoint_1.state as QuantityType<Number>).toUnit("°C").doubleValue
-    val delta       = tempnow - outdewpoint
-    logInfo("bathroom_airing_done", "Dewpoint: " + tempnow + " °C, outside: " + outdewpoint + " °C, delta: " + delta)
-    if (delta <= 1.0 || tempnow <= 16.0) {
-        logInfo("bathroom_airing_done", "aired enough")
+    if (Bathroom_DewPoint.state == NULL || Bathroom_DewPoint.state == UNDEF ||
+        OneCallAPIweatherandforecast_Current_Dewpoint.state == NULL || OneCallAPIweatherandforecast_Current_Dewpoint.state == UNDEF) {
+        logWarn("bathroom_airing_watchdog", "Bathroom_DewPoint or OWM dewpoint is NULL/UNDEF, skipping")
+        return;
+    }
+    if (!(Bathroom_Airing_Started.state instanceof DateTimeType)) {
+        logWarn("bathroom_airing_watchdog", "Bathroom_Airing_Started not set, skipping")
+        return;
+    }
+
+    val indoorDP  = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
+    val outdoorDP = (OneCallAPIweatherandforecast_Current_Dewpoint.state as QuantityType<Number>).toUnit("°C").doubleValue
+    val delta     = indoorDP - outdoorDP
+
+    val ZonedDateTime startedAt = (Bathroom_Airing_Started.state as DateTimeType).getInstant.atZone(ZoneId.systemDefault())
+    val elapsedMin = java.time.Duration.between(startedAt, ZonedDateTime.now()).toMinutes
+
+    // Indoor dewpoint drop over the trial window (positive = falling). Robust to a bad outdoor sensor.
+    val deltaObj = Bathroom_DewPoint.deltaSince(now.minusMinutes(AIR_TRIAL_MINUTES.intValue), "rrd4j")
+    var dropOverTrial = 0.0
+    var hasTrend = false
+    if (deltaObj !== null) {
+        hasTrend = true
+        if (deltaObj instanceof QuantityType) {
+            dropOverTrial = -((deltaObj as QuantityType<Number>).toUnit("°C").doubleValue)
+        } else {
+            dropOverTrial = -((deltaObj as Number).doubleValue)
+        }
+    }
+    logInfo("bathroom_airing_watchdog", "indoor {} °C, outdoor {} °C, delta {}, open {} min, drop/{}min {}, trend {}",
+        indoorDP, outdoorDP, delta, elapsedMin, AIR_TRIAL_MINUTES, dropOverTrial, hasTrend)
+
+    // 1) Success: aired down to the practical floor or harmless level -> close quietly.
+    if (delta <= AIR_CLOSE_DELTA.doubleValue || indoorDP <= AIR_CLOSE_FLOOR.doubleValue) {
+        logInfo("bathroom_airing_watchdog", "aired enough -> close")
         Bathroom_Airing_Close_Request.sendCommand(ON)
         Bathroom_Airing_Open_Request.sendCommand(OFF)
+        return;
+    }
+
+    // 2) Ineffective: past the trial window and the indoor dewpoint is barely dropping.
+    if (elapsedMin >= AIR_TRIAL_MINUTES.longValue && hasTrend && dropOverTrial < AIR_STALL_DROP.doubleValue) {
+        logInfo("bathroom_airing_watchdog", "airing ineffective -> close, suspend, notify")
+        Bathroom_Airing_Close_Request.sendCommand(ON)
+        Bathroom_Airing_Open_Request.sendCommand(OFF)
+        Bathroom_Airing_Suspended.postUpdate(ON)
+        val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
+        telegramAction.sendTelegram("Bad: Lüften bringt kaum etwas — Taupunkt stagniert bei " + String.format("%.1f",indoorDP) +
+            " °C (außen " + String.format("%.1f",outdoorDP) + " °C) trotz offenem Fenster. Ventilator/Entfeuchter sinnvoll.")
+        return;
+    }
+
+    // 3) Hard timeout: never leave it open indefinitely.
+    if (elapsedMin >= AIR_MAX_OPEN_MINUTES.longValue) {
+        logInfo("bathroom_airing_watchdog", "max airing time reached -> close, suspend")
+        Bathroom_Airing_Close_Request.sendCommand(ON)
+        Bathroom_Airing_Open_Request.sendCommand(OFF)
+        Bathroom_Airing_Suspended.postUpdate(ON)
+        val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
+        telegramAction.sendTelegram("Bad: Lüftung nach " + AIR_MAX_OPEN_MINUTES + " min geschlossen. Taupunkt " + String.format("%.1f",indoorDP) + " °C.")
+        return;
+    }
+end
+
+// Each morning, clear the "ineffective" suspension so a new day starts fresh.
+rule "bathroom_airing_reset_suspend"
+when
+    Time cron "0 0 5 * * ?"
+then
+    if (Bathroom_Airing_Suspended.state == ON) {
+        logInfo("bathroom_airing", "Daily reset of airing suspension")
+        Bathroom_Airing_Suspended.postUpdate(OFF)
     }
 end
 
@@ -81,6 +179,8 @@ then
     if (Bathroom_Alarm_Tilted.state == OFF && Bathroom_Alarm_Locked.state==OFF){
         if (Bathroom_Window_Open.state == ON) {
             logInfo("bathroom_airing_button", "Trigger: turn airing on")
+            // Manual override clears any airing suspension.
+            Bathroom_Airing_Suspended.postUpdate(OFF)
             Bathroom_Airing_Open_Request.sendCommand(ON)
             Bathroom_Airing_Close_Request.sendCommand(OFF)
         }
@@ -110,6 +210,11 @@ then
             Bathroom_Airing_Open_Switch.sendCommand(ON)
             Bathroom_Airing_Close_Request.sendCommand(OFF)
             Bathroom_Motor_On.postUpdate(now.toLocalDateTime.toString())
+            // Mark airing active and record start time for the watchdog (only on a fresh open).
+            if (Bathroom_Airing_Active.state != ON) {
+                Bathroom_Airing_Started.postUpdate(now.toLocalDateTime.toString())
+            }
+            Bathroom_Airing_Active.postUpdate(ON)
         }
         else if (Bathroom_Airing_Close_Request.state == ON ){
             logInfo("bathroom_airing_action", "Close Window Close Switch ON, Open Switch OFF. Reset Timer")
@@ -117,7 +222,8 @@ then
             Bathroom_Airing_Close_Switch.sendCommand(ON)
             Bathroom_Airing_Open_Request.sendCommand(OFF)
             Bathroom_Motor_On.postUpdate(now.toLocalDateTime.toString())
-        } 
+            Bathroom_Airing_Active.postUpdate(OFF)
+        }
     }
     else{
         logInfo("bathroom_airing", "BLOCKED since window is locked or gekippt")
