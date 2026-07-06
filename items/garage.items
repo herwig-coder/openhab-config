@@ -2,9 +2,9 @@
 // Garage (KNX Hauptgruppe 15) — generiert aus ETS-Export 2026-06-07.
 // gGarage existiert bereits in semantic_model.items — hier nur referenziert.
 // gGarageDoorTech = technische Diagnose/Zaehler, bewusst OHNE Semantik-Tag/Location -> NICHT im Modell.
-// Garage_Door: Hoermann meldet Torposition invertiert ggue. openHAB (0 = zu). JS-Transform 100-x
-//   dreht die Anzeige (zu = 100 %, offen = 0 %). Auf/Ab-Steuerung ist bereits korrekt.
-//   BRAUCHT Add-on "JavaScript Transformation" (Settings -> Add-ons -> Transformations -> JavaScript)!
+// Garage_Door: Rollo = Auf/Ab/Stopp. Die Hoermann-Position 15/2/9 ist ggue. openHAB invertiert
+//   und wird NICHT genutzt; der Zustand offen/zu kommt aus den Endlagen-Kontakten
+//   (Tor offen 15/2/6 / Tor geschlossen 15/2/7) via rules/garage.rules — kein Add-on noetig.
 
 Group                gGarageDoor                     "Garagentor"                                     <garagedoor>     (gGarage)          ["Equipment"]
 Group                gGarageDoorTech                 "Garagentor Technik"                             <garagedoor>
@@ -14,7 +14,7 @@ Switch               Garage_Light                    "Garage Hauptlicht"        
 Switch               Garage_CarCharger               "Garage Autolader 230V"                          <switch>         (gGarage)          ["Switch"]                    {channel="knx:device:bridge:knx_garage:Garage_CarCharger"}
 
 //--- Garagentor: Steuerung + Hauptstatus (sichtbar im Modell) ---
-Rollershutter        Garage_Door                     "Garagentor [%d %%]"                             <garagedoor>     (gGarageDoor)      ["OpenLevel"]                 {channel="knx:device:bridge:knx_garage:Garage_Door_Drive"[profile="transform:JS", toItemScript="| (isNaN(parseFloat(input)) ? input : 100 - parseFloat(input))", toHandlerScript="| (isNaN(parseFloat(input)) ? input : 100 - parseFloat(input))"]}
+Rollershutter        Garage_Door                     "Garagentor [%d %%]"                             <garagedoor>     (gGarageDoor)      ["OpenLevel"]                 {channel="knx:device:bridge:knx_garage:Garage_Door_Drive"}
 Switch               Garage_Door_Impulse             "Garagentor Impuls Auf/Stopp/Zu"                 <garagedoor>     (gGarageDoor)      ["Switch"]                    {channel="knx:device:bridge:knx_garage:Garage_Door_Impulse", autoupdate="false"}
 Switch               Garage_Door_Vent1_Manual        "Garagentor Lueftung 1 manuell"                  <garagedoor>     (gGarageDoor)      ["Switch"]                    {channel="knx:device:bridge:knx_garage:Garage_Door_Vent1_Manual", autoupdate="false"}
 Switch               Garage_Door_Vent1_Auto          "Garagentor Lueftung 1 automatik"                <garagedoor>     (gGarageDoor)      ["Switch"]                    {channel="knx:device:bridge:knx_garage:Garage_Door_Vent1_Auto", autoupdate="false"}

@@ -1,0 +1,19 @@
+// Garagentor-Zustand: die Hoermann-Analogposition (15/2/9) ist ggue. openHAB invertiert und
+// wird nicht genutzt. Stattdessen spiegeln wir die Endlagen-Kontakte auf das Rollo-Item:
+//   Tor geschlossen -> 100 % (openHAB: DOWN = zu)
+//   Tor offen       ->   0 % (openHAB: UP   = offen)
+// postUpdate (kein sendCommand!) -> setzt nur den Anzeige-Zustand, faehrt das Tor NICHT.
+// Wirkt auch bei Bedienung ueber Wandtaster/Handsender, da die Kontakte per KNX zurueckmelden.
+
+rule "Garagentor Zustand aus Endlagen-Kontakten"
+when
+    Item Garage_Door_Closed changed or
+    Item Garage_Door_Open changed
+then
+    if (Garage_Door_Closed.state == ON) {
+        Garage_Door.postUpdate(100)   // zu
+    } else if (Garage_Door_Open.state == ON) {
+        Garage_Door.postUpdate(0)     // offen
+    }
+    // weder offen noch geschlossen == in Bewegung/Zwischenstellung -> Zustand unveraendert lassen
+end
