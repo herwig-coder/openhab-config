@@ -157,14 +157,14 @@ Bridge knx:ip:bridge [
         Type switch  : Garage_Door_Vent1_Manual       "Lueftung 1 manuell"       [ga="1.001:15/2/1" ]
         Type switch  : Garage_Door_Vent1_Auto         "Lueftung 1 automatik"     [ga="1.001:15/2/2" ]
         Type switch  : Garage_Door_PartialOpen        "Teiloeffnung 1/2-Auf"     [ga="1.001:15/2/3" ]
-        Type switch  : Garage_Door_Impulse            "Impuls Auf/Stopp/Zu"      [ga="1.017:15/2/4" ]
-        Type switch  : Garage_Door_DriveLight         "Antriebsbeleuchtung"      [ga="1.001:15/2/5" ]
+        Type switch        : Garage_Door_Impulse      "Impuls Auf/Stopp/Zu"      [ga="1.017:15/2/4" ]
+        Type rollershutter : Garage_Door_Drive        "Antrieb Auf/Ab/Stop"      [ upDown="15/2/33", stopMove="15/2/34", position="5.001:<15/2/9" ]
+        Type switch        : Garage_Door_DriveLight   "Antriebsbeleuchtung"      [ga="1.001:15/2/5" ]
 
         // --- Garagentor: Status (lesend) ---
         Type switch  : Garage_Door_Open               "Tor offen"                [ga="1.002:<15/2/6" ]
         Type switch  : Garage_Door_Closed             "Tor geschlossen"          [ga="1.002:<15/2/7" ]
         Type switch  : Garage_Door_Vent1_Active       "Lueftung 1 aktiv"         [ga="1.002:<15/2/8" ]
-        Type number  : Garage_Door_Position           "Torposition"              [ga="5.001:<15/2/9" ]
         Type switch  : Garage_Door_Moving_Open        "Faehrt auf"               [ga="1.002:<15/2/10" ]
         Type switch  : Garage_Door_Moving_Close       "Faehrt zu"                [ga="1.002:<15/2/11" ]
         Type switch  : Garage_Door_DriveLight_Status  "Antriebslicht Status"     [ga="1.001:<15/2/12" ]
