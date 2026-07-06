@@ -1,9 +1,9 @@
 //Type               ItemID                          Label                                            Icon             Groups            Tags                            Channel
 // Garage (KNX Hauptgruppe 15) — generiert aus ETS-Export 2026-06-07.
-// Status-Items sind read-only (Contact, zeigen OPEN=aktiv/wahr). Betriebssekunden = DPT 13.100 (s).
+// gGarage existiert bereits in semantic_model.items — hier nur referenziert, nicht neu definiert.
+// Status-Items als Switch (ON = aktiv/wahr); reine Rückmeldungen. Betriebssekunden = DPT 13.100 (s).
 // Steuer-Impulse (Lueftung/Teiloeffnung/Impuls) mit autoupdate="false" => Taster-Verhalten.
 
-Group                gGarage                         "Garage"                                         <garagedoor>     (gStrasshof)      ["Location"]
 Group                gGarageDoor                     "Garagentor"                                     <garagedoor>     (gGarage)         ["Equipment"]
 
 //--- Licht & Steckdosen ---
@@ -17,24 +17,24 @@ Switch               Garage_Door_Vent1_Auto          "Garagentor Lueftung 1 auto
 Switch               Garage_Door_PartialOpen         "Garagentor Teiloeffnung 1/2-Auf"                <garagedoor>     (gGarageDoor)     ["Switch"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_PartialOpen", autoupdate="false"}
 Switch               Garage_Door_DriveLight          "Garagentor Antriebsbeleuchtung"                 <light>          (gGarageDoor)     ["Light"]                       {channel="knx:device:bridge:knx_garage:Garage_Door_DriveLight"}
 
-//--- Garagentor: Status (read-only) ---
-Contact              Garage_Door_Open                "Garagentor offen [%s]"                          <garagedoor>     (gGarageDoor)     ["OpenState"]                   {channel="knx:device:bridge:knx_garage:Garage_Door_Open"}
-Contact              Garage_Door_Closed              "Garagentor geschlossen [%s]"                    <garagedoor>     (gGarageDoor)     ["OpenState"]                   {channel="knx:device:bridge:knx_garage:Garage_Door_Closed"}
+//--- Garagentor: Status (Rückmeldungen, ON = aktiv/wahr) ---
+Switch               Garage_Door_Open                "Garagentor offen [%s]"                          <garagedoor>     (gGarageDoor)     ["OpenState"]                   {channel="knx:device:bridge:knx_garage:Garage_Door_Open"}
+Switch               Garage_Door_Closed              "Garagentor geschlossen [%s]"                    <garagedoor>     (gGarageDoor)     ["OpenState"]                   {channel="knx:device:bridge:knx_garage:Garage_Door_Closed"}
 Number               Garage_Door_Position            "Garagentor Position [%d %%]"                    <garagedoor>     (gGarageDoor)     ["Measurement"]                 {channel="knx:device:bridge:knx_garage:Garage_Door_Position"}
-Contact              Garage_Door_Vent1_Active        "Garagentor Lueftung 1 aktiv [%s]"               <garagedoor>     (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Vent1_Active"}
-Contact              Garage_Door_Moving_Open         "Garagentor faehrt auf [%s]"                     <garagedoor>     (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Moving_Open"}
-Contact              Garage_Door_Moving_Close        "Garagentor faehrt zu [%s]"                      <garagedoor>     (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Moving_Close"}
-Contact              Garage_Door_DriveLight_Status   "Antriebsbeleuchtung Status [%s]"                <light>          (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_DriveLight_Status"}
-Contact              Garage_Door_Prewarn_Active      "Garagentor Vorwarnzeit aktiv [%s]"              <garagedoor>     (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Prewarn_Active"}
-Contact              Garage_Door_HoldOpen_Active     "Garagentor Aufhaltezeit aktiv [%s]"             <garagedoor>     (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_HoldOpen_Active"}
-Contact              Garage_Door_Inspection_Needed   "Garagentor Inspektion noetig [%s]"              <garagedoor>     (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Inspection_Needed"}
-Contact              Garage_Door_Error_High          "Garagentor Fehler hoch [%s]"                    <alarm>          (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Error_High"}
-Contact              Garage_Door_Error_Low           "Garagentor Fehler niedrig [%s]"                 <alarm>          (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Error_Low"}
-Contact              Garage_Door_Locked              "Garagentor Antrieb gesperrt [%s]"               <lock>           (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Locked"}
-Contact              Garage_Door_PartialOpen_Active  "Garagentor Teiloeffnung aktiv [%s]"             <garagedoor>     (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_PartialOpen_Active"}
-Contact              Garage_Door_Latch               "Garagentor Riegelstatus [%s]"                   <lock>           (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Latch"}
-Contact              Garage_Door_Config_Error        "Garagentor Konfigurationsfehler [%s]"           <alarm>          (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Config_Error"}
-Contact              Garage_Door_Position_Invalid    "Garagentor Torposition ungueltig [%s]"          <alarm>          (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Position_Invalid"}
+Switch               Garage_Door_Vent1_Active        "Garagentor Lueftung 1 aktiv [%s]"               <garagedoor>     (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Vent1_Active"}
+Switch               Garage_Door_Moving_Open         "Garagentor faehrt auf [%s]"                     <garagedoor>     (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Moving_Open"}
+Switch               Garage_Door_Moving_Close        "Garagentor faehrt zu [%s]"                      <garagedoor>     (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Moving_Close"}
+Switch               Garage_Door_DriveLight_Status   "Antriebsbeleuchtung Status [%s]"                <light>          (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_DriveLight_Status"}
+Switch               Garage_Door_Prewarn_Active      "Garagentor Vorwarnzeit aktiv [%s]"              <garagedoor>     (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Prewarn_Active"}
+Switch               Garage_Door_HoldOpen_Active     "Garagentor Aufhaltezeit aktiv [%s]"             <garagedoor>     (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_HoldOpen_Active"}
+Switch               Garage_Door_Inspection_Needed   "Garagentor Inspektion noetig [%s]"              <garagedoor>     (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Inspection_Needed"}
+Switch               Garage_Door_Error_High          "Garagentor Fehler hoch [%s]"                    <alarm>          (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Error_High"}
+Switch               Garage_Door_Error_Low           "Garagentor Fehler niedrig [%s]"                 <alarm>          (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Error_Low"}
+Switch               Garage_Door_Locked              "Garagentor Antrieb gesperrt [%s]"               <lock>           (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Locked"}
+Switch               Garage_Door_PartialOpen_Active  "Garagentor Teiloeffnung aktiv [%s]"             <garagedoor>     (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_PartialOpen_Active"}
+Switch               Garage_Door_Latch               "Garagentor Riegelstatus [%s]"                   <lock>           (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Latch"}
+Switch               Garage_Door_Config_Error        "Garagentor Konfigurationsfehler [%s]"           <alarm>          (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Config_Error"}
+Switch               Garage_Door_Position_Invalid    "Garagentor Torposition ungueltig [%s]"          <alarm>          (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Position_Invalid"}
 
 //--- Garage: Sensoren ---
 Number:Temperature   Garage_Temperature              "Garage Temperatur [%.1f °C]"                    <temperature>    (gGarage)         ["Measurement","Temperature"]   {unit="°C", channel="knx:device:bridge:knx_garage:Garage_Temperature"}
