@@ -36,11 +36,6 @@ Switch               Garage_Door_Latch               "Garagentor Riegelstatus [%
 Switch               Garage_Door_Config_Error        "Garagentor Konfigurationsfehler [%s]"           <alarm>          (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Config_Error"}
 Switch               Garage_Door_Position_Invalid    "Garagentor Torposition ungueltig [%s]"          <alarm>          (gGarageDoor)     ["Status"]                      {channel="knx:device:bridge:knx_garage:Garage_Door_Position_Invalid"}
 
-//--- Garage: Sensoren ---
-Number:Temperature   Garage_Temperature              "Garage Temperatur [%.1f °C]"                    <temperature>    (gGarage)         ["Measurement","Temperature"]   {unit="°C", channel="knx:device:bridge:knx_garage:Garage_Temperature"}
-Number:Dimensionless Garage_Humidity                 "Garage Feuchte [%.1f %%]"                       <humidity>       (gGarage)         ["Measurement","Humidity"]      {unit="%", channel="knx:device:bridge:knx_garage:Garage_Humidity"}
-Number:Temperature   Garage_DewPoint                 "Garage Taupunkt [%.1f °C]"                      <temperature>    (gGarage)         ["Measurement","Temperature"]   {unit="°C", channel="knx:device:bridge:knx_garage:Garage_DewPoint"}
-
 //--- Garagentor: Zaehler ---
 Number               Garage_Door_Cnt_PowerOn         "Garagentor Zaehler Power-On [%d]"               (gGarageDoor)     ["Measurement"]                {channel="knx:device:bridge:knx_garage:Garage_Door_Cnt_PowerOn"}
 Number               Garage_Door_Cnt_FactoryReset    "Garagentor Zaehler Werks-Reset [%d]"            (gGarageDoor)     ["Measurement"]                {channel="knx:device:bridge:knx_garage:Garage_Door_Cnt_FactoryReset"}
