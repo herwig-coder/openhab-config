@@ -142,4 +142,51 @@ Bridge knx:ip:bridge [
 //        Type string        : demoString        "Message"     [ ga="5/3/1" ]
 //        Type datetime      : demoDatetime      "Alarm"       [ ga="5/5/42" ]
     }
+
+    // KNX Garage — Hauptgruppe 15 "Garage und Garten" (ETS-Export 2026-06-07).
+    // Zweite Device-Thing an DERSELBEN Bridge, ohne eigene physikalische Adresse
+    // (fetch=false) — reine Gruppenadressen-Kanäle. '<' = lesend (Read + Listen).
+    Thing device knx_garage [
+        readInterval=3600
+    ] {
+        // --- Licht & Steckdosen ---
+        Type switch  : Garage_Main_Light              "Garage Hauptlicht"        [ga="1.001:15/0/0" ]
+        Type switch  : Garage_CarCharger              "Autolader 230V"           [ga="1.001:15/1/0" ]
+
+        // --- Garagentor: Steuerung (schreibend) ---
+        Type switch  : Garage_Door_Vent1_Manual       "Lueftung 1 manuell"       [ga="1.001:15/2/1" ]
+        Type switch  : Garage_Door_Vent1_Auto         "Lueftung 1 automatik"     [ga="1.001:15/2/2" ]
+        Type switch  : Garage_Door_PartialOpen        "Teiloeffnung 1/2-Auf"     [ga="1.001:15/2/3" ]
+        Type switch  : Garage_Door_Impulse            "Impuls Auf/Stopp/Zu"      [ga="1.017:15/2/4" ]
+        Type switch  : Garage_Door_DriveLight         "Antriebsbeleuchtung"      [ga="1.001:15/2/5" ]
+
+        // --- Garagentor: Status (lesend) ---
+        Type contact : Garage_Door_Open               "Tor offen"                [ga="1.002:<15/2/6" ]
+        Type contact : Garage_Door_Closed             "Tor geschlossen"          [ga="1.002:<15/2/7" ]
+        Type contact : Garage_Door_Vent1_Active       "Lueftung 1 aktiv"         [ga="1.002:<15/2/8" ]
+        Type number  : Garage_Door_Position           "Torposition"              [ga="5.001:<15/2/9" ]
+        Type contact : Garage_Door_Moving_Open        "Faehrt auf"               [ga="1.002:<15/2/10" ]
+        Type contact : Garage_Door_Moving_Close       "Faehrt zu"                [ga="1.002:<15/2/11" ]
+        Type contact : Garage_Door_DriveLight_Status  "Antriebslicht Status"     [ga="1.001:<15/2/12" ]
+        Type contact : Garage_Door_Prewarn_Active     "Vorwarnzeit aktiv"        [ga="1.002:<15/2/13" ]
+        Type contact : Garage_Door_HoldOpen_Active    "Aufhaltezeit aktiv"       [ga="1.002:<15/2/14" ]
+        Type contact : Garage_Door_Inspection_Needed  "Inspektion noetig"        [ga="1.002:<15/2/15" ]
+        Type contact : Garage_Door_Error_High         "Fehler (hoch)"            [ga="1.002:<15/2/16" ]
+        Type contact : Garage_Door_Error_Low          "Fehler (niedrig)"         [ga="1.002:<15/2/17" ]
+        Type contact : Garage_Door_Locked             "Antrieb gesperrt"         [ga="1.002:<15/2/18" ]
+        Type contact : Garage_Door_PartialOpen_Active "Teiloeffnung aktiv"       [ga="1.002:<15/2/19" ]
+        Type number  : Garage_Door_Cnt_PowerOn        "Zaehler Power-On"         [ga="12.001:<15/2/20" ]
+        Type number  : Garage_Door_Cnt_FactoryReset   "Zaehler Werks-Reset"      [ga="12.001:<15/2/21" ]
+        Type number  : Garage_Door_Cnt_CyclesInc      "Zyklen unvollstaendig"    [ga="12.001:<15/2/22" ]
+        Type number  : Garage_Door_Cnt_CyclesCompl    "Zyklen vollstaendig"      [ga="12.001:<15/2/23" ]
+        Type number  : Garage_Door_Cnt_CyclesIncSvc   "Zyklen unvollst./Wartung" [ga="12.001:<15/2/24" ]
+        Type number  : Garage_Door_Cnt_DriveCommands  "Fahrbefehle"              [ga="12.001:<15/2/25" ]
+        Type number  : Garage_Temperature             "Temperatur"               [ga="9.001:<15/2/26" ]
+        Type number  : Garage_Humidity                "Feuchte"                  [ga="9.007:<15/2/27" ]
+        Type number  : Garage_DewPoint                "Taupunkt"                 [ga="9.001:<15/2/28" ]
+        Type contact : Garage_Door_Latch              "Riegelstatus"             [ga="1.002:<15/2/29" ]
+        Type contact : Garage_Door_Config_Error       "Konfigurationsfehler"     [ga="1.002:<15/2/30" ]
+        Type contact : Garage_Door_Position_Invalid   "Torposition ungueltig"    [ga="1.002:<15/2/31" ]
+        Type number  : Garage_Door_Cnt_OperatingSecs  "Betriebssekunden"         [ga="13.100:<15/2/32" ]
+    }
 }
