@@ -10,3 +10,18 @@ Thing mqtt:topic:mqtt_Ulanzi "MQTT Ulanzi" (mqtt:broker:9a73e5895e) @ "Kitchen" 
 
     Type string        : Ulanzi_01_status      "Status"      [ stateTopic="awtrixef9440/stats"]
 }
+
+// Zweite Ulanzi/Awtrix im Poolhaus, MQTT-Prefix "ulanzipool", gleicher Broker.
+Thing mqtt:topic:mqtt_UlanziPool "MQTT Ulanzi Poolhaus" (mqtt:broker:9a73e5895e) @ "Poolhouse" {
+    Channels:
+    Type string        : UlanziPool_settings   "Settings"    [ commandTopic="ulanzipool/settings"]
+    Type string        : UlanziPool_reboot     "Reboot"      [ commandTopic="ulanzipool/reboot"]
+
+    Type string        : UlanziPool_outtemp    "Aussentemp"  [ commandTopic="ulanzipool/custom/outtemp"]
+    Type string        : UlanziPool_outhum     "Feuchte"     [ commandTopic="ulanzipool/custom/outhum"]
+    Type string        : UlanziPool_watertemp  "Wassertemp"  [ commandTopic="ulanzipool/custom/watertemp"]
+    Type string        : UlanziPool_ph         "PH"          [ commandTopic="ulanzipool/custom/ph"]
+    Type string        : UlanziPool_orp        "ORP"         [ commandTopic="ulanzipool/custom/orp"]
+
+    Type string        : UlanziPool_status     "Status"      [ stateTopic="ulanzipool/stats"]
+}

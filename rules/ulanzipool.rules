@@ -1,0 +1,83 @@
+// ────────────────────────────────────────────────────────────────────────────
+// Poolhaus-Ulanzi (Awtrix Light, MQTT-Prefix "ulanzipool").
+// Baseline: Kitchen-Ulanzi (rules/ulanzimessages.rules).
+// Zeigt: Zeit mit Sekunden (kein Datum), Aussentemp + Luftfeuchte von der
+// Wetterstation (nicht dem internen Ulanzi-Sensor). Wassertemp/PH/ORP folgen aus
+// dem Pool-Modbus (Phase 2/3) — unten als auskommentierte Stubs vorbereitet.
+//
+// Custom-App-Payload: {"text":"...","color":"#RRGGBB","icon":"<LaMetric-ID>"}
+// Icon-IDs unten sind Platzhalter — bei Bedarf an eigene LaMetric-Icons anpassen.
+// ────────────────────────────────────────────────────────────────────────────
+
+// Awtrix-Settings: Zeit m. Sekunden, kein Datum, keine Batterie, keine internen
+// Temp/Feuchte-Apps (die Werte kommen als Custom-Apps von der Wetterstation).
+rule "ulanzipool_settings"
+when
+    System started
+then
+    logInfo("ulanzipool", "System started -> Awtrix-Settings senden")
+    UlanziPool_Settings.sendCommand("{\"ATIME\":\"8\",\"ABRI\":true,\"TIME\":true,\"DATE\":false,\"TEMP\":false,\"HUM\":false,\"BAT\":false,\"TFORMAT\":\"%H:%M:%S\"}")
+end
+
+rule "ulanzipool_outtemp"
+when
+    Item Weatherstation_Temperature_1 changed
+then
+    if (Weatherstation_Temperature_1.state == NULL || Weatherstation_Temperature_1.state == UNDEF) {
+        return;
+    }
+    val t = (Weatherstation_Temperature_1.state as QuantityType<Number>).toUnit("°C").doubleValue
+    val msg = "{\"text\":\"" + String.format("%.1f",t) + "°C\",\"color\":\"#FFA500\",\"icon\":\"2422\"}"
+    logInfo("ulanzipool", "Aussentemp -> Ulanzi: {}", msg)
+    UlanziPool_OutTemp.sendCommand(msg)
+end
+
+rule "ulanzipool_outhum"
+when
+    Item Weatherstation_Humidity_1 changed
+then
+    if (Weatherstation_Humidity_1.state == NULL || Weatherstation_Humidity_1.state == UNDEF) {
+        return;
+    }
+    val h = (Weatherstation_Humidity_1.state as QuantityType<Number>).doubleValue
+    val msg = "{\"text\":\"" + String.format("%.0f",h) + "%\",\"color\":\"#00BFFF\",\"icon\":\"2426\"}"
+    logInfo("ulanzipool", "Feuchte -> Ulanzi: {}", msg)
+    UlanziPool_OutHum.sendCommand(msg)
+end
+
+// ─── STUBS: erst aktivieren, wenn die Pool-Modbus-Items existieren (Phase 2/3) ──
+//rule "ulanzipool_watertemp"
+//when
+//    Item Pool_HP_WaterTempIn changed
+//then
+//    if (Pool_HP_WaterTempIn.state == NULL || Pool_HP_WaterTempIn.state == UNDEF) {
+//        return;
+//    }
+//    val wt = (Pool_HP_WaterTempIn.state as QuantityType<Number>).toUnit("°C").doubleValue
+//    val msg = "{\"text\":\"" + String.format("%.1f",wt) + "°C\",\"color\":\"#1E90FF\",\"icon\":\"4985\"}"
+//    UlanziPool_WaterTemp.sendCommand(msg)
+//end
+//
+//rule "ulanzipool_ph"
+//when
+//    Item Pool_Salt_pH changed
+//then
+//    if (Pool_Salt_pH.state == NULL || Pool_Salt_pH.state == UNDEF) {
+//        return;
+//    }
+//    val ph = (Pool_Salt_pH.state as Number).doubleValue
+//    val msg = "{\"text\":\"pH " + String.format("%.1f",ph) + "\",\"color\":\"#00FF7F\",\"icon\":\"8461\"}"
+//    UlanziPool_PH.sendCommand(msg)
+//end
+//
+//rule "ulanzipool_orp"
+//when
+//    Item Pool_Salt_ORP changed
+//then
+//    if (Pool_Salt_ORP.state == NULL || Pool_Salt_ORP.state == UNDEF) {
+//        return;
+//    }
+//    val orp = (Pool_Salt_ORP.state as QuantityType<Number>).toUnit("mV").doubleValue
+//    val msg = "{\"text\":\"" + String.format("%.0f",orp) + "mV\",\"color\":\"#DA70D6\",\"icon\":\"3467\"}"
+//    UlanziPool_ORP.sendCommand(msg)
+//end

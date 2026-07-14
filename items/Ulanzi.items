@@ -7,3 +7,13 @@ String                  Ulanzi_Train                                "Ulanzi Zug"
 Switch                  Ulanzi_TrainCheck                           "Ulanzi Traincheck"
 
 String                  Ulanzi_Status                               "Ulanzi Status"                      <if:material-symbols:display-settings-outline> (gStrasshof)         ["Point"]  {channel = "mqtt:topic:mqtt_Ulanzi:Ulanzi_01_status"}
+
+// ── Poolhaus-Ulanzi (Prefix "ulanzipool") ─────────────────────────────────────
+String                  UlanziPool_Settings                         "Ulanzi Pool Einstellungen"          <if:material-symbols:display-settings-outline> (gPoolHouse)         ["Point"]  {channel="mqtt:topic:mqtt_UlanziPool:UlanziPool_settings"}
+String                  UlanziPool_Reboot                           "Ulanzi Pool Neustart"               <if:material-symbols:device-reset> (gPoolHouse)                     ["Point"]  {channel="mqtt:topic:mqtt_UlanziPool:UlanziPool_reboot"}
+String                  UlanziPool_OutTemp                          "Ulanzi Pool Aussentemperatur"       <if:mdi:temperature> (gPoolHouse)                                   ["Point"]  {channel="mqtt:topic:mqtt_UlanziPool:UlanziPool_outtemp"}
+String                  UlanziPool_OutHum                           "Ulanzi Pool Luftfeuchte"            <if:material-symbols:humidity-percentage-outline> (gPoolHouse)      ["Point"]  {channel="mqtt:topic:mqtt_UlanziPool:UlanziPool_outhum"}
+String                  UlanziPool_WaterTemp                        "Ulanzi Pool Wassertemperatur"       <if:mdi:pool> (gPoolHouse)                                          ["Point"]  {channel="mqtt:topic:mqtt_UlanziPool:UlanziPool_watertemp"}
+String                  UlanziPool_PH                               "Ulanzi Pool PH"                     <if:mdi:ph> (gPoolHouse)                                            ["Point"]  {channel="mqtt:topic:mqtt_UlanziPool:UlanziPool_ph"}
+String                  UlanziPool_ORP                              "Ulanzi Pool ORP"                    <if:mdi:flash> (gPoolHouse)                                         ["Point"]  {channel="mqtt:topic:mqtt_UlanziPool:UlanziPool_orp"}
+String                  UlanziPool_Status                           "Ulanzi Pool Status"                 <if:material-symbols:display-settings-outline> (gPoolHouse)         ["Point"]  {channel="mqtt:topic:mqtt_UlanziPool:UlanziPool_status"}
