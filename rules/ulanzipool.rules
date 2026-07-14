@@ -11,12 +11,30 @@
 
 // Awtrix-Settings: Zeit m. Sekunden, kein Datum, keine Batterie, keine internen
 // Temp/Feuchte-Apps (die Werte kommen als Custom-Apps von der Wetterstation).
+// Awtrix-Settings zentral (Zeit m. Sekunden, kein Datum/Batterie, interne Temp/Feuchte aus).
+// Wird bei openHAB-Start UND im täglichen Reset-Check gesendet.
+val String ULANZIPOOL_SETTINGS = "{\"ATIME\":\"8\",\"ABRI\":true,\"TIME\":true,\"DATE\":false,\"TEMP\":false,\"HUM\":false,\"BAT\":false,\"TFORMAT\":\"%H:%M:%S\"}"
+
 rule "ulanzipool_settings"
 when
     System started
 then
     logInfo("ulanzipool", "System started -> Awtrix-Settings senden")
-    UlanziPool_Settings.sendCommand("{\"ATIME\":\"8\",\"ABRI\":true,\"TIME\":true,\"DATE\":false,\"TEMP\":false,\"HUM\":false,\"BAT\":false,\"TFORMAT\":\"%H:%M:%S\"}")
+    UlanziPool_Settings.sendCommand(ULANZIPOOL_SETTINGS)
+end
+
+// Täglicher Reset-/Recovery-Check (wie bei der Küchen-Ulanzi): reagiert die Uhr
+// nicht mehr (Status NULL), einmal rebooten und die Settings neu senden.
+rule "ulanzipool_reset"
+when
+    Time cron "1 5 1 ? * * *"
+then
+    logInfo("ulanzipool", "Reset-Check, Status: {}", UlanziPool_Status.state)
+    if (UlanziPool_Status.state == NULL) {
+        logInfo("ulanzipool", "Poolhaus-Ulanzi reagiert nicht -> Reboot + Settings neu")
+        UlanziPool_Reboot.sendCommand("")
+        UlanziPool_Settings.sendCommand(ULANZIPOOL_SETTINGS)
+    }
 end
 
 rule "ulanzipool_outtemp"
