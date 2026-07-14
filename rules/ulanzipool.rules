@@ -13,7 +13,9 @@
 // Temp/Feuchte-Apps (die Werte kommen als Custom-Apps von der Wetterstation).
 // Awtrix-Settings zentral (Zeit m. Sekunden, kein Datum/Batterie, interne Temp/Feuchte aus).
 // Wird bei openHAB-Start UND im täglichen Reset-Check gesendet.
-val String ULANZIPOOL_SETTINGS = "{\"ATIME\":\"8\",\"ABRI\":true,\"TIME\":true,\"DATE\":false,\"TEMP\":false,\"HUM\":false,\"BAT\":false,\"TFORMAT\":\"%H:%M:%S\"}"
+// Hinweis: In Awtrix Light heissen die App-Schalter fuer Zeit/Datum TIM/DAT
+// (nur HUM/TEMP/BAT sind ausgeschrieben). TIME/DATE werden ignoriert.
+val String ULANZIPOOL_SETTINGS = "{\"ATIME\":\"8\",\"ABRI\":true,\"TIM\":true,\"DAT\":false,\"TEMP\":false,\"HUM\":false,\"BAT\":false,\"TFORMAT\":\"%H:%M:%S\"}"
 
 rule "ulanzipool_settings"
 when
