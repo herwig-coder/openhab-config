@@ -9,7 +9,11 @@
 // like before, summer stays sane.
 val Number AIR_DELTA_ON  = 3.0   // °C indoor over outdoor -> removable excess moisture, start airing
 val Number AIR_DELTA_OFF = 1.0   // °C indoor over outdoor -> practical floor reached, stop airing
-val Number AIR_MOLD_FLOOR = 16.0 // °C indoor dewpoint below which mold risk is negligible -> never nag
+// Mold floor WITH HYSTERESIS: start nagging only once clearly above the floor, and stop
+// (via the floor) only once clearly below it. Without this band an indoor dewpoint hovering
+// around 16 °C flip-flops the alert on every reading and spams notifications.
+val Number AIR_MOLD_FLOOR_ON  = 16.5 // °C indoor dewpoint above this -> mold-relevant, may nag
+val Number AIR_MOLD_FLOOR_OFF = 15.5 // °C indoor dewpoint below this -> harmless, stop / never nag
 
 // Heat guard (bedrooms only; bathroom is exempt so it still vents shower moisture).
 // Don't tell to air when the incoming air would warm the room or it's simply hot outside.
@@ -43,7 +47,7 @@ then
         logInfo("Bad_Dewpoint_Alert", "Indoor dewpoint: {} °C, Outdoor: {} °C, Delta: {} °C", temp, outdewpoint, delta)
 
         // Removable excess moisture present AND mold-relevant -> air.
-        if ((delta >= AIR_DELTA_ON.doubleValue) && (temp > AIR_MOLD_FLOOR.doubleValue)) {
+        if ((delta >= AIR_DELTA_ON.doubleValue) && (temp > AIR_MOLD_FLOOR_ON.doubleValue)) {
             if (Bathroom_DewPoint_Alert.state != ON){
                 val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
                 val message = "ALERT! Bathroom: Time to air. Dewpoint at: " + String.format("%.1f",temp) + " °C (outside " + String.format("%.1f",outdewpoint) + " °C)"
@@ -56,7 +60,7 @@ then
             }
         }
         // Aired to practical floor, or moisture harmless anyway -> stop.
-        else if ((delta <= AIR_DELTA_OFF.doubleValue) || (temp <= AIR_MOLD_FLOOR.doubleValue)) {
+        else if ((delta <= AIR_DELTA_OFF.doubleValue) || (temp <= AIR_MOLD_FLOOR_OFF.doubleValue)) {
             if (Bathroom_DewPoint_Alert.state == ON){
                 val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
                 val message = "Bathroom: aired enough. Dewpoint at: " + String.format("%.1f",temp) + " °C (outside " + String.format("%.1f",outdewpoint) + " °C)"
@@ -106,7 +110,7 @@ then
         logInfo("Partentsbedroom_Dewpoint_Alert", "Dewpoint in/out: {}/{} °C (delta {}), Temp in/out: {}/{} °C, canCool: {}", temp, outdewpoint, delta, intemp, outtemp, canCool)
 
         // Removable excess moisture, mold-relevant, AND airing won't overheat the room -> air.
-        if ((delta >= AIR_DELTA_ON.doubleValue) && (temp > AIR_MOLD_FLOOR.doubleValue) && canCool) {
+        if ((delta >= AIR_DELTA_ON.doubleValue) && (temp > AIR_MOLD_FLOOR_ON.doubleValue) && canCool) {
             if (ParentsBedroom_DewPoint_Alert.state != ON){
                 val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
                 val message = "ALERT! Parents Bedroom: Time to air. Dewpoint at: " + String.format("%.1f",temp) + " °C (outside " + String.format("%.1f",outdewpoint) + " °C)"
@@ -119,7 +123,7 @@ then
             }
         }
         // Aired to floor, moisture harmless, or too warm/hot outside to air -> stop.
-        else if ((delta <= AIR_DELTA_OFF.doubleValue) || (temp <= AIR_MOLD_FLOOR.doubleValue) || !canCool) {
+        else if ((delta <= AIR_DELTA_OFF.doubleValue) || (temp <= AIR_MOLD_FLOOR_OFF.doubleValue) || !canCool) {
             if (ParentsBedroom_DewPoint_Alert.state == ON){
                 val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
                 val message = if (!canCool)
@@ -171,7 +175,7 @@ then
         logInfo("BedroomTommy_Dewpoint_Alert", "Dewpoint in/out: {}/{} °C (delta {}), Temp in/out: {}/{} °C, canCool: {}", temp, outdewpoint, delta, intemp, outtemp, canCool)
 
         // Removable excess moisture, mold-relevant, AND airing won't overheat the room -> air.
-        if ((delta >= AIR_DELTA_ON.doubleValue) && (temp > AIR_MOLD_FLOOR.doubleValue) && canCool) {
+        if ((delta >= AIR_DELTA_ON.doubleValue) && (temp > AIR_MOLD_FLOOR_ON.doubleValue) && canCool) {
             if (ChildrenBedroom_DewPoint_Alert.state != ON){
                 val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
                 val message = "ALERT! Tommy Bedroom: Time to air. Dewpoint at: " + String.format("%.1f",temp) + " °C (outside " + String.format("%.1f",outdewpoint) + " °C)"
@@ -184,7 +188,7 @@ then
             }
         }
         // Aired to floor, moisture harmless, or too warm/hot outside to air -> stop.
-        else if ((delta <= AIR_DELTA_OFF.doubleValue) || (temp <= AIR_MOLD_FLOOR.doubleValue) || !canCool) {
+        else if ((delta <= AIR_DELTA_OFF.doubleValue) || (temp <= AIR_MOLD_FLOOR_OFF.doubleValue) || !canCool) {
             if (ChildrenBedroom_DewPoint_Alert.state == ON){
                 val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
                 val message = if (!canCool)
