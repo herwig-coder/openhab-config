@@ -41,7 +41,7 @@ official.
         │               │                                 │
         │ TCP :502 ─────┤ Ch1 IP 10.1.0.18 ─ RS485 ─ Oxilife
         │               │                                 │
-        └─ TCP :502 ────┤ Ch2 IP 10.1.0.21 ─ RS485 ─ Heatpump
+        └─ TCP :502 ────┤ Ch2 IP 10.1.0.19 ─ RS485 ─ Heatpump
                         └─────────────────────────────────┘
 ```
 
@@ -51,9 +51,9 @@ official.
   IPs are taken from the lower `10.1.0.x` range (DHCP scope is `10.1.100.100`–
   `10.1.255.254`).
 - IPs alongside existing static assignments (KNX `10.1.0.16`, MQTT `10.1.0.10`,
-  watermeter `10.1.0.19`, Ulanzi `10.1.0.20`):
+  watermeter `10.1.0.25`, Ulanzi Küche `10.1.0.20`, Ulanzi Poolhaus `10.1.0.21`):
   - **Channel 1:** `10.1.0.18` → SugarValley Oxilife
-  - **Channel 2:** `10.1.0.21` → Poolsana InverPower Ultra
+  - **Channel 2:** `10.1.0.19` → Poolsana InverPower Ultra
 - Both confirmed free in the pfSense static map at design time. Plan also adds
   a pfSense static DHCP mapping per channel for documentation.
 - **Mode:** Modbus TCP server / TCP-to-RTU gateway (not transparent serial)

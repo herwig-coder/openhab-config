@@ -16,7 +16,7 @@ Firmware: V1.486 (or later)
 | Channel | Device Name | IP        | Port | MAC                | Baud   | Parity | Slave id | Connected device           |
 |---------|-------------|-----------|------|--------------------|--------|--------|----------|----------------------------|
 | 1       | PoolSalt    | 10.1.0.18 | 502  | 04-EE-E8-13-A3-78  | 19200  | 8N1    | ?        | SugarValley Oxilife        |
-| 2       | PoolHP      | 10.1.0.21 | 502  | (record from UI)   | 9600   | 8N1    | ?        | Poolsana InverPower Ultra  |
+| 2       | PoolHP      | 10.1.0.19 | 502  | 04-EE-E8-14-A3-E9  | 9600   | 8N1    | ?        | Poolsana InverPower Ultra  |
 
 Common settings on both channels:
 
@@ -33,7 +33,7 @@ pfSense static DHCP mappings: (record once added)
 | MAC | IP | Hostname |
 |-----|----|----------|
 | 04-EE-E8-13-A3-78 | 10.1.0.18 | PoolSalt |
-| ?? | 10.1.0.21 | PoolHP |
+| ?? | 10.1.0.19 | PoolHP |
 
 ---
 
@@ -91,7 +91,7 @@ Source: community Modbus map (search "InverPower Ultra Modbus" / "IPS Pro Modbus
 `modpoll` template:
 
 ```bat
-modpoll -m tcp -a 1 -r <addr> -c 1 -t 4:int -1 10.1.0.21 -p 502
+modpoll -m tcp -a 1 -r <addr> -c 1 -t 4:int -1 10.1.0.19 -p 502
 ```
 
 ---

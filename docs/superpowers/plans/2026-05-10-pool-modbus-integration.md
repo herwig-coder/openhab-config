@@ -95,7 +95,7 @@ Identical to Channel 1 **except** these fields:
 | Field | Value |
 |---|---|
 | Device Name | `PoolHP` |
-| Device IP | `10.1.0.21` |
+| Device IP | `10.1.0.19` |
 | Baud Rate | `9600` |
 
 All other fields (Device Port `502`, Subnet Mask `255.255.0.0`, Gateway `10.1.0.1`, Work Mode `TCP Server`, IP mode `Static`, Databits `8`, Parity `None`, Stopbits `1`, Flow control `None`, Protocol `Modbus TCP to RTU`, Enable Multi-host `No`, etc.) are the **same** as Channel 1.
@@ -108,7 +108,7 @@ Verify:
 
 ```bat
 ping 10.1.0.18
-ping 10.1.0.21
+ping 10.1.0.19
 ```
 
 Both should reply.
@@ -129,7 +129,7 @@ Firmware: V1.486 (or later)
 | Channel | Device Name | IP        | Port | MAC                | Baud   | Parity | Slave id | Connected device           |
 |---------|-------------|-----------|------|--------------------|--------|--------|----------|----------------------------|
 | 1       | PoolSalt    | 10.1.0.18 | 502  | 04-EE-E8-13-A3-78  | 19200  | 8N1    | ?        | SugarValley Oxilife        |
-| 2       | PoolHP      | 10.1.0.21 | 502  | (record from UI)   | 9600   | 8N1    | ?        | Poolsana InverPower Ultra  |
+| 2       | PoolHP      | 10.1.0.19 | 502  | (record from UI)   | 9600   | 8N1    | ?        | Poolsana InverPower Ultra  |
 
 Common settings on both channels:
 - Work Mode: TCP Server
@@ -207,10 +207,10 @@ A live, plausible value (e.g. pH around 700 = 7.00 with /100 scaling, water temp
 
 - [ ] **Step 4: Read each Poolsana InverPower Ultra register**
 
-Repeat Step 3 against `10.1.0.21:502` with the community-sourced addresses (search "InverPower Ultra Modbus" or "IPS Pro Modbus map" — Poolsana rebrands a Phnix/IPS-Pro inverter). For each address, sanity-check the read value before trusting it. If a register returns garbage or a Modbus exception 02 (illegal address) / 03 (illegal value), drop that datapoint from the design — YAGNI.
+Repeat Step 3 against `10.1.0.19:502` with the community-sourced addresses (search "InverPower Ultra Modbus" or "IPS Pro Modbus map" — Poolsana rebrands a Phnix/IPS-Pro inverter). For each address, sanity-check the read value before trusting it. If a register returns garbage or a Modbus exception 02 (illegal address) / 03 (illegal value), drop that datapoint from the design — YAGNI.
 
 ```bat
-modpoll -m tcp -a 1 -r <addr> -c 1 -t 4:int -1 10.1.0.21 -p 502
+modpoll -m tcp -a 1 -r <addr> -c 1 -t 4:int -1 10.1.0.19 -p 502
 ```
 
 - [ ] **Step 5: Fill in `docs/pool-modbus-commissioning.md`**
@@ -366,7 +366,7 @@ git commit -m "add: semantic groups for pool salt system and heat pump"
 // Pool Modbus Integration — Waveshare 2-Channel Gateway
 // Each RS485 channel exposes its own IP, both on Modbus TCP port 502.
 // Channel 1: 10.1.0.18 → SugarValley Oxilife salt chlorinator (19200 8N1)
-// Channel 2: 10.1.0.21 → Poolsana InverPower Ultra heat pump (9600 8N1)
+// Channel 2: 10.1.0.19 → Poolsana InverPower Ultra heat pump (9600 8N1)
 // Register addresses verified in docs/pool-modbus-commissioning.md
 
 // ---------- Salt System (Oxilife) ----------
@@ -396,7 +396,7 @@ Bridge modbus:tcp:oxilife "Oxilife TCP" [
 
 // ---------- Heat Pump (Poolsana InverPower Ultra) ----------
 Bridge modbus:tcp:heatpump "Heat Pump TCP" [
-    host="10.1.0.21",
+    host="10.1.0.19",
     port=502,
     id=1,
     timeBetweenTransactionsMillis=100,
@@ -431,7 +431,7 @@ Expected lines within 10 s of saving:
 
 ```
 [INFO ] [...modbus.handler.ModbusTcpThingHandler] - About to connect ...10.1.0.18:502
-[INFO ] [...modbus.handler.ModbusTcpThingHandler] - About to connect ...10.1.0.21:502
+[INFO ] [...modbus.handler.ModbusTcpThingHandler] - About to connect ...10.1.0.19:502
 [INFO ] [...modbus.handler.ModbusPollerThingHandler] - Poller readings updating ...
 ```
 
