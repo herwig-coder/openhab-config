@@ -15,7 +15,7 @@
 // Wird bei openHAB-Start UND im täglichen Reset-Check gesendet.
 // Hinweis: In Awtrix Light heissen die App-Schalter fuer Zeit/Datum TIM/DAT
 // (nur HUM/TEMP/BAT sind ausgeschrieben). TIME/DATE werden ignoriert.
-val String ULANZIPOOL_SETTINGS = "{\"ATIME\":\"8\",\"ABRI\":true,\"TIM\":true,\"DAT\":false,\"TEMP\":false,\"HUM\":false,\"BAT\":false,\"TFORMAT\":\"%H:%M:%S\"}"
+val String ULANZIPOOL_SETTINGS = "{\"ATIME\":\"8\",\"ABRI\":true,\"TIM\":true,\"DAT\":false,\"TEMP\":false,\"HUM\":false,\"BAT\":false,\"TFORMAT\":\"%H:%M:%S\",\"TMODE\":0}"
 
 rule "ulanzipool_settings"
 when
