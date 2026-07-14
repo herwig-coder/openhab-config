@@ -40,7 +40,7 @@ then
         return;
     }
     val h = (Weatherstation_Humidity_1.state as QuantityType<Number>).doubleValue
-    val msg = "{\"text\":\"" + String.format("%.0f",h) + "%\",\"color\":\"#00BFFF\",\"icon\":\"2426\"}"
+    val msg = "{\"text\":\"" + String.format("%.0f",h) + "%\",\"color\":\"#00BFFF\",\"icon\":\"53330\"}"
     logInfo("ulanzipool", "Feuchte -> Ulanzi: {}", msg)
     UlanziPool_OutHum.sendCommand(msg)
 end
