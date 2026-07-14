@@ -27,7 +27,7 @@ then
         return;
     }
     val t = (Weatherstation_Temperature_1.state as QuantityType<Number>).toUnit("°C").doubleValue
-    val msg = "{\"text\":\"" + String.format("%.1f",t) + "°C\",\"color\":\"#FFA500\",\"icon\":\"2422\"}"
+    val msg = "{\"text\":\"" + String.format("%.1f",t) + "°C\",\"color\":\"#FFA500\",\"icon\":\"60478\"}"
     logInfo("ulanzipool", "Aussentemp -> Ulanzi: {}", msg)
     UlanziPool_OutTemp.sendCommand(msg)
 end
@@ -54,7 +54,7 @@ end
 //        return;
 //    }
 //    val wt = (Pool_HP_WaterTempIn.state as QuantityType<Number>).toUnit("°C").doubleValue
-//    val msg = "{\"text\":\"" + String.format("%.1f",wt) + "°C\",\"color\":\"#1E90FF\",\"icon\":\"4985\"}"
+//    val msg = "{\"text\":\"" + String.format("%.1f",wt) + "°C\",\"color\":\"#1E90FF\",\"icon\":\"60478\"}"
 //    UlanziPool_WaterTemp.sendCommand(msg)
 //end
 //
@@ -66,7 +66,7 @@ end
 //        return;
 //    }
 //    val ph = (Pool_Salt_pH.state as Number).doubleValue
-//    val msg = "{\"text\":\"pH " + String.format("%.1f",ph) + "\",\"color\":\"#00FF7F\",\"icon\":\"8461\"}"
+//    val msg = "{\"text\":\"pH " + String.format("%.1f",ph) + "\",\"color\":\"#00FF7F\",\"icon\":\"60821\"}"
 //    UlanziPool_PH.sendCommand(msg)
 //end
 //
@@ -78,6 +78,6 @@ end
 //        return;
 //    }
 //    val orp = (Pool_Salt_ORP.state as QuantityType<Number>).toUnit("mV").doubleValue
-//    val msg = "{\"text\":\"" + String.format("%.0f",orp) + "mV\",\"color\":\"#DA70D6\",\"icon\":\"3467\"}"
+//    val msg = "{\"text\":\"" + String.format("%.0f",orp) + "mV\",\"color\":\"#DA70D6\",\"icon\":\"60829\"}"
 //    UlanziPool_ORP.sendCommand(msg)
 //end
