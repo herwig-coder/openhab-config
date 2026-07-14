@@ -27,7 +27,7 @@ then
         return;
     }
     val t = (Weatherstation_Temperature_1.state as QuantityType<Number>).toUnit("°C").doubleValue
-    val msg = "{\"text\":\"" + String.format("%.1f",t) + "°C\",\"color\":\"#FFA500\",\"icon\":\"60478\"}"
+    val msg = "{\"text\":\"" + String.format("%.1f",t) + "°C\",\"color\":\"#FFA500\",\"icon\":\"2355\"}"
     logInfo("ulanzipool", "Aussentemp -> Ulanzi: {}", msg)
     UlanziPool_OutTemp.sendCommand(msg)
 end
