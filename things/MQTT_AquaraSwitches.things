@@ -8,3 +8,11 @@ Thing mqtt:topic:mqtt_AquaraSwitchOfficeZorina "Aqara Switch Büro Zorina"  (mqt
     Type number : linkquality  "Link Quality"  [ stateTopic="zigbee2mqtt/AquaraSwitchOfficeZorina", transformationPattern="JSONPATH:$.linkquality" ]
     Type number : voltage      "Voltage"       [ stateTopic="zigbee2mqtt/AquaraSwitchOfficeZorina", transformationPattern="JSONPATH:$.voltage" ]
 }
+
+Thing mqtt:topic:mqtt_AquaraSwitchWohnzimmer "Aqara Switch Wohnzimmer"  (mqtt:broker:mqttbroker) @ "Wohnzimmer" {
+    Channels:
+    Type string : action       "Action"        [ stateTopic="zigbee2mqtt/AquaraSwitchWohnzimmer", transformationPattern="JSONPATH:$.action" ]
+    Type number : battery      "Battery"       [ stateTopic="zigbee2mqtt/AquaraSwitchWohnzimmer", transformationPattern="JSONPATH:$.battery" ]
+    Type number : linkquality  "Link Quality"  [ stateTopic="zigbee2mqtt/AquaraSwitchWohnzimmer", transformationPattern="JSONPATH:$.linkquality" ]
+    Type number : voltage      "Voltage"       [ stateTopic="zigbee2mqtt/AquaraSwitchWohnzimmer", transformationPattern="JSONPATH:$.voltage" ]
+}

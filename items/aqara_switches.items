@@ -10,3 +10,12 @@ Number                  OfficeBig_AqaraSwitch_Voltage      "Aqara Büro Zorina S
 // Virtual State-Item für Toggle-Stop-Logik (kein Channel, persistiert in OH-State).
 // Wird in rules/aqara_switches.rules zwischen Bewegungs-Start und -Stop gesetzt.
 Switch                  OfficeBig_Rollershutter_Moving     "Raffstore Büro Zorina in Bewegung [%s]"    <if:mdi:cog-sync>            (gOfficeBig)                       ["Status"]
+
+// --- Aqara Switch Wohnzimmer — steuert Livingroom_Rollershutter + Tilt ---
+String                  Livingroom_AqaraSwitch_Action      "Aqara Wohnzimmer Action [%s]"              <if:mdi:gesture-double-tap>  (gLivingRoom)                      ["Status"]               { channel="mqtt:topic:mqtt_AquaraSwitchWohnzimmer:action", autoupdate="false" }
+Number:Dimensionless    Livingroom_AqaraSwitch_Battery     "Aqara Wohnzimmer Batterie [%d %%]"         <if:mdi:battery-10>          (gLivingRoom, gBattery)            ["Battery"]              { unit="%", channel="mqtt:topic:mqtt_AquaraSwitchWohnzimmer:battery" }
+Number                  Livingroom_AqaraSwitch_LinkQuality "Aqara Wohnzimmer Link Quality [%d]"        <if:mdi:wifi-strength-2>     (gLivingRoom)                      ["Status"]               { channel="mqtt:topic:mqtt_AquaraSwitchWohnzimmer:linkquality" }
+Number                  Livingroom_AqaraSwitch_Voltage     "Aqara Wohnzimmer Spannung [%d mV]"         <if:mdi:battery>             (gLivingRoom)                      ["Status"]               { channel="mqtt:topic:mqtt_AquaraSwitchWohnzimmer:voltage" }
+
+// Virtual State-Item für Toggle-Stop-Logik (kein Channel).
+Switch                  Livingroom_Rollershutter_Moving    "Raffstore Wohnzimmer in Bewegung [%s]"     <if:mdi:cog-sync>            (gLivingRoom)                      ["Status"]

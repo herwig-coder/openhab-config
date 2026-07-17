@@ -82,3 +82,71 @@ then
         }
     }
 end
+
+// --- Wohnzimmer -----------------------------------------------------------
+// Aqara 2-Wippen-Switch steuert Livingroom_Rollershutter + Tilt. Gleiche Logik
+// wie Büro Zorina: jeder Druck während Bewegung = STOP; sonst
+//   single_left  → Tilt −10 % (mehr offen)   hold_left  → UP
+//   single_right → Tilt +10 % (mehr zu)      hold_right → DOWN
+
+var Timer Livingroom_Rollershutter_MovingTimer = null
+
+rule "Aqara Wohnzimmer — Action Mapping"
+when
+    Item Livingroom_AqaraSwitch_Action received update
+then
+    val action = Livingroom_AqaraSwitch_Action.state.toString
+    val movingState = Livingroom_Rollershutter_Moving.state
+    logInfo("AqaraWohnzimmer", "Action: " + action + "  (Moving=" + movingState + ")")
+
+    // Wenn Raffstore gerade in Bewegung ist: ANY press = STOP, sonst nichts.
+    if (movingState == ON) {
+        Livingroom_Rollershutter.sendCommand(StopMoveType.STOP)
+        Livingroom_Rollershutter_Moving.postUpdate(OFF)
+        if (Livingroom_Rollershutter_MovingTimer !== null) {
+            Livingroom_Rollershutter_MovingTimer.cancel()
+            Livingroom_Rollershutter_MovingTimer = null
+        }
+        logInfo("AqaraWohnzimmer", "  → STOP (war in Bewegung) — weitere Action ignoriert")
+        return;
+    }
+
+    // Nicht in Bewegung — Aktion normal abarbeiten
+    switch (action) {
+        case "single_left": {
+            val currentTilt = (Livingroom_Rollershutter_Tilt.state as DecimalType).intValue
+            val newTilt = Math::max(0, currentTilt - 10)
+            Livingroom_Rollershutter_Tilt.sendCommand(newTilt)
+            logInfo("AqaraWohnzimmer", "  → Tilt " + currentTilt + " → " + newTilt + " (mehr offen)")
+        }
+        case "single_right": {
+            val currentTilt = (Livingroom_Rollershutter_Tilt.state as DecimalType).intValue
+            val newTilt = Math::min(100, currentTilt + 10)
+            Livingroom_Rollershutter_Tilt.sendCommand(newTilt)
+            logInfo("AqaraWohnzimmer", "  → Tilt " + currentTilt + " → " + newTilt + " (mehr zu)")
+        }
+        case "hold_left": {
+            Livingroom_Rollershutter.sendCommand(UpDownType.UP)
+            Livingroom_Rollershutter_Moving.postUpdate(ON)
+            if (Livingroom_Rollershutter_MovingTimer !== null) Livingroom_Rollershutter_MovingTimer.cancel()
+            Livingroom_Rollershutter_MovingTimer = createTimer(now.plusSeconds(40)) [|
+                Livingroom_Rollershutter_Moving.postUpdate(OFF)
+                logInfo("AqaraWohnzimmer", "  Moving-Timeout — Flag zurückgesetzt")
+            ]
+            logInfo("AqaraWohnzimmer", "  → UP")
+        }
+        case "hold_right": {
+            Livingroom_Rollershutter.sendCommand(UpDownType.DOWN)
+            Livingroom_Rollershutter_Moving.postUpdate(ON)
+            if (Livingroom_Rollershutter_MovingTimer !== null) Livingroom_Rollershutter_MovingTimer.cancel()
+            Livingroom_Rollershutter_MovingTimer = createTimer(now.plusSeconds(40)) [|
+                Livingroom_Rollershutter_Moving.postUpdate(OFF)
+                logInfo("AqaraWohnzimmer", "  Moving-Timeout — Flag zurückgesetzt")
+            ]
+            logInfo("AqaraWohnzimmer", "  → DOWN")
+        }
+        default: {
+            logInfo("AqaraWohnzimmer", "  → Action unbekannt, ignoriert")
+        }
+    }
+end
