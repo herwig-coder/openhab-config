@@ -21,6 +21,7 @@ import org.openhab.core.library.types.UpDownType
 // der Stop-Press verpasst wurde oder die Bewegung von alleine zu Ende ist.
 
 var Timer OfficeBig_Rollershutter_MovingTimer = null
+var Timer Livingroom_Rollershutter_MovingTimer = null
 
 rule "Aqara Office Zorina — Action Mapping"
 when
@@ -88,8 +89,6 @@ end
 // wie Büro Zorina: jeder Druck während Bewegung = STOP; sonst
 //   single_left  → Tilt −10 % (mehr offen)   hold_left  → UP
 //   single_right → Tilt +10 % (mehr zu)      hold_right → DOWN
-
-var Timer Livingroom_Rollershutter_MovingTimer = null
 
 rule "Aqara Wohnzimmer — Action Mapping"
 when
