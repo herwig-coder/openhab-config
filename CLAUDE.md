@@ -33,6 +33,7 @@ Four things files contain credentials and are **gitignored**. Their `.template` 
 These files already exist correctly on the server and are untouched by `git pull`.
 
 `services/` is gitignored as a whole (`influxdb.cfg` holds credentials, `runtime.cfg` possibly too) — it lives only on the server; restore it from backup, not from git.
+Also server-only: `html/` (garbage-calendar ICS served at `/static/`, see `things/MuellCalendar.things`) and `sounds/` (openHAB sample files).
 
 ## Integrations Overview
 

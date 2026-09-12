@@ -9,6 +9,11 @@ things/ReolinkCameras.things
 services/
 *.dpkg-old
 
+# Server-only content: html/ serves the garbage-calendar ICS via /static/ (see things/MuellCalendar.things)
+# plus openHAB placeholders; sounds/ only holds the openHAB sample files (barking.mp3, doorbell.mp3)
+html/
+sounds/
+
 # Local environment / secrets file
 .env
 scripts/**/.env
