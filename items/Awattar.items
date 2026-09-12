@@ -2,7 +2,7 @@ Number:Dimensionless Awattar_Price_CurrentNet   "Aktueller Börsenstrompreis net
 Number:Dimensionless Awattar_Price_CurrentGross "Aktueller Börsenstrompreis brutto [%2.2f ct/kWh]" <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#market-gross" }
 Number:Dimensionless Awattar_Price_TotalNet     "Aktueller Awattar Preis netto [%2.2f ct/kWh]"      <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#total-net" }
 Number:Dimensionless Awattar_Price_TotalGross   "Aktueller Awattar Preis brutto [%2.2f ct/kWh]"     <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:current#total-gross" }
-Number:Dimensionless Awattar_Price_Total        "Strompreis [%.1f ct]"                               <if:f7:money-euro-circle> (gStrasshof) ["Point"] {alexa="Other"}
+Number:Dimensionless Awattar_Price_Total        "Strompreis [%.1f ct]"                               <if:f7:money-euro-circle> (gEnergySystem) ["Measurement","Price"] {alexa="Other"}
 
 Number:Dimensionless today00 "Electricity Today 00-01 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today00#total-gross" }
 Number:Dimensionless today01 "Electricity Today 01-02 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:today01#total-gross" }

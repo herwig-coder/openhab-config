@@ -1,0 +1,16 @@
+// MapDB — last value per item, used to restore states after a restart
+// Migrated from the UI/JSONDB config on 2026-09-12 (was: * → everyChange, restoreOnStartup).
+// Energy items: a value at most one minute old is enough to restore (the Cerbo republishes
+// everything on start anyway), so they don't hit the disk on every change.
+
+Strategies {
+    everyMinute : "0 * * * * ?"
+}
+
+Items {
+    // Everything except energy: unchanged
+    *, !gEnergySystem*, !gEnergyDiag* : strategy = everyChange, restoreOnStartup
+
+    // Energy: one sample per minute
+    gEnergySystem*, gEnergyDiag* : strategy = everyMinute, restoreOnStartup
+}

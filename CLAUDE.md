@@ -10,6 +10,7 @@ Config/                         ← git repo root (cloned to /etc/openhab on ser
 ├── items/                      # OpenHAB item definitions (.items)
 ├── rules/                      # Automation logic (.rules — Xtend/DSL)
 ├── things/                     # Device/bridge configuration (.things)
+├── persistence/                # influxdb/rrd4j/mapdb/inmemory .persist (file-based since 2026-09-12, no UI config!)
 ├── Scripts/
 │   ├── battery-monitor/        # Python: detect dead batteries via REST API + persistence
 │   └── train-tracker/          # Python: ÖBB train delays via HAFAS API → JSON → OpenHAB rules
@@ -35,6 +36,7 @@ These files already exist correctly on the server and are untouched by `git pull
 
 - **KNX** — Building automation (lights, blinds/raffstores, temperatures) via IP tunnel at 10.1.0.16
 - **MQTT** — Broker at 10.1.0.10; connects Shelly, Gosund, Weatherstation, Smartmeter, Ulanzi, Matrix
+- **Victron** — Cerbo GX at 10.1.0.50, its own MQTT broker (bridge `mqtt:broker:victron`, portal ID `c0619ab6f9ea`). Needs `rules/victron_keepalive.rules` or it stops publishing after 60 s
 - **Z-Wave** — Additional sensors/actuators
 - **BLE** — Bluetooth Low Energy sensors
 - **OpenWeatherMap** — External weather data (API v3, location: 48.317,16.675)
@@ -71,6 +73,9 @@ ssh herwig@10.1.100.101 'cd /etc/openhab && sudo git pull'
 ```
 
 OpenHAB watches config directories — no restart needed for items/rules/things changes.
+
+Server runs **openHAB 5.1** (no `default` persistence strategies). Outside the repo: `/var/lib/openhab/etc/log4j2.xml`
+has an events.log RegexFilter for energy items — changes there need an openHAB restart. See `docs/energy-rollout.md`.
 
 ## Server Setup (one-time)
 

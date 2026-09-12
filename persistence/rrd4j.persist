@@ -1,0 +1,15 @@
+// rrd4j — Main UI charts (fixed-size round-robin files, numeric items only)
+// Migrated from the UI/JSONDB config on 2026-09-12 (was: * → everyChange, everyMinute, restoreOnStartup).
+// rrd4j needs a regular sample (everyMinute) to fill its archives; energy items get only that.
+
+Strategies {
+    everyMinute : "0 * * * * ?"
+}
+
+Items {
+    // Everything except energy: unchanged
+    *, !gEnergySystem*, !gEnergyDiag* : strategy = everyChange, everyMinute, restoreOnStartup
+
+    // Energy: one sample per minute
+    gEnergySystem*, gEnergyDiag* : strategy = everyMinute, restoreOnStartup
+}

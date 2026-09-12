@@ -44,6 +44,13 @@ Group    gPoolHouse         "Poolhaus"            <if:roentgen:houseboat>       
 Group    gPoolEngineering   "Pooltechnik"         <if:ic:baseline-engineering>  (gPool)          ["Location","Pooltechnik"]                 {widgetOrder="280"}
 Group    gSwimmingpool      "Schwimmbecken"       <if:mdi:pool>                 (gPool)          ["Location","Schwimmbecken"]               {widgetOrder="290"}
 
+//Energy — one equipment for the whole energy system (smart meter, Victron, price).
+//Only dashboard-relevant points live here; details go to the non-semantic gEnergyDiag tree.
+Group    gEnergySystem      "Energie"             <if:mdi:lightning-bolt>       (gStrasshof)     ["Equipment"]
+//Non-semantic (no tags, no location): diagnostics page / Grafana, and metered plugs (Gosund, Z-Wave)
+Group    gEnergyDiag        "Energie Diagnose"    <if:mdi:chart-line>
+Group    gEnergy            "Energie Verbraucher" <energy>
+
 //Bleiburg
 Group    gBleiburg      "Bleiburg"                                                              ["Location","Bleiburg"]
 Group    gBLivingRoom   "Bleiburg Wohnzimmer"                                   (gBleiburg)     ["LivingRoom"]

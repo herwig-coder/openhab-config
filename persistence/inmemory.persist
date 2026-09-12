@@ -1,0 +1,6 @@
+// In-memory — forecast values (time series), nothing on disk
+// Migrated 1:1 from the UI/JSONDB config on 2026-09-12.
+
+Items {
+    * : strategy = forecast
+}
