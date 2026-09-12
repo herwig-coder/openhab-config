@@ -8,7 +8,7 @@ Drei Teile, in dieser Reihenfolge. Jede Stufe einzeln ausrollen und prüfen, bev
 |------|--------|--------|
 | A | log4j2-Filter für `events.log` (liegt **außerhalb** von git) | [x] ~~erledigt~~ 2026-09-12 |
 | 1 | Persistence UI → Dateien, Energie-Gruppen, Smart-Meter/Awattar-Umbau | [x] ~~erledigt~~ 2026-09-12 |
-| 2 | Victron: Things, Items, Keepalive-Rule | [ ] |
+| 2 | Victron: Things, Items, Keepalive-Rule | [x] ~~erledigt~~ 2026-09-12 — 81 Items da, Werte = Cerbo live, Keepalive/Full-Republish ok |
 
 ---
 
@@ -129,7 +129,10 @@ der Cerbo stellt das Publizieren nach 60 s von selbst ein.
 - [ ] Server-Drift klären (Stand 2026-09-12): `deploy.sh`, `Scripts/router-acl/setup.sh` (vermutlich nur `chmod +x`),
       `things/Awattar.things` (Diff prüfen und ins Repo übernehmen); untracked `services/` (evtl. Credentials → `.gitignore`/Template), `html/`, `sounds/`
 - [ ] Doppelte Channel-Links (Datei + UI): `ParentsBedroom_Humidity`, `ParentsBedroom_Temperature` → UI-Link entfernen
-- [ ] Cerbo Security-Profil „Unsecured“ + IoT-VLAN: jeder im VLAN 100 kann `W/`-Topics schreiben → [[Hardening-Session]] / [[MQTT-Härtung]]
-- [ ] MultiPlus AC-Eingang nicht verbunden (seit ~9 Tagen nur Wechselrichterbetrieb) — gewollt?
+- [ ] Cerbo Security-Profil „Unsecured“: `W/`-Topics ohne Auth schreibbar — bereits geplant (Cerbo aus VLAN 200 herauslösen,
+      bewusst zurückgestellt bis Grid-Code/ESS stehen) → [[docs/projects/pv-integration]] Schritt 5
+- [x] ~~MultiPlus AC-Eingang nicht verbunden — gewollt?~~ 2026-09-12: ja, bewusster Übergabezustand bis Grid-Code/ESS gesetzt sind
+- [ ] Nach Installateur-Termin (Grid-Code/ESS): Discovery wiederholen — VE.Bus-Instanzen 276/288 in `MQTT_Victron.things` prüfen
+- [ ] Generator-Diagnosewerte sind bei stehendem Generator `UNDEF` (expire) — gewollt; `Victron_Generator_ChargePower` zeigt weiter die DC-Leistung, solange der 4. MultiPlus sichtbar ist
 - [ ] Control-Channels (ESS-Sollwert, Min-SOC, Modus, Stromlimit) bewusst auskommentiert — bei Bedarf einzeln aktivieren
 - [ ] Energie-Page (`pages/energy.yml`) für Dashboard + Diagnose
