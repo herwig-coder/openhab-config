@@ -32,6 +32,8 @@ Four things files contain credentials and are **gitignored**. Their `.template` 
 
 These files already exist correctly on the server and are untouched by `git pull`.
 
+`services/` is gitignored as a whole (`influxdb.cfg` holds credentials, `runtime.cfg` possibly too) — it lives only on the server; restore it from backup, not from git.
+
 ## Integrations Overview
 
 - **KNX** — Building automation (lights, blinds/raffstores, temperatures) via IP tunnel at 10.1.0.16

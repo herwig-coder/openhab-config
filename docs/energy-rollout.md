@@ -126,9 +126,12 @@ der Cerbo stellt das Publizieren nach 60 s von selbst ein.
 ---
 
 ## Offene Punkte
-- [ ] Server-Drift klären (Stand 2026-09-12): `deploy.sh`, `Scripts/router-acl/setup.sh` (vermutlich nur `chmod +x`),
-      `things/Awattar.things` (Diff prüfen und ins Repo übernehmen); untracked `services/` (evtl. Credentials → `.gitignore`/Template), `html/`, `sounds/`
+- [x] ~~Server-Drift klären~~ 2026-09-12 — `deploy.sh`/`setup.sh` waren nur `chmod +x` (Repo jetzt ebenfalls `+x`),
+      `Awattar.things` nur eine Leerzeile (verworfen), `services/` + `*.dpkg-old` gitignoriert (Credentials). Offen nur noch: untracked `html/`, `sounds/` sichten
+- [x] ~~Phantom-Gruppen~~ 2026-09-12 — `gBattery` (17 Items) und `gPlugs` definiert, `Light` aus den Gruppenlisten der Shelly-Items entfernt (war ein Tag)
 - [ ] Doppelte Channel-Links (Datei + UI): `ParentsBedroom_Humidity`, `ParentsBedroom_Temperature` → UI-Link entfernen
+- [ ] **Ab 2026-09-26** (wenn alles stabil): Rollout-Backups löschen — `~/PersistenceServiceConfiguration.json.bak-2026-09-12`,
+      `~/persist-jsondb-backups/`, `/var/lib/openhab/etc/log4j2.xml.bak-2026-09-12`
 - [ ] Cerbo Security-Profil „Unsecured“: `W/`-Topics ohne Auth schreibbar — bereits geplant (Cerbo aus VLAN 200 herauslösen,
       bewusst zurückgestellt bis Grid-Code/ESS stehen) → [[docs/projects/pv-integration]] Schritt 5
 - [x] ~~MultiPlus AC-Eingang nicht verbunden — gewollt?~~ 2026-09-12: ja, bewusster Übergabezustand bis Grid-Code/ESS gesetzt sind

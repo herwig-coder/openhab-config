@@ -4,6 +4,11 @@ things/openweathermap.things
 things/telegrambot.things
 things/ReolinkCameras.things
 
+# Service configs live only on the server — influxdb.cfg (and possibly runtime.cfg) contain credentials.
+# Restore from backup, not from git. dpkg leaves *.dpkg-old next to changed configs on upgrades.
+services/
+*.dpkg-old
+
 # Local environment / secrets file
 .env
 scripts/**/.env

@@ -51,6 +51,10 @@ Group    gEnergySystem      "Energie"             <if:mdi:lightning-bolt>       
 Group    gEnergyDiag        "Energie Diagnose"    <if:mdi:chart-line>
 Group    gEnergy            "Energie Verbraucher" <energy>
 
+//Functional groups (non-semantic) — referenced by device items, e.g. for low-battery rules
+Group    gBattery           "Batterien"           <if:mdi:battery>
+Group    gPlugs             "Steckdosen"          <poweroutlet>
+
 //Bleiburg
 Group    gBleiburg      "Bleiburg"                                                              ["Location","Bleiburg"]
 Group    gBLivingRoom   "Bleiburg Wohnzimmer"                                   (gBleiburg)     ["LivingRoom"]

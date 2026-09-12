@@ -5,12 +5,12 @@ Switch                Poolhouse_Passage_Motion               "Poolhaus Bewegungs
 Number:Dimensionless  Poolhouse_Passage_Battery              "Poolhaus Bewegungsmelder Batterie"             <if:mdi:battery-10>                 (gPoolHouse, gBattery)                  ["Battery"]                     { unit="%",  channel="shelly:shellyblumotion:38398f86e983:battery#batteryLevel" }
 
 //Leuchtstreifen
-Color                 Poolhouse_Passage_LightStrip_Color     "Poolhaus Passage Strip Farbe"                  <mdi:house-floor-g>                 (gPoolHouse, Light)                     ["Light"]                       { unit="%",  channel="shelly:shellyplusrgbwpm:30c9225758d0:color#hsb" }
+Color                 Poolhouse_Passage_LightStrip_Color     "Poolhaus Passage Strip Farbe"                  <mdi:house-floor-g>                 (gPoolHouse)                            ["Light"]                       { unit="%",  channel="shelly:shellyplusrgbwpm:30c9225758d0:color#hsb" }
 //Not working
 //Dimmer              Strip_Gartenhaus_Passage_Light_Dimmer  "Poolhaus Passage Strip Dimmer"                 <mdi:house-floor-g>                 (gPoolHouse, Light)                      ["Point","Light"]                   {channel="shelly:shellyplusrgbwpm:30c9225758d0:white#brightness"}
 
 //Tisch
-Dimmer                Poolhouse_Light_Dimmer                 "Poolhaus Tisch Licht Dimmer"                   <mdi:house-floor-g>                 (gPoolHouse, Light)                     ["Light"]                       {channel="shelly:shellydimmer2:40915158dd6e:relay#brightness"}
+Dimmer                Poolhouse_Light_Dimmer                 "Poolhaus Tisch Licht Dimmer"                   <mdi:house-floor-g>                 (gPoolHouse)                            ["Light"]                       {channel="shelly:shellydimmer2:40915158dd6e:relay#brightness"}
 
 
 //Carport
