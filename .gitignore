@@ -33,3 +33,7 @@ desktop.ini
 # Editor artifacts
 *.swp
 *.tmp
+
+# KNX/ETS project files — may contain WiFi/SMTP/cloud credentials embedded by other devices
+docs/knx/*.knxproj
+docs/knx/*.knxprod
