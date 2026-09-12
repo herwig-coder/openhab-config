@@ -129,7 +129,7 @@ der Cerbo stellt das Publizieren nach 60 s von selbst ein.
 - [x] ~~Server-Drift klären~~ 2026-09-12 — `deploy.sh`/`setup.sh` waren nur `chmod +x` (Repo jetzt ebenfalls `+x`),
       `Awattar.things` nur eine Leerzeile (verworfen), `services/` + `*.dpkg-old` gitignoriert (Credentials); `html/` (Müllkalender-ICS, openHAB-Platzhalter) und `sounds/` (openHAB-Beispieldateien) ebenfalls gitignoriert
 - [x] ~~Phantom-Gruppen~~ 2026-09-12 — `gBattery` (18 Items) und `gPlugs` (3 Items) definiert, `Light` aus den Gruppenlisten der Shelly-Items entfernt (war ein Tag)
-- [ ] Doppelte Channel-Links (Datei + UI): `ParentsBedroom_Humidity`, `ParentsBedroom_Temperature` → UI-Link entfernen
+- [x] ~~Doppelte Channel-Links (Datei + UI): `ParentsBedroom_Humidity`, `ParentsBedroom_Temperature`~~ 2026-09-12 — UI-Links entfernt (JSONDB: 0 Treffer), Datei-Links liefern weiter Werte
 - [ ] **Ab 2026-09-26** (wenn alles stabil): Rollout-Backups löschen — `~/PersistenceServiceConfiguration.json.bak-2026-09-12`,
       `~/persist-jsondb-backups/`, `/var/lib/openhab/etc/log4j2.xml.bak-2026-09-12`
 - [ ] Cerbo Security-Profil „Unsecured“: `W/`-Topics ohne Auth schreibbar — bereits geplant (Cerbo aus VLAN 200 herauslösen,
