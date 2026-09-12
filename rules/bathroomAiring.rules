@@ -146,11 +146,15 @@ then
         }
     }
 
-    // 1) Success: aired down to the practical floor or harmless level -> close quietly.
+    // 1) Success: aired down to the practical floor or harmless level -> close quietly, suspend.
+    //    Suspend so dewpoint sensor jitter (±0.26 °C per 1 % humidity step) can't re-open it while
+    //    Bathroom_DewPoint_Alert is still ON (its OFF floor is lower) — that looped open/close every 5 min.
+    //    A genuine new shower (AIR_SHOWER_RISE) or the daily reset clears it.
     if (delta <= AIR_CLOSE_DELTA.doubleValue || indoorDP <= AIR_CLOSE_FLOOR.doubleValue) {
-        logInfo("bathroom_airing_watchdog", "aired enough -> close")
+        logInfo("bathroom_airing_watchdog", "aired enough -> close, suspend")
         Bathroom_Airing_Close_Request.sendCommand(ON)
         Bathroom_Airing_Open_Request.sendCommand(OFF)
+        Bathroom_Airing_Suspended.postUpdate(ON)
         return;
     }
 
