@@ -1,0 +1,251 @@
+// Victron energy system via the Cerbo GX's built-in MQTT broker (Venus OS v3.79)
+//
+// Topics:   N/<portal id>/<service>/<instance>/<path>   payload {"value": <x>}
+// Writes:   W/<portal id>/<service>/<instance>/<path>   payload {"value": <x>}
+// Portal ID c0619ab6f9ea, instances discovered 2026-09-10.
+//
+// IMPORTANT: the Cerbo only publishes while it receives a keepalive at least every 60 s.
+//            That is handled by rules/victron_keepalive.rules — without it all channels stay NULL.
+//
+// Security profile on the Cerbo is "Unsecured" (plaintext MQTT on LAN, no auth), so no credentials here.
+// If the profile is ever changed to "Weak"/"Secured", add username/password and move this bridge
+// into a gitignored file like MQTT_broker.things.
+//
+// Control channels are commented out on purpose. Enable deliberately, one at a time.
+
+Bridge mqtt:broker:victron "Victron Cerbo GX" @ "Hobbyraum" [ host="10.1.0.50", port=1883, secure=false, clientID="openhab-victron" ]
+
+
+// ---------------------------------------------------------------------------------------------
+// System overview (com.victronenergy.system/0) — aggregated values, same as the VRM dashboard
+// ---------------------------------------------------------------------------------------------
+// battery_state:        0=idle, 1=charging, 2=discharging
+// active_input_source:  0=unknown, 1=grid, 2=generator, 3=shore, 240=not connected (inverting)
+// system_state:         0=off, 1=low power, 2=fault, 3=bulk, 4=absorption, 5=float, 6=storage,
+//                       7=equalize, 8=passthru, 9=inverting, 10=assisting, 11=power supply,
+//                       252=external control, 256=discharging, 257=sustain, 258=recharge
+Thing mqtt:topic:victron_system "Victron System" (mqtt:broker:victron) @ "Hobbyraum" {
+    Channels:
+    Type number : battery_soc              "Battery SOC"                  [ stateTopic="N/c0619ab6f9ea/system/0/Dc/Battery/Soc", transformationPattern="JSONPATH:$.value", unit="%" ]
+    Type number : battery_power            "Battery Power"                [ stateTopic="N/c0619ab6f9ea/system/0/Dc/Battery/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : battery_state            "Battery State"                [ stateTopic="N/c0619ab6f9ea/system/0/Dc/Battery/State", transformationPattern="JSONPATH:$.value" ]
+    Type number : pv_power                 "PV Power (all MPPTs)"         [ stateTopic="N/c0619ab6f9ea/system/0/Dc/Pv/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : pv_current               "PV Current (all MPPTs)"       [ stateTopic="N/c0619ab6f9ea/system/0/Dc/Pv/Current", transformationPattern="JSONPATH:$.value", unit="A" ]
+    Type number : inverter_charger_power   "Inverter/Charger DC Power"    [ stateTopic="N/c0619ab6f9ea/system/0/Dc/InverterCharger/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : consumption_l1_power     "AC Consumption L1"            [ stateTopic="N/c0619ab6f9ea/system/0/Ac/Consumption/L1/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : consumption_l2_power     "AC Consumption L2"            [ stateTopic="N/c0619ab6f9ea/system/0/Ac/Consumption/L2/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : consumption_l3_power     "AC Consumption L3"            [ stateTopic="N/c0619ab6f9ea/system/0/Ac/Consumption/L3/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : critical_l1_power        "Critical Loads (AC-out) L1"   [ stateTopic="N/c0619ab6f9ea/system/0/Ac/ConsumptionOnOutput/L1/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : critical_l2_power        "Critical Loads (AC-out) L2"   [ stateTopic="N/c0619ab6f9ea/system/0/Ac/ConsumptionOnOutput/L2/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : critical_l3_power        "Critical Loads (AC-out) L3"   [ stateTopic="N/c0619ab6f9ea/system/0/Ac/ConsumptionOnOutput/L3/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : active_input_source      "Active AC Input Source"       [ stateTopic="N/c0619ab6f9ea/system/0/Ac/ActiveIn/Source", transformationPattern="JSONPATH:$.value" ]
+    Type number : system_state             "System State"                 [ stateTopic="N/c0619ab6f9ea/system/0/SystemState/State", transformationPattern="JSONPATH:$.value" ]
+    Type switch : state_low_soc            "State: Low SOC"               [ stateTopic="N/c0619ab6f9ea/system/0/SystemState/LowSoc", transformationPattern="JSONPATH:$.value", on="1", off="0" ]
+    Type switch : state_charge_disabled    "State: Charge Disabled"       [ stateTopic="N/c0619ab6f9ea/system/0/SystemState/ChargeDisabled", transformationPattern="JSONPATH:$.value", on="1", off="0" ]
+    Type switch : state_discharge_disabled "State: Discharge Disabled"    [ stateTopic="N/c0619ab6f9ea/system/0/SystemState/DischargeDisabled", transformationPattern="JSONPATH:$.value", on="1", off="0" ]
+    Type switch : relay_0                  "Relay 1 (alarm relay)"        [ stateTopic="N/c0619ab6f9ea/system/0/Relay/0/State", transformationPattern="JSONPATH:$.value", on="1", off="0" ]
+    Type switch : relay_1                  "Relay 2 (manual)"             [ stateTopic="N/c0619ab6f9ea/system/0/Relay/1/State", transformationPattern="JSONPATH:$.value", on="1", off="0" ]
+
+    // --- Control (disabled) ---
+    // Type switch : relay_1_control       "Relay 2 Control"              [ stateTopic="N/c0619ab6f9ea/system/0/Relay/1/State", commandTopic="W/c0619ab6f9ea/system/0/Relay/1/State", transformationPattern="JSONPATH:$.value", formatBeforePublish="{\"value\": %s}", on="1", off="0" ]
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// Grid meter (com.victronenergy.grid/30) — Carlo Gavazzi meter on /dev/ttyUSB1
+// Positive power = import from grid, negative = feed-in
+// ---------------------------------------------------------------------------------------------
+Thing mqtt:topic:victron_grid "Victron Grid Meter" (mqtt:broker:victron) @ "Hobbyraum" {
+    Channels:
+    Type number : power                    "Grid Power"                   [ stateTopic="N/c0619ab6f9ea/grid/30/Ac/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : l1_power                 "Grid L1 Power"                [ stateTopic="N/c0619ab6f9ea/grid/30/Ac/L1/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : l2_power                 "Grid L2 Power"                [ stateTopic="N/c0619ab6f9ea/grid/30/Ac/L2/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : l3_power                 "Grid L3 Power"                [ stateTopic="N/c0619ab6f9ea/grid/30/Ac/L3/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : l1_voltage               "Grid L1 Voltage"              [ stateTopic="N/c0619ab6f9ea/grid/30/Ac/L1/Voltage", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : l2_voltage               "Grid L2 Voltage"              [ stateTopic="N/c0619ab6f9ea/grid/30/Ac/L2/Voltage", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : l3_voltage               "Grid L3 Voltage"              [ stateTopic="N/c0619ab6f9ea/grid/30/Ac/L3/Voltage", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : l1_current               "Grid L1 Current"              [ stateTopic="N/c0619ab6f9ea/grid/30/Ac/L1/Current", transformationPattern="JSONPATH:$.value", unit="A" ]
+    Type number : l2_current               "Grid L2 Current"              [ stateTopic="N/c0619ab6f9ea/grid/30/Ac/L2/Current", transformationPattern="JSONPATH:$.value", unit="A" ]
+    Type number : l3_current               "Grid L3 Current"              [ stateTopic="N/c0619ab6f9ea/grid/30/Ac/L3/Current", transformationPattern="JSONPATH:$.value", unit="A" ]
+    Type number : frequency                "Grid Frequency"               [ stateTopic="N/c0619ab6f9ea/grid/30/Ac/Frequency", transformationPattern="JSONPATH:$.value", unit="Hz" ]
+    Type number : power_factor             "Grid Power Factor"            [ stateTopic="N/c0619ab6f9ea/grid/30/Ac/PowerFactor", transformationPattern="JSONPATH:$.value" ]
+    Type number : energy_import            "Grid Energy Import (total)"   [ stateTopic="N/c0619ab6f9ea/grid/30/Ac/Energy/Forward", transformationPattern="JSONPATH:$.value", unit="kWh" ]
+    Type number : energy_export            "Grid Energy Export (total)"   [ stateTopic="N/c0619ab6f9ea/grid/30/Ac/Energy/Reverse", transformationPattern="JSONPATH:$.value", unit="kWh" ]
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// 3x MultiPlus-II 48/5000/70-50, 3-phase (com.victronenergy.vebus/276)
+// ---------------------------------------------------------------------------------------------
+// mode:   1=charger only, 2=inverter only, 3=on, 4=off
+// state:  0=off, 1=low power, 2=fault, 3=bulk, 4=absorption, 5=float, 6=storage, 7=equalize,
+//         8=passthru, 9=inverting, 10=power assist, 11=power supply, 244=sustain, 252=external control
+// alarm_*: 0=ok, 1=warning, 2=alarm
+Thing mqtt:topic:victron_multiplus "Victron MultiPlus-II 3-phase" (mqtt:broker:victron) @ "Hobbyraum" {
+    Channels:
+    Type number : mode                     "Mode"                         [ stateTopic="N/c0619ab6f9ea/vebus/276/Mode", transformationPattern="JSONPATH:$.value" ]
+    Type number : state                    "State"                        [ stateTopic="N/c0619ab6f9ea/vebus/276/State", transformationPattern="JSONPATH:$.value" ]
+    Type number : vebus_error              "VE.Bus Error"                 [ stateTopic="N/c0619ab6f9ea/vebus/276/VebusError", transformationPattern="JSONPATH:$.value" ]
+    Type switch : ac_in_connected          "AC Input Connected"           [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/ActiveIn/Connected", transformationPattern="JSONPATH:$.value", on="1", off="0" ]
+    Type number : ac_in_current_limit      "AC Input Current Limit"       [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/ActiveIn/CurrentLimit", transformationPattern="JSONPATH:$.value", unit="A" ]
+    Type number : ac_in_power              "AC Input Power"               [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/ActiveIn/P", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : ac_in_l1_power           "AC Input L1 Power"            [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/ActiveIn/L1/P", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : ac_in_l2_power           "AC Input L2 Power"            [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/ActiveIn/L2/P", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : ac_in_l3_power           "AC Input L3 Power"            [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/ActiveIn/L3/P", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : ac_in_l1_voltage         "AC Input L1 Voltage"          [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/ActiveIn/L1/V", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : ac_in_l2_voltage         "AC Input L2 Voltage"          [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/ActiveIn/L2/V", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : ac_in_l3_voltage         "AC Input L3 Voltage"          [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/ActiveIn/L3/V", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : ac_out_power             "AC Output Power"              [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/Out/P", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : ac_out_l1_power          "AC Output L1 Power"           [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/Out/L1/P", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : ac_out_l2_power          "AC Output L2 Power"           [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/Out/L2/P", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : ac_out_l3_power          "AC Output L3 Power"           [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/Out/L3/P", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : ac_out_l1_voltage        "AC Output L1 Voltage"         [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/Out/L1/V", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : ac_out_l2_voltage        "AC Output L2 Voltage"         [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/Out/L2/V", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : ac_out_l3_voltage        "AC Output L3 Voltage"         [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/Out/L3/V", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : ac_out_frequency         "AC Output Frequency"          [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/Out/L1/F", transformationPattern="JSONPATH:$.value", unit="Hz" ]
+    Type number : dc_voltage               "DC Voltage"                   [ stateTopic="N/c0619ab6f9ea/vebus/276/Dc/0/Voltage", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : dc_current               "DC Current"                   [ stateTopic="N/c0619ab6f9ea/vebus/276/Dc/0/Current", transformationPattern="JSONPATH:$.value", unit="A" ]
+    Type number : dc_power                 "DC Power"                     [ stateTopic="N/c0619ab6f9ea/vebus/276/Dc/0/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : alarm_high_temperature   "Alarm High Temperature"       [ stateTopic="N/c0619ab6f9ea/vebus/276/Alarms/HighTemperature", transformationPattern="JSONPATH:$.value" ]
+    Type number : alarm_low_battery        "Alarm Low Battery"            [ stateTopic="N/c0619ab6f9ea/vebus/276/Alarms/LowBattery", transformationPattern="JSONPATH:$.value" ]
+    Type number : alarm_overload           "Alarm Overload"               [ stateTopic="N/c0619ab6f9ea/vebus/276/Alarms/Overload", transformationPattern="JSONPATH:$.value" ]
+    Type number : alarm_ripple             "Alarm DC Ripple"              [ stateTopic="N/c0619ab6f9ea/vebus/276/Alarms/Ripple", transformationPattern="JSONPATH:$.value" ]
+    Type number : alarm_grid_lost          "Alarm Grid Lost"              [ stateTopic="N/c0619ab6f9ea/vebus/276/Alarms/GridLost", transformationPattern="JSONPATH:$.value" ]
+    Type number : alarm_phase_rotation     "Alarm Phase Rotation"         [ stateTopic="N/c0619ab6f9ea/vebus/276/Alarms/PhaseRotation", transformationPattern="JSONPATH:$.value" ]
+
+    // --- Control (disabled) ---
+    // Type number : mode_control             "Mode Control"                 [ stateTopic="N/c0619ab6f9ea/vebus/276/Mode", commandTopic="W/c0619ab6f9ea/vebus/276/Mode", transformationPattern="JSONPATH:$.value", formatBeforePublish="{\"value\": %s}", min="1", max="4", step="1" ]
+    // Type number : ac_in_current_limit_control "AC Input Current Limit Control" [ stateTopic="N/c0619ab6f9ea/vebus/276/Ac/In/1/CurrentLimit", commandTopic="W/c0619ab6f9ea/vebus/276/Ac/In/1/CurrentLimit", transformationPattern="JSONPATH:$.value", formatBeforePublish="{\"value\": %s}", unit="A", min="0", max="50" ]
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// Generator charger: 4th MultiPlus-II 48/5000 on its own VE.Bus via MK3-USB (com.victronenergy.vebus/288)
+// ---------------------------------------------------------------------------------------------
+// Only present on the D-Bus while the (manually started) generator runs. When it disappears the Cerbo
+// sends empty payloads, which the JSONPATH transformation drops — items keep their last value.
+// Use expire on the items of values that change constantly while running, e.g.
+//     { channel="mqtt:topic:victron_generator_charger:ac_in_voltage", expire="2m,state=UNDEF" }
+// NOTE: the instance number (288) may change if the MK3-USB is re-plugged — check in the Cerbo device list.
+// mode/state/alarm codes: see MultiPlus thing above
+Thing mqtt:topic:victron_generator_charger "Victron Generator Charger" (mqtt:broker:victron) @ "Hobbyraum" {
+    Channels:
+    Type switch : connected                "Connected"                    [ stateTopic="N/c0619ab6f9ea/vebus/288/Connected", transformationPattern="JSONPATH:$.value", on="1", off="0" ]
+    Type number : mode                     "Mode"                         [ stateTopic="N/c0619ab6f9ea/vebus/288/Mode", transformationPattern="JSONPATH:$.value" ]
+    Type number : state                    "State"                        [ stateTopic="N/c0619ab6f9ea/vebus/288/State", transformationPattern="JSONPATH:$.value" ]
+    Type number : vebus_error              "VE.Bus Error"                 [ stateTopic="N/c0619ab6f9ea/vebus/288/VebusError", transformationPattern="JSONPATH:$.value" ]
+    Type switch : ac_in_connected          "Generator Connected"          [ stateTopic="N/c0619ab6f9ea/vebus/288/Ac/ActiveIn/Connected", transformationPattern="JSONPATH:$.value", on="1", off="0" ]
+    Type number : ac_in_voltage            "Generator Voltage"            [ stateTopic="N/c0619ab6f9ea/vebus/288/Ac/ActiveIn/L1/V", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : ac_in_frequency          "Generator Frequency"          [ stateTopic="N/c0619ab6f9ea/vebus/288/Ac/ActiveIn/L1/F", transformationPattern="JSONPATH:$.value", unit="Hz" ]
+    Type number : ac_in_current            "Generator Current"            [ stateTopic="N/c0619ab6f9ea/vebus/288/Ac/ActiveIn/L1/I", transformationPattern="JSONPATH:$.value", unit="A" ]
+    Type number : ac_in_power              "Generator Power"              [ stateTopic="N/c0619ab6f9ea/vebus/288/Ac/ActiveIn/L1/P", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : ac_in_current_limit      "Generator Current Limit"      [ stateTopic="N/c0619ab6f9ea/vebus/288/Ac/ActiveIn/CurrentLimit", transformationPattern="JSONPATH:$.value", unit="A" ]
+    Type number : ac_out_power             "AC Output Power"              [ stateTopic="N/c0619ab6f9ea/vebus/288/Ac/Out/L1/P", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : ac_out_voltage           "AC Output Voltage"            [ stateTopic="N/c0619ab6f9ea/vebus/288/Ac/Out/L1/V", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : dc_voltage               "DC Voltage"                   [ stateTopic="N/c0619ab6f9ea/vebus/288/Dc/0/Voltage", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : dc_current               "DC Charge Current"            [ stateTopic="N/c0619ab6f9ea/vebus/288/Dc/0/Current", transformationPattern="JSONPATH:$.value", unit="A" ]
+    Type number : dc_power                 "DC Charge Power"              [ stateTopic="N/c0619ab6f9ea/vebus/288/Dc/0/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : alarm_high_temperature   "Alarm High Temperature"       [ stateTopic="N/c0619ab6f9ea/vebus/288/Alarms/HighTemperature", transformationPattern="JSONPATH:$.value" ]
+    Type number : alarm_low_battery        "Alarm Low Battery"            [ stateTopic="N/c0619ab6f9ea/vebus/288/Alarms/LowBattery", transformationPattern="JSONPATH:$.value" ]
+    Type number : alarm_overload           "Alarm Overload"               [ stateTopic="N/c0619ab6f9ea/vebus/288/Alarms/Overload", transformationPattern="JSONPATH:$.value" ]
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// Pytes battery bank, 6 modules / 600 Ah, BMS via CAN-bus (com.victronenergy.battery/512)
+// ---------------------------------------------------------------------------------------------
+Thing mqtt:topic:victron_battery "Victron Pytes Battery" (mqtt:broker:victron) @ "Hobbyraum" {
+    Channels:
+    Type number : soc                      "Battery SOC"                  [ stateTopic="N/c0619ab6f9ea/battery/512/Soc", transformationPattern="JSONPATH:$.value", unit="%" ]
+    Type number : soh                      "Battery SOH"                  [ stateTopic="N/c0619ab6f9ea/battery/512/Soh", transformationPattern="JSONPATH:$.value", unit="%" ]
+    Type number : voltage                  "Battery Voltage"              [ stateTopic="N/c0619ab6f9ea/battery/512/Dc/0/Voltage", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : current                  "Battery Current"              [ stateTopic="N/c0619ab6f9ea/battery/512/Dc/0/Current", transformationPattern="JSONPATH:$.value", unit="A" ]
+    Type number : power                    "Battery Power"                [ stateTopic="N/c0619ab6f9ea/battery/512/Dc/0/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : temperature              "Battery Temperature"          [ stateTopic="N/c0619ab6f9ea/battery/512/Dc/0/Temperature", transformationPattern="JSONPATH:$.value", unit="°C" ]
+    Type number : capacity_remaining       "Remaining Capacity"           [ stateTopic="N/c0619ab6f9ea/battery/512/Capacity", transformationPattern="JSONPATH:$.value", unit="Ah" ]
+    Type number : capacity_installed       "Installed Capacity"           [ stateTopic="N/c0619ab6f9ea/battery/512/InstalledCapacity", transformationPattern="JSONPATH:$.value", unit="Ah" ]
+    Type number : min_cell_voltage         "Min Cell Voltage"             [ stateTopic="N/c0619ab6f9ea/battery/512/System/MinCellVoltage", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : max_cell_voltage         "Max Cell Voltage"             [ stateTopic="N/c0619ab6f9ea/battery/512/System/MaxCellVoltage", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : min_cell_temperature     "Min Cell Temperature"         [ stateTopic="N/c0619ab6f9ea/battery/512/System/MinCellTemperature", transformationPattern="JSONPATH:$.value", unit="°C" ]
+    Type number : max_cell_temperature     "Max Cell Temperature"         [ stateTopic="N/c0619ab6f9ea/battery/512/System/MaxCellTemperature", transformationPattern="JSONPATH:$.value", unit="°C" ]
+    Type number : modules_online           "Modules Online"               [ stateTopic="N/c0619ab6f9ea/battery/512/System/NrOfModulesOnline", transformationPattern="JSONPATH:$.value" ]
+    Type number : modules_offline          "Modules Offline"              [ stateTopic="N/c0619ab6f9ea/battery/512/System/NrOfModulesOffline", transformationPattern="JSONPATH:$.value" ]
+    Type number : modules_blocking_charge  "Modules Blocking Charge"      [ stateTopic="N/c0619ab6f9ea/battery/512/System/NrOfModulesBlockingCharge", transformationPattern="JSONPATH:$.value" ]
+    Type number : modules_blocking_discharge "Modules Blocking Discharge" [ stateTopic="N/c0619ab6f9ea/battery/512/System/NrOfModulesBlockingDischarge", transformationPattern="JSONPATH:$.value" ]
+    Type switch : charge_blocked           "Charge Blocked"               [ stateTopic="N/c0619ab6f9ea/battery/512/Alarms/ChargeBlocked", transformationPattern="JSONPATH:$.value", on="1", off="0" ]
+    Type switch : discharge_blocked        "Discharge Blocked"            [ stateTopic="N/c0619ab6f9ea/battery/512/Alarms/DischargeBlocked", transformationPattern="JSONPATH:$.value", on="1", off="0" ]
+    Type number : max_charge_voltage       "BMS Max Charge Voltage (CVL)" [ stateTopic="N/c0619ab6f9ea/battery/512/Info/MaxChargeVoltage", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : max_charge_current       "BMS Max Charge Current (CCL)" [ stateTopic="N/c0619ab6f9ea/battery/512/Info/MaxChargeCurrent", transformationPattern="JSONPATH:$.value", unit="A" ]
+    Type number : max_discharge_current    "BMS Max Discharge Current (DCL)" [ stateTopic="N/c0619ab6f9ea/battery/512/Info/MaxDischargeCurrent", transformationPattern="JSONPATH:$.value", unit="A" ]
+    Type number : charged_energy           "Charged Energy (total)"       [ stateTopic="N/c0619ab6f9ea/battery/512/History/ChargedEnergy", transformationPattern="JSONPATH:$.value", unit="kWh" ]
+    Type number : discharged_energy        "Discharged Energy (total)"    [ stateTopic="N/c0619ab6f9ea/battery/512/History/DischargedEnergy", transformationPattern="JSONPATH:$.value", unit="kWh" ]
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// Solar chargers
+// ---------------------------------------------------------------------------------------------
+// state:      0=off, 2=fault, 3=bulk, 4=absorption, 5=float, 6=storage, 7=equalize, 245=starting up,
+//             252=external control (ESS/DVCC — normal in this system)
+// error_code: 0=no error, see Victron MPPT error code list
+// alarm_*:    0=ok, 1=warning, 2=alarm
+
+// SmartSolar MPPT RS 450/200, 4 trackers (com.victronenergy.solarcharger/278)
+Thing mqtt:topic:victron_mppt_rs "Victron MPPT RS 450/200" (mqtt:broker:victron) @ "Hobbyraum" {
+    Channels:
+    Type number : pv_power                 "PV Power"                     [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Yield/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : tracker1_power           "Tracker 1 Power"              [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Pv/0/P", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : tracker2_power           "Tracker 2 Power"              [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Pv/1/P", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : tracker3_power           "Tracker 3 Power"              [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Pv/2/P", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : tracker4_power           "Tracker 4 Power"              [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Pv/3/P", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : tracker1_voltage         "Tracker 1 Voltage"            [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Pv/0/V", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : tracker2_voltage         "Tracker 2 Voltage"            [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Pv/1/V", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : tracker3_voltage         "Tracker 3 Voltage"            [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Pv/2/V", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : tracker4_voltage         "Tracker 4 Voltage"            [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Pv/3/V", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : dc_voltage               "Battery Voltage"              [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Dc/0/Voltage", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : dc_current               "Charge Current"               [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Dc/0/Current", transformationPattern="JSONPATH:$.value", unit="A" ]
+    Type number : state                    "State"                        [ stateTopic="N/c0619ab6f9ea/solarcharger/278/State", transformationPattern="JSONPATH:$.value" ]
+    Type number : error_code               "Error Code"                   [ stateTopic="N/c0619ab6f9ea/solarcharger/278/ErrorCode", transformationPattern="JSONPATH:$.value" ]
+    Type number : yield_today              "Yield Today"                  [ stateTopic="N/c0619ab6f9ea/solarcharger/278/History/Daily/0/Yield", transformationPattern="JSONPATH:$.value", unit="kWh" ]
+    Type number : max_power_today          "Max Power Today"              [ stateTopic="N/c0619ab6f9ea/solarcharger/278/History/Daily/0/MaxPower", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : yield_total              "Yield Total"                  [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Yield/User", transformationPattern="JSONPATH:$.value", unit="kWh" ]
+    Type number : isolation_resistance     "PV Isolation Resistance (Ohm)" [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Pv/IsolationResistance", transformationPattern="JSONPATH:$.value" ]
+    Type number : alarm_high_temperature   "Alarm High Temperature"       [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Alarms/HighTemperature", transformationPattern="JSONPATH:$.value" ]
+    Type number : alarm_short_circuit      "Alarm Short Circuit"          [ stateTopic="N/c0619ab6f9ea/solarcharger/278/Alarms/ShortCircuit", transformationPattern="JSONPATH:$.value" ]
+}
+
+// SmartSolar MPPT 250/60 rev2 (com.victronenergy.solarcharger/279)
+Thing mqtt:topic:victron_mppt_250 "Victron MPPT 250/60" (mqtt:broker:victron) @ "Hobbyraum" {
+    Channels:
+    Type number : pv_power                 "PV Power"                     [ stateTopic="N/c0619ab6f9ea/solarcharger/279/Yield/Power", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : pv_voltage               "PV Voltage"                   [ stateTopic="N/c0619ab6f9ea/solarcharger/279/Pv/V", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : dc_voltage               "Battery Voltage"              [ stateTopic="N/c0619ab6f9ea/solarcharger/279/Dc/0/Voltage", transformationPattern="JSONPATH:$.value", unit="V" ]
+    Type number : dc_current               "Charge Current"               [ stateTopic="N/c0619ab6f9ea/solarcharger/279/Dc/0/Current", transformationPattern="JSONPATH:$.value", unit="A" ]
+    Type number : state                    "State"                        [ stateTopic="N/c0619ab6f9ea/solarcharger/279/State", transformationPattern="JSONPATH:$.value" ]
+    Type number : error_code               "Error Code"                   [ stateTopic="N/c0619ab6f9ea/solarcharger/279/ErrorCode", transformationPattern="JSONPATH:$.value" ]
+    Type number : yield_today              "Yield Today"                  [ stateTopic="N/c0619ab6f9ea/solarcharger/279/History/Daily/0/Yield", transformationPattern="JSONPATH:$.value", unit="kWh" ]
+    Type number : max_power_today          "Max Power Today"              [ stateTopic="N/c0619ab6f9ea/solarcharger/279/History/Daily/0/MaxPower", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : yield_total              "Yield Total"                  [ stateTopic="N/c0619ab6f9ea/solarcharger/279/Yield/User", transformationPattern="JSONPATH:$.value", unit="kWh" ]
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// ESS settings (com.victronenergy.settings/0, Settings/CGwacs)
+// ---------------------------------------------------------------------------------------------
+// hub4_mode:          1=optimized with phase compensation, 2=optimized without phase compensation, 3=external control
+// max_*_power:        -1 = no limit
+Thing mqtt:topic:victron_ess "Victron ESS" (mqtt:broker:victron) @ "Hobbyraum" {
+    Channels:
+    Type number : grid_setpoint            "ESS Grid Setpoint"            [ stateTopic="N/c0619ab6f9ea/settings/0/Settings/CGwacs/AcPowerSetPoint", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : min_soc                  "ESS Minimum SOC"              [ stateTopic="N/c0619ab6f9ea/settings/0/Settings/CGwacs/BatteryLife/MinimumSocLimit", transformationPattern="JSONPATH:$.value", unit="%" ]
+    Type number : active_soc_limit         "ESS Active SOC Limit"         [ stateTopic="N/c0619ab6f9ea/settings/0/Settings/CGwacs/BatteryLife/SocLimit", transformationPattern="JSONPATH:$.value", unit="%" ]
+    Type number : batterylife_state        "ESS BatteryLife State"        [ stateTopic="N/c0619ab6f9ea/settings/0/Settings/CGwacs/BatteryLife/State", transformationPattern="JSONPATH:$.value" ]
+    Type number : hub4_mode                "ESS Mode"                     [ stateTopic="N/c0619ab6f9ea/settings/0/Settings/CGwacs/Hub4Mode", transformationPattern="JSONPATH:$.value" ]
+    Type number : max_charge_power         "ESS Max Charge Power"         [ stateTopic="N/c0619ab6f9ea/settings/0/Settings/CGwacs/MaxChargePower", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : max_discharge_power      "ESS Max Discharge Power"      [ stateTopic="N/c0619ab6f9ea/settings/0/Settings/CGwacs/MaxDischargePower", transformationPattern="JSONPATH:$.value", unit="W" ]
+    Type number : max_feed_in_power        "ESS Max Feed-in Power"        [ stateTopic="N/c0619ab6f9ea/settings/0/Settings/CGwacs/MaxFeedInPower", transformationPattern="JSONPATH:$.value", unit="W" ]
+
+    // --- Control (disabled) ---
+    // Type number : grid_setpoint_control "ESS Grid Setpoint Control"    [ stateTopic="N/c0619ab6f9ea/settings/0/Settings/CGwacs/AcPowerSetPoint", commandTopic="W/c0619ab6f9ea/settings/0/Settings/CGwacs/AcPowerSetPoint", transformationPattern="JSONPATH:$.value", formatBeforePublish="{\"value\": %s}", unit="W" ]
+    // Type number : min_soc_control       "ESS Minimum SOC Control"      [ stateTopic="N/c0619ab6f9ea/settings/0/Settings/CGwacs/BatteryLife/MinimumSocLimit", commandTopic="W/c0619ab6f9ea/settings/0/Settings/CGwacs/BatteryLife/MinimumSocLimit", transformationPattern="JSONPATH:$.value", formatBeforePublish="{\"value\": %s}", unit="%", min="10", max="100", step="5" ]
+}

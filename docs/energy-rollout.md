@@ -7,7 +7,7 @@ Drei Teile, in dieser Reihenfolge. Jede Stufe einzeln ausrollen und prüfen, bev
 | Teil | Inhalt | Status |
 |------|--------|--------|
 | A | log4j2-Filter für `events.log` (liegt **außerhalb** von git) | [x] ~~erledigt~~ 2026-09-12 |
-| 1 | Persistence UI → Dateien, Energie-Gruppen, Smart-Meter/Awattar-Umbau | [ ] |
+| 1 | Persistence UI → Dateien, Energie-Gruppen, Smart-Meter/Awattar-Umbau | [x] ~~erledigt~~ 2026-09-12 |
 | 2 | Victron: Things, Items, Keepalive-Rule | [ ] |
 
 ---
@@ -58,13 +58,25 @@ Nur den Stufe-1-Commit pushen — `git pull` holt sonst Stufe 2 gleich mit.
 
 **Ablauf (Server)**
 ```bash
-# 0. Backup
+# 0a. Vorab-Check VOR dem Stop: getrackte Dateien dürfen lokal nicht geändert sein (" M"-Zeilen),
+#     sonst bricht git pull ab, während openHAB schon gestoppt ist (passiert 2026-09-12:
+#     semantic_model.items hatte am Server nur einen Zeilenumbruch am Dateiende extra).
+cd /etc/openhab && sudo git fetch && sudo git status --short
+sudo git diff --stat HEAD origin/main     # welche Dateien der Pull ändert — keine davon darf " M" sein
+
+# 0b. Backup
 sudo cp -p /var/lib/openhab/jsondb/org.openhab.core.persistence.PersistenceServiceConfiguration.json \
            ~/PersistenceServiceConfiguration.json.bak-2026-09-12
 
-# 1. Stop → UI-Config weg → Dateien holen → Start   (~2 min Downtime, restoreOnStartup stellt Zustände wieder her)
+# 1. Stop → UI-Config weg (Datei UND ihre JSONDB-Backups!) → Dateien holen → Start
+#    (~2 min Downtime, restoreOnStartup stellt Zustände wieder her)
+#    Achtung: fehlt eine JSONDB-Datei, lädt openHAB still das neueste Backup aus jsondb/backup/
+#    ("Json storage file at '.../backup/...' is used (backup 1)") — daher Backups mit wegräumen.
+mkdir -p ~/persist-jsondb-backups
 sudo systemctl stop openhab
 sudo mv /var/lib/openhab/jsondb/org.openhab.core.persistence.PersistenceServiceConfiguration.json /tmp/
+sudo mv /var/lib/openhab/jsondb/backup/*--org.openhab.core.persistence.PersistenceServiceConfiguration.json ~/persist-jsondb-backups/
+ls /var/lib/openhab/jsondb/ /var/lib/openhab/jsondb/backup/ | grep -i PersistenceServiceConfiguration   # muss leer sein
 cd /etc/openhab && sudo git pull
 ls -la /etc/openhab/persistence/          # erwartet: 4 × .persist
 sudo systemctl start openhab
@@ -72,7 +84,8 @@ sudo systemctl start openhab
 
 **Prüfen**
 - [ ] `grep -iE "persist" /var/log/openhab/openhab.log | tail -20` → keine Fehler/Warnungen zu `.persist`
-- [ ] `ls /var/lib/openhab/jsondb/ | grep -i persist` → leer (UI-Config nicht neu angelegt)
+- [ ] `grep -iE "PersistenceServiceConfiguration|exists already from provider \"PersistenceModelManager\"" /var/log/openhab/openhab.log`
+      → leer (kein Backup-Fallback, keine doppelten Configs UI + Datei)
 - [ ] UI → Settings → Persistence: 4 Services, Konfiguration nicht editierbar (= aus Datei)
 - [ ] UI → Model: Strasshof → Energie → Smart Meter (3 Werte) + Strompreis
 - [ ] Nach ~10 min in InfluxDB/Grafana: `SmartMeter_Voltage_L1` ≈ 1 Punkt/min, `SmartMeter_Power` ≤ 6 Punkte/min,
@@ -113,6 +126,9 @@ der Cerbo stellt das Publizieren nach 60 s von selbst ein.
 ---
 
 ## Offene Punkte
+- [ ] Server-Drift klären (Stand 2026-09-12): `deploy.sh`, `Scripts/router-acl/setup.sh` (vermutlich nur `chmod +x`),
+      `things/Awattar.things` (Diff prüfen und ins Repo übernehmen); untracked `services/` (evtl. Credentials → `.gitignore`/Template), `html/`, `sounds/`
+- [ ] Doppelte Channel-Links (Datei + UI): `ParentsBedroom_Humidity`, `ParentsBedroom_Temperature` → UI-Link entfernen
 - [ ] Cerbo Security-Profil „Unsecured“ + IoT-VLAN: jeder im VLAN 100 kann `W/`-Topics schreiben → [[Hardening-Session]] / [[MQTT-Härtung]]
 - [ ] MultiPlus AC-Eingang nicht verbunden (seit ~9 Tagen nur Wechselrichterbetrieb) — gewollt?
 - [ ] Control-Channels (ESS-Sollwert, Min-SOC, Modus, Stromlimit) bewusst auskommentiert — bei Bedarf einzeln aktivieren

@@ -1,0 +1,145 @@
+// Filename: victron.items
+// Victron ESS via Cerbo GX MQTT — things: things/MQTT_Victron.things, keepalive: rules/victron_keepalive.rules
+//
+// Structure (see gEnergySystem in semantic_model.items):
+//   Tier 1 — dashboard: semantic points under gVictron (shown in Locations/Equipment/Properties)
+//   Tier 2 — diagnostics: non-semantic gVictronDiag* groups (diagnostics page, persistence, Grafana)
+//   Tier 3 — everything else stays an unlinked channel in the things file
+// Grid power is NOT duplicated here — the smart meter (SmartMeter_Power) measures the same point.
+
+// ---------------------------------------------------------------------------------------------
+// Groups
+// ---------------------------------------------------------------------------------------------
+Group                   gVictron                        "PV-Anlage"                         <if:mdi:solar-power-variant>    (gEnergySystem)     ["Equipment"]
+Group                   gVictronBattery                 "Batterie"                          <if:mdi:home-battery>           (gVictron)          ["Battery"]
+Group                   gVictronSolar                   "Solar"                             <if:mdi:solar-panel>            (gVictron)          ["SolarPanel"]
+Group                   gVictronGenerator               "Generator"                         <if:mdi:engine>                 (gVictron)          ["Generator"]
+
+Group                   gVictronDiag                    "Victron Diagnose"                  <if:mdi:solar-power-variant>    (gEnergyDiag)
+Group                   gVictronDiagSystem              "Victron System"                    <if:mdi:solar-power-variant>    (gVictronDiag)
+Group                   gVictronDiagGrid                "Victron Netzzähler"                <if:mdi:transmission-tower>     (gVictronDiag)
+Group                   gVictronDiagMultiPlus           "Victron MultiPlus"                 <if:mdi:sine-wave>              (gVictronDiag)
+Group                   gVictronDiagGenerator           "Victron Generator-Lader"           <if:mdi:engine>                 (gVictronDiag)
+Group                   gVictronDiagBattery             "Victron Batterie"                  <if:mdi:home-battery>           (gVictronDiag)
+Group                   gVictronDiagSolar               "Victron Solar"                     <if:mdi:solar-panel>            (gVictronDiag)
+Group                   gVictronDiagEss                 "Victron ESS"                       <if:mdi:tune-vertical>          (gVictronDiag)
+
+
+// ---------------------------------------------------------------------------------------------
+// Tier 1 — dashboard
+// ---------------------------------------------------------------------------------------------
+Group:Number:Power:SUM  Victron_Consumption             "Hausverbrauch [%.0f W]"            <if:mdi:home-lightning-bolt>    (gVictron)          ["Calculation","Power"]     {unit="W"}
+Number                  Victron_SystemState             "Systemstatus"                      <if:mdi:state-machine>          (gVictron)          ["Status","Mode"]           {channel="mqtt:topic:victron_system:system_state", stateDescription=""[options="0=Aus,1=Low Power,2=Fehler,3=Bulk,4=Absorption,5=Float,6=Storage,7=Equalize,8=Durchleitung,9=Wechselrichten,10=Power Assist,11=Netzteil,252=Externe Steuerung,256=Entladen,257=Sustain,258=Nachladen"]}
+Group:Number:MAX        Victron_Alarm                   "Alarm"                             <if:mdi:alert>                  (gVictron)          ["Alarm"]                   {stateDescription=""[options="0=OK,1=Warnung,2=Alarm"]}
+
+Number:Dimensionless    Victron_Battery_Soc             "Ladezustand [%.0f %%]"             <if:mdi:battery-high>           (gVictronBattery)   ["Measurement","Level"]     {unit="%", channel="mqtt:topic:victron_system:battery_soc"}
+Number:Power            Victron_Battery_Power           "Batterieleistung [%.0f W]"         <if:mdi:battery-charging>       (gVictronBattery)   ["Measurement","Power"]     {unit="W", channel="mqtt:topic:victron_system:battery_power"}
+
+Number:Power            Victron_PV_Power                "PV-Leistung [%.0f W]"              <if:mdi:solar-power>            (gVictronSolar)     ["Measurement","Power"]     {unit="W", channel="mqtt:topic:victron_system:pv_power"}
+Group:Number:Energy:SUM Victron_PV_YieldToday           "PV-Ertrag heute [%.2f kWh]"        <if:mdi:solar-power>            (gVictronSolar)     ["Calculation","Energy"]    {unit="kWh"}
+
+// Generator charger vanishes from the D-Bus when the generator is off → expire resets to 0 W
+Number:Power            Victron_Generator_ChargePower   "Generator Ladeleistung [%.0f W]"   <if:mdi:engine>                 (gVictronGenerator) ["Measurement","Power"]     {unit="W", channel="mqtt:topic:victron_generator_charger:dc_power", expire="2m,state=0 W"}
+
+
+// ---------------------------------------------------------------------------------------------
+// Tier 2 — System
+// ---------------------------------------------------------------------------------------------
+Number:Power            Victron_Consumption_L1          "Verbrauch L1 [%.0f W]"             <if:mdi:home-lightning-bolt>    (Victron_Consumption, gVictronDiagSystem)   {unit="W", channel="mqtt:topic:victron_system:consumption_l1_power"}
+Number:Power            Victron_Consumption_L2          "Verbrauch L2 [%.0f W]"             <if:mdi:home-lightning-bolt>    (Victron_Consumption, gVictronDiagSystem)   {unit="W", channel="mqtt:topic:victron_system:consumption_l2_power"}
+Number:Power            Victron_Consumption_L3          "Verbrauch L3 [%.0f W]"             <if:mdi:home-lightning-bolt>    (Victron_Consumption, gVictronDiagSystem)   {unit="W", channel="mqtt:topic:victron_system:consumption_l3_power"}
+Number                  Victron_Battery_State           "Batteriestatus"                    <if:mdi:battery-sync>           (gVictronDiagSystem)    {channel="mqtt:topic:victron_system:battery_state", stateDescription=""[options="0=Ruhe,1=Laden,2=Entladen"]}
+Number                  Victron_ActiveInputSource       "Aktiver AC-Eingang"                <if:mdi:power-plug>             (gVictronDiagSystem)    {channel="mqtt:topic:victron_system:active_input_source", stateDescription=""[options="0=Unbekannt,1=Netz,2=Generator,3=Landstrom,240=Nicht verbunden"]}
+Switch                  Victron_State_LowSoc            "SOC zu niedrig"                    <if:mdi:battery-alert>          (gVictronDiagSystem)    {channel="mqtt:topic:victron_system:state_low_soc"}
+Switch                  Victron_State_ChargeDisabled    "Laden gesperrt"                    <if:mdi:battery-lock>           (gVictronDiagSystem)    {channel="mqtt:topic:victron_system:state_charge_disabled"}
+Switch                  Victron_State_DischargeDisabled "Entladen gesperrt"                 <if:mdi:battery-lock>           (gVictronDiagSystem)    {channel="mqtt:topic:victron_system:state_discharge_disabled"}
+
+// ---------------------------------------------------------------------------------------------
+// Tier 2 — Victron grid meter (per-phase power is what the smart meter doesn't provide)
+// ---------------------------------------------------------------------------------------------
+Number:Power            Victron_Grid_Power              "Netz Leistung [%.0f W]"            <if:mdi:transmission-tower>     (gVictronDiagGrid)      {unit="W", channel="mqtt:topic:victron_grid:power"}
+Number:Power            Victron_Grid_L1_Power           "Netz L1 [%.0f W]"                  <if:mdi:transmission-tower>     (gVictronDiagGrid)      {unit="W", channel="mqtt:topic:victron_grid:l1_power"}
+Number:Power            Victron_Grid_L2_Power           "Netz L2 [%.0f W]"                  <if:mdi:transmission-tower>     (gVictronDiagGrid)      {unit="W", channel="mqtt:topic:victron_grid:l2_power"}
+Number:Power            Victron_Grid_L3_Power           "Netz L3 [%.0f W]"                  <if:mdi:transmission-tower>     (gVictronDiagGrid)      {unit="W", channel="mqtt:topic:victron_grid:l3_power"}
+Number:Frequency        Victron_Grid_Frequency          "Netzfrequenz [%.2f Hz]"            <if:mdi:sine-wave>              (gVictronDiagGrid)      {unit="Hz", channel="mqtt:topic:victron_grid:frequency"}
+
+// ---------------------------------------------------------------------------------------------
+// Tier 2 — MultiPlus-II 3-phase
+// ---------------------------------------------------------------------------------------------
+Number                  Victron_MultiPlus_Mode          "Modus"                             <if:mdi:power-settings>         (gVictronDiagMultiPlus) {channel="mqtt:topic:victron_multiplus:mode", stateDescription=""[options="1=Nur Laden,2=Nur Wechselrichter,3=Ein,4=Aus"]}
+Number                  Victron_MultiPlus_State         "Status"                            <if:mdi:state-machine>          (gVictronDiagMultiPlus) {channel="mqtt:topic:victron_multiplus:state", stateDescription=""[options="0=Aus,1=Low Power,2=Fehler,3=Bulk,4=Absorption,5=Float,6=Storage,7=Equalize,8=Durchleitung,9=Wechselrichten,10=Power Assist,11=Netzteil,244=Sustain,252=Externe Steuerung"]}
+Number                  Victron_MultiPlus_VebusError    "VE.Bus Fehler [%d]"                <if:mdi:alert-circle>           (gVictronDiagMultiPlus) {channel="mqtt:topic:victron_multiplus:vebus_error"}
+Switch                  Victron_MultiPlus_AcIn_Connected "AC-Eingang verbunden"             <if:mdi:power-plug>             (gVictronDiagMultiPlus) {channel="mqtt:topic:victron_multiplus:ac_in_connected"}
+Number:Power            Victron_MultiPlus_AcIn_Power    "AC-Eingang Leistung [%.0f W]"      <if:mdi:power-plug>             (gVictronDiagMultiPlus) {unit="W", channel="mqtt:topic:victron_multiplus:ac_in_power"}
+Number:ElectricCurrent  Victron_MultiPlus_AcIn_CurrentLimit "AC-Eingang Stromlimit [%.1f A]" <if:mdi:current-ac>           (gVictronDiagMultiPlus) {unit="A", channel="mqtt:topic:victron_multiplus:ac_in_current_limit"}
+Number:Power            Victron_MultiPlus_AcOut_Power   "AC-Out Leistung [%.0f W]"          <if:mdi:power-socket-eu>        (gVictronDiagMultiPlus) {unit="W", channel="mqtt:topic:victron_multiplus:ac_out_power"}
+Number:Power            Victron_MultiPlus_Dc_Power      "DC Leistung [%.0f W]"              <if:mdi:current-dc>             (gVictronDiagMultiPlus) {unit="W", channel="mqtt:topic:victron_multiplus:dc_power"}
+Number                  Victron_MultiPlus_Alarm_HighTemperature "Alarm Übertemperatur"      <if:mdi:thermometer-alert>      (Victron_Alarm, gVictronDiagMultiPlus)  {channel="mqtt:topic:victron_multiplus:alarm_high_temperature", stateDescription=""[options="0=OK,1=Warnung,2=Alarm"]}
+Number                  Victron_MultiPlus_Alarm_LowBattery "Alarm Batterie niedrig"         <if:mdi:battery-alert>          (Victron_Alarm, gVictronDiagMultiPlus)  {channel="mqtt:topic:victron_multiplus:alarm_low_battery", stateDescription=""[options="0=OK,1=Warnung,2=Alarm"]}
+Number                  Victron_MultiPlus_Alarm_Overload "Alarm Überlast"                   <if:mdi:alert>                  (Victron_Alarm, gVictronDiagMultiPlus)  {channel="mqtt:topic:victron_multiplus:alarm_overload", stateDescription=""[options="0=OK,1=Warnung,2=Alarm"]}
+Number                  Victron_MultiPlus_Alarm_Ripple  "Alarm DC-Ripple"                   <if:mdi:alert>                  (Victron_Alarm, gVictronDiagMultiPlus)  {channel="mqtt:topic:victron_multiplus:alarm_ripple", stateDescription=""[options="0=OK,1=Warnung,2=Alarm"]}
+Number                  Victron_MultiPlus_Alarm_GridLost "Alarm Netzausfall"                <if:mdi:transmission-tower-off> (Victron_Alarm, gVictronDiagMultiPlus)  {channel="mqtt:topic:victron_multiplus:alarm_grid_lost", stateDescription=""[options="0=OK,1=Warnung,2=Alarm"]}
+Number                  Victron_MultiPlus_Alarm_PhaseRotation "Alarm Drehfeld"              <if:mdi:rotate-right>           (Victron_Alarm, gVictronDiagMultiPlus)  {channel="mqtt:topic:victron_multiplus:alarm_phase_rotation", stateDescription=""[options="0=OK,1=Warnung,2=Alarm"]}
+
+// ---------------------------------------------------------------------------------------------
+// Tier 2 — Generator charger (vebus/288). Values that change constantly while running expire to UNDEF.
+// ---------------------------------------------------------------------------------------------
+Number                  Victron_Generator_Mode          "Modus"                             <if:mdi:power-settings>         (gVictronDiagGenerator) {channel="mqtt:topic:victron_generator_charger:mode", stateDescription=""[options="1=Nur Laden,2=Nur Wechselrichter,3=Ein,4=Aus"]}
+Number                  Victron_Generator_State         "Status"                            <if:mdi:state-machine>          (gVictronDiagGenerator) {channel="mqtt:topic:victron_generator_charger:state", stateDescription=""[options="0=Aus,1=Low Power,2=Fehler,3=Bulk,4=Absorption,5=Float,6=Storage,7=Equalize,8=Durchleitung,9=Wechselrichten,10=Power Assist,11=Netzteil,244=Sustain,252=Externe Steuerung"]}
+Number                  Victron_Generator_VebusError    "VE.Bus Fehler [%d]"                <if:mdi:alert-circle>           (gVictronDiagGenerator) {channel="mqtt:topic:victron_generator_charger:vebus_error"}
+Number:ElectricPotential Victron_Generator_Voltage      "Generator Spannung [%.1f V]"       <if:mdi:engine>                 (gVictronDiagGenerator) {unit="V", channel="mqtt:topic:victron_generator_charger:ac_in_voltage", expire="2m,state=UNDEF"}
+Number:Frequency        Victron_Generator_Frequency     "Generator Frequenz [%.2f Hz]"      <if:mdi:sine-wave>              (gVictronDiagGenerator) {unit="Hz", channel="mqtt:topic:victron_generator_charger:ac_in_frequency", expire="2m,state=UNDEF"}
+Number:ElectricCurrent  Victron_Generator_Current       "Generator Strom [%.1f A]"          <if:mdi:current-ac>             (gVictronDiagGenerator) {unit="A", channel="mqtt:topic:victron_generator_charger:ac_in_current", expire="2m,state=UNDEF"}
+Number:Power            Victron_Generator_AcIn_Power    "Generator Leistung [%.0f W]"       <if:mdi:engine>                 (gVictronDiagGenerator) {unit="W", channel="mqtt:topic:victron_generator_charger:ac_in_power", expire="2m,state=UNDEF"}
+Number:ElectricCurrent  Victron_Generator_Dc_Current    "Ladestrom [%.1f A]"                <if:mdi:current-dc>             (gVictronDiagGenerator) {unit="A", channel="mqtt:topic:victron_generator_charger:dc_current", expire="2m,state=UNDEF"}
+Number                  Victron_Generator_Alarm_HighTemperature "Alarm Übertemperatur"      <if:mdi:thermometer-alert>      (Victron_Alarm, gVictronDiagGenerator)  {channel="mqtt:topic:victron_generator_charger:alarm_high_temperature", stateDescription=""[options="0=OK,1=Warnung,2=Alarm"]}
+Number                  Victron_Generator_Alarm_LowBattery "Alarm Batterie niedrig"         <if:mdi:battery-alert>          (Victron_Alarm, gVictronDiagGenerator)  {channel="mqtt:topic:victron_generator_charger:alarm_low_battery", stateDescription=""[options="0=OK,1=Warnung,2=Alarm"]}
+Number                  Victron_Generator_Alarm_Overload "Alarm Überlast"                   <if:mdi:alert>                  (Victron_Alarm, gVictronDiagGenerator)  {channel="mqtt:topic:victron_generator_charger:alarm_overload", stateDescription=""[options="0=OK,1=Warnung,2=Alarm"]}
+
+// ---------------------------------------------------------------------------------------------
+// Tier 2 — Pytes battery (BMS values)
+// ---------------------------------------------------------------------------------------------
+Number:Dimensionless    Victron_Battery_Soh             "Batterie SOH [%.0f %%]"            <if:mdi:battery-heart-variant>  (gVictronDiagBattery)   {unit="%", channel="mqtt:topic:victron_battery:soh"}
+Number:ElectricPotential Victron_Battery_Voltage        "Batterie Spannung [%.2f V]"        <if:mdi:current-dc>             (gVictronDiagBattery)   {unit="V", channel="mqtt:topic:victron_battery:voltage"}
+Number:ElectricCurrent  Victron_Battery_Current         "Batterie Strom [%.1f A]"           <if:mdi:current-dc>             (gVictronDiagBattery)   {unit="A", channel="mqtt:topic:victron_battery:current"}
+Number:Temperature      Victron_Battery_Temperature     "Batterie Temperatur [%.1f °C]"     <if:mdi:thermometer>            (gVictronDiagBattery)   {unit="°C", channel="mqtt:topic:victron_battery:temperature"}
+Number:ElectricPotential Victron_Battery_MinCellVoltage "Zellspannung min [%.3f V]"         <if:mdi:battery-arrow-down>     (gVictronDiagBattery)   {unit="V", channel="mqtt:topic:victron_battery:min_cell_voltage"}
+Number:ElectricPotential Victron_Battery_MaxCellVoltage "Zellspannung max [%.3f V]"         <if:mdi:battery-arrow-up>       (gVictronDiagBattery)   {unit="V", channel="mqtt:topic:victron_battery:max_cell_voltage"}
+Number:Temperature      Victron_Battery_MinCellTemperature "Zelltemperatur min [%.1f °C]"   <if:mdi:thermometer-low>        (gVictronDiagBattery)   {unit="°C", channel="mqtt:topic:victron_battery:min_cell_temperature"}
+Number:Temperature      Victron_Battery_MaxCellTemperature "Zelltemperatur max [%.1f °C]"   <if:mdi:thermometer-high>       (gVictronDiagBattery)   {unit="°C", channel="mqtt:topic:victron_battery:max_cell_temperature"}
+Number                  Victron_Battery_ModulesOnline   "Module online [%d]"                <if:mdi:battery-check>          (gVictronDiagBattery)   {channel="mqtt:topic:victron_battery:modules_online"}
+Switch                  Victron_Battery_ChargeBlocked   "BMS: Laden blockiert"              <if:mdi:battery-lock>           (gVictronDiagBattery)   {channel="mqtt:topic:victron_battery:charge_blocked"}
+Switch                  Victron_Battery_DischargeBlocked "BMS: Entladen blockiert"          <if:mdi:battery-lock>           (gVictronDiagBattery)   {channel="mqtt:topic:victron_battery:discharge_blocked"}
+Number:ElectricPotential Victron_Battery_MaxChargeVoltage "BMS Ladeschlussspannung (CVL) [%.1f V]" <if:mdi:battery-arrow-up> (gVictronDiagBattery) {unit="V", channel="mqtt:topic:victron_battery:max_charge_voltage"}
+Number:ElectricCurrent  Victron_Battery_MaxChargeCurrent "BMS max. Ladestrom (CCL) [%.0f A]" <if:mdi:battery-arrow-up>     (gVictronDiagBattery)   {unit="A", channel="mqtt:topic:victron_battery:max_charge_current"}
+Number:ElectricCurrent  Victron_Battery_MaxDischargeCurrent "BMS max. Entladestrom (DCL) [%.0f A]" <if:mdi:battery-arrow-down> (gVictronDiagBattery) {unit="A", channel="mqtt:topic:victron_battery:max_discharge_current"}
+Number:Energy           Victron_Battery_ChargedEnergy   "Geladen gesamt [%.1f kWh]"         <if:mdi:battery-plus>           (gVictronDiagBattery)   {unit="kWh", channel="mqtt:topic:victron_battery:charged_energy"}
+Number:Energy           Victron_Battery_DischargedEnergy "Entladen gesamt [%.1f kWh]"       <if:mdi:battery-minus>          (gVictronDiagBattery)   {unit="kWh", channel="mqtt:topic:victron_battery:discharged_energy"}
+
+// ---------------------------------------------------------------------------------------------
+// Tier 2 — Solar chargers
+// ---------------------------------------------------------------------------------------------
+Number:Power            Victron_MPPT_RS_Power           "MPPT RS Leistung [%.0f W]"         <if:mdi:solar-power>            (gVictronDiagSolar)     {unit="W", channel="mqtt:topic:victron_mppt_rs:pv_power"}
+Number:Power            Victron_MPPT_RS_Tracker1_Power  "MPPT RS Tracker 1 [%.0f W]"        <if:mdi:solar-panel>            (gVictronDiagSolar)     {unit="W", channel="mqtt:topic:victron_mppt_rs:tracker1_power"}
+Number:Power            Victron_MPPT_RS_Tracker2_Power  "MPPT RS Tracker 2 [%.0f W]"        <if:mdi:solar-panel>            (gVictronDiagSolar)     {unit="W", channel="mqtt:topic:victron_mppt_rs:tracker2_power"}
+Number:Power            Victron_MPPT_RS_Tracker3_Power  "MPPT RS Tracker 3 [%.0f W]"        <if:mdi:solar-panel>            (gVictronDiagSolar)     {unit="W", channel="mqtt:topic:victron_mppt_rs:tracker3_power"}
+Number:Power            Victron_MPPT_RS_Tracker4_Power  "MPPT RS Tracker 4 [%.0f W]"        <if:mdi:solar-panel>            (gVictronDiagSolar)     {unit="W", channel="mqtt:topic:victron_mppt_rs:tracker4_power"}
+Number                  Victron_MPPT_RS_State           "MPPT RS Status"                    <if:mdi:state-machine>          (gVictronDiagSolar)     {channel="mqtt:topic:victron_mppt_rs:state", stateDescription=""[options="0=Aus,2=Fehler,3=Bulk,4=Absorption,5=Float,6=Storage,7=Equalize,245=Startet,252=Externe Steuerung"]}
+Number                  Victron_MPPT_RS_ErrorCode       "MPPT RS Fehlercode [%d]"           <if:mdi:alert-circle>           (gVictronDiagSolar)     {channel="mqtt:topic:victron_mppt_rs:error_code"}
+Number:Energy           Victron_MPPT_RS_YieldToday      "MPPT RS Ertrag heute [%.2f kWh]"   <if:mdi:solar-power>            (Victron_PV_YieldToday, gVictronDiagSolar)  {unit="kWh", channel="mqtt:topic:victron_mppt_rs:yield_today"}
+Number:Energy           Victron_MPPT_RS_YieldTotal      "MPPT RS Ertrag gesamt [%.1f kWh]"  <if:mdi:solar-power>            (gVictronDiagSolar)     {unit="kWh", channel="mqtt:topic:victron_mppt_rs:yield_total"}
+Number                  Victron_MPPT_RS_Alarm_HighTemperature "MPPT RS Alarm Übertemperatur" <if:mdi:thermometer-alert>    (Victron_Alarm, gVictronDiagSolar)  {channel="mqtt:topic:victron_mppt_rs:alarm_high_temperature", stateDescription=""[options="0=OK,1=Warnung,2=Alarm"]}
+Number                  Victron_MPPT_RS_Alarm_ShortCircuit "MPPT RS Alarm Kurzschluss"     <if:mdi:alert>                  (Victron_Alarm, gVictronDiagSolar)  {channel="mqtt:topic:victron_mppt_rs:alarm_short_circuit", stateDescription=""[options="0=OK,1=Warnung,2=Alarm"]}
+
+Number:Power            Victron_MPPT_250_Power          "MPPT 250/60 Leistung [%.0f W]"     <if:mdi:solar-power>            (gVictronDiagSolar)     {unit="W", channel="mqtt:topic:victron_mppt_250:pv_power"}
+Number                  Victron_MPPT_250_State          "MPPT 250/60 Status"                <if:mdi:state-machine>          (gVictronDiagSolar)     {channel="mqtt:topic:victron_mppt_250:state", stateDescription=""[options="0=Aus,2=Fehler,3=Bulk,4=Absorption,5=Float,6=Storage,7=Equalize,245=Startet,252=Externe Steuerung"]}
+Number                  Victron_MPPT_250_ErrorCode      "MPPT 250/60 Fehlercode [%d]"       <if:mdi:alert-circle>           (gVictronDiagSolar)     {channel="mqtt:topic:victron_mppt_250:error_code"}
+Number:Energy           Victron_MPPT_250_YieldToday     "MPPT 250/60 Ertrag heute [%.2f kWh]" <if:mdi:solar-power>          (Victron_PV_YieldToday, gVictronDiagSolar)  {unit="kWh", channel="mqtt:topic:victron_mppt_250:yield_today"}
+Number:Energy           Victron_MPPT_250_YieldTotal     "MPPT 250/60 Ertrag gesamt [%.1f kWh]" <if:mdi:solar-power>         (gVictronDiagSolar)     {unit="kWh", channel="mqtt:topic:victron_mppt_250:yield_total"}
+
+// ---------------------------------------------------------------------------------------------
+// Tier 2 — ESS settings (read-only; move to tier 1 as Setpoint when control channels are enabled)
+// ---------------------------------------------------------------------------------------------
+Number:Power            Victron_ESS_GridSetpoint        "ESS Netz-Sollwert [%.0f W]"        <if:mdi:tune-vertical>          (gVictronDiagEss)       {unit="W", channel="mqtt:topic:victron_ess:grid_setpoint"}
+Number:Dimensionless    Victron_ESS_MinSoc              "ESS Minimum SOC [%.0f %%]"         <if:mdi:battery-low>            (gVictronDiagEss)       {unit="%", channel="mqtt:topic:victron_ess:min_soc"}
+Number:Dimensionless    Victron_ESS_ActiveSocLimit      "ESS aktives SOC-Limit [%.0f %%]"   <if:mdi:battery-low>            (gVictronDiagEss)       {unit="%", channel="mqtt:topic:victron_ess:active_soc_limit"}

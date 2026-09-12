@@ -1,0 +1,43 @@
+////////////////////////////////////////////////////////
+/// Victron Cerbo GX — MQTT keepalive
+///
+/// Venus OS (dbus-flashmq) only publishes N/ topics while it receives
+/// a keepalive on R/<portal id>/keepalive at least every 60 s.
+///  - empty payload                      → full republish of ALL topics
+///  - {"keepalive-options": ["suppress-republish"]}
+///                                       → keep alive, only changed values
+/// suppress-republish never sends a full dump (verified 2026-09-10), so
+/// static values (mode, min SOC, ...) need a full republish after openHAB
+/// start / reconnect. The 10-min full republish is a safety net for things
+/// reloaded while openHAB keeps running.
+////////////////////////////////////////////////////////
+
+val String VICTRON_BROKER   = "mqtt:broker:victron"
+val String VICTRON_KA_TOPIC = "R/c0619ab6f9ea/keepalive"
+
+var Timer victronFullRepublishTimer = null
+
+rule "Victron keepalive"
+when
+    Time cron "0/30 * * * * ?"
+then
+    if (getThingStatusInfo(VICTRON_BROKER)?.status?.toString == "ONLINE") {
+        getActions("mqtt", VICTRON_BROKER).publishMQTT(VICTRON_KA_TOPIC, "{\"keepalive-options\": [\"suppress-republish\"]}")
+    }
+end
+
+rule "Victron full republish"
+when
+    System reached start level 100 or
+    Thing "mqtt:broker:victron" changed to ONLINE or
+    Time cron "0 0/10 * * * ?"
+then
+    // short delay so all topic things have subscribed before the full dump arrives
+    victronFullRepublishTimer?.cancel
+    victronFullRepublishTimer = createTimer(now.plusSeconds(5), [ |
+        if (getThingStatusInfo(VICTRON_BROKER)?.status?.toString == "ONLINE") {
+            getActions("mqtt", VICTRON_BROKER).publishMQTT(VICTRON_KA_TOPIC, "")
+            logDebug("Victron", "Full republish requested")
+        }
+    ])
+end
