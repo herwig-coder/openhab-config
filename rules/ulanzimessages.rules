@@ -307,8 +307,12 @@ then
     val pv  = (Victron_PV_Power.state as QuantityType<Number>).doubleValue
     val soc = Math.max(0, Math.min(100, Math.round((Victron_Battery_Soc.state as QuantityType<Number>).doubleValue)))
 
+    // Breite im Awtrix-Font, am Gerät gemessen (Textbereich neben dem Icon: 23 px): "999W" 17 px,
+    // "9.9kW" 19 px, "15kW" 17 px — "10.0kW" wäre mit 23 px randlos, daher ab 10 kW ohne Nachkommastelle.
     var pvText = String.format("%dW", Math.round(pv))
-    if (pv >= 1000) {
+    if (pv >= 9950) {
+        pvText = String.format("%dkW", Math.round(pv / 1000))
+    } else if (pv >= 999.5) {
         pvText = String.format("%.1fkW", pv / 1000)
     }
     var pvColor = "#FFDE21"
