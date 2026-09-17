@@ -279,3 +279,53 @@ then
         Ulanzi_Settings.sendCommand("{ \"ATIME\": \"8\", \"ABRI\" : true, \"TEMP\": false, \"HUM\": false }")
     }
 end
+
+// ─── Energie: PV-Leistung + Batterie-SOC in EINER Ansicht ───────────────────────
+// Text  = PV-Leistung (gelb, nachts/unter 50 W grau), z. B. "652W" / "2.1kW" / "12.4kW"
+// Balken unten = Batterie-SOC (grün >= 50 %, orange < 50 %, rot < 20 %)
+// Icon 21288 "Sun and Battery" (LaMetric) muss auf der Ulanzi liegen (Web-UI → Icons).
+// Minütlich per publishMQTT statt per Item-Command: die Victron-Werte ändern sich
+// sekündlich und ein Item-Command pro Minute würde events.log fluten.
+// lifetime 600: schickt openHAB nichts mehr, verschwindet die App nach 10 min
+// statt veraltete Werte anzuzeigen.
+rule "ulanzi_energy"
+when
+    Time cron "0 * * * * ?"
+then
+    val broker = "mqtt:broker:9a73e5895e"
+    if (getThingStatusInfo(broker)?.status?.toString != "ONLINE") {
+        return;
+    }
+    val mqtt = getActions("mqtt", broker)
+
+    if (!(Victron_PV_Power.state instanceof QuantityType) || !(Victron_Battery_Soc.state instanceof QuantityType)) {
+        // keine gültigen Werte -> App entfernen statt Unsinn anzeigen
+        mqtt.publishMQTT("awtrixef9440/custom/energy", "")
+        return;
+    }
+
+    val pv  = (Victron_PV_Power.state as QuantityType<Number>).doubleValue
+    val soc = Math.max(0, Math.min(100, Math.round((Victron_Battery_Soc.state as QuantityType<Number>).doubleValue)))
+
+    var pvText = String.format("%dW", Math.round(pv))
+    if (pv >= 1000) {
+        pvText = String.format("%.1fkW", pv / 1000)
+    }
+    var pvColor = "#FFDE21"
+    if (pv < 50) {
+        pvColor = "#787878"
+    }
+    var socColor = "#00FF00"
+    if (soc < 50) {
+        socColor = "#FF9600"
+    }
+    if (soc < 20) {
+        socColor = "#FF0000"
+    }
+
+    val message = "{\"text\":\"" + pvText + "\",\"color\":\"" + pvColor + "\",\"icon\":\"21288\"," +
+                  "\"progress\":" + soc + ",\"progressC\":\"" + socColor + "\",\"progressBC\":\"#282828\"," +
+                  "\"noScroll\":true,\"lifetime\":600}"
+    logDebug("ulanzi_energy", "send to Ulanzi: {}", message)
+    mqtt.publishMQTT("awtrixef9440/custom/energy", message)
+end
