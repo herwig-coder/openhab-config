@@ -90,13 +90,16 @@ end
 
 rule "ulanzi_muellmessage"
 when
-    Item Garbage_NextCollection changed
-    //Time cron "1 0 * ? * * *"
+    Item Garbage_NextCollection changed or
+    // Recalculate right after midnight: the collection items do not change when "Morgen" becomes
+    // "Heute" (the event sits unchanged in the event filter from ~25 h before), so without this
+    // trigger "Morgen" would stay on the displays until the event leaves the filter.
+    Time cron "1 0 0 * * ?"
 then
     // get value in Java ZonedDateTime
     val currenttime = now
     var muellmessage = ""
-    logInfo("ulanzi_muell", "Trigger every 1 hour and 1 second: " + currenttime)
+    logInfo("ulanzi_muell", "Trigger: collection changed or midnight: " + currenttime)
 
     // NULL guard - CRITICAL
     if (Garbage_NextCollection.state == NULL || Garbage_NextCollection.state == UNDEF) {
@@ -110,24 +113,15 @@ then
     // get value in Java ZonedDateTime
     val collectiondate = (Garbage_NextCollection.state as DateTimeType).getZonedDateTime(ZoneId.systemDefault())
     logInfo("ulanzi_muell", "Next CollectionDate: " + collectiondate)
-    // get remaining hours in Type Duration
-    val Duration timeuntilcollection = Duration.between(currenttime, collectiondate)
-    //logInfo("ulanzi_muell", "Duration : " + timeuntilcollection)
-    logInfo("ulanzi_muell", "Time until next collection in hours: " + timeuntilcollection.getSeconds()/3600)
-    // collection within 24 hours
-
-    if (timeuntilcollection.getSeconds()/3600 <= 24) {
-        if (currenttime.toLocalDate == collectiondate.toLocalDate) {
-            muellmessage = "Heute: "
-        }
-        else {
-            muellmessage = "Morgen: "
-        }
-    } else if (timeuntilcollection.getSeconds()/3600 > 24) {
-        //val date_formatter = java.time.format.DateTimeFormatter.ofPattern("%ta %1$td.%1$tm", java.util.Locale.GERMAN)
-        muellmessage = String.format(java.util.Locale.GERMAN,"%ta %1$td.%1$tm",collectiondate.toLocalDate()) + ": "
-
-        logInfo("ulanzi_muell", "Message" + muellmessage)
+    // compare calendar days, not hours: switches exactly at midnight and has no 24-h edge case
+    val today = currenttime.toLocalDate
+    val collectionday = collectiondate.toLocalDate
+    if (collectionday.equals(today)) {
+        muellmessage = "Heute: "
+    } else if (collectionday.equals(today.plusDays(1))) {
+        muellmessage = "Morgen: "
+    } else {
+        muellmessage = String.format(java.util.Locale.GERMAN, "%ta %1$td.%1$tm", collectionday) + ": "
     }
 
     // NULL guard for Garbage_Collection_Item0
@@ -182,7 +176,7 @@ then
 
     if (muellmessage != "") {
         logInfo("ulanzi_muell", "Composed the following message: " + muellmessage)
-        Corridor_Message.sendCommand(muellmessage)
+        // corridor matrix display follows via matrixmessage.rules (Garbage_Collection_Message changed)
         Garbage_Collection_Message.sendCommand(muellmessage)
         // Send message to Ulanzi {"text":"%s","color": "#00FF00" }
         val color = "#00FF00"
