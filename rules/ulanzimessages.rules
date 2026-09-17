@@ -274,14 +274,14 @@ then
     }
 end
 
-// ─── Energie: PV-Leistung + Batterie-SOC in EINER Ansicht ───────────────────────
-// Text  = PV-Leistung (gelb, nachts/unter 50 W grau), z. B. "652W" / "2.1kW" / "12.4kW"
-// Balken unten = Batterie-SOC (grün >= 50 %, orange < 50 %, rot < 20 %)
-// Icon 21288 "Sun and Battery" (LaMetric) muss auf der Ulanzi liegen (Web-UI → Icons).
-// Minütlich per publishMQTT statt per Item-Command: die Victron-Werte ändern sich
-// sekündlich und ein Item-Command pro Minute würde events.log fluten.
-// lifetime 600: schickt openHAB nichts mehr, verschwindet die App nach 10 min
-// statt veraltete Werte anzuzeigen.
+// ─── Energy: PV power + battery SOC in ONE view ─────────────────────────────────
+// Text = PV power (yellow, grey below 50 W / at night), e.g. "652W" / "2.1kW" / "12kW"
+// Bar in the bottom row = battery SOC (green >= 50 %, orange < 50 %, red < 20 %)
+// Icon 21288 "Sun and Battery" (LaMetric) must exist on the Ulanzi (web UI -> Icons).
+// Published every minute via publishMQTT instead of an item command: the Victron values
+// change every second and an item command per minute would flood events.log.
+// lifetime 600: if openHAB stops sending, the app disappears after 10 min instead of
+// showing stale values.
 rule "ulanzi_energy"
 when
     Time cron "0 * * * * ?"
@@ -293,7 +293,7 @@ then
     val mqtt = getActions("mqtt", broker)
 
     if (!(Victron_PV_Power.state instanceof QuantityType) || !(Victron_Battery_Soc.state instanceof QuantityType)) {
-        // keine gültigen Werte -> App entfernen statt Unsinn anzeigen
+        // no valid values -> remove the app instead of showing nonsense
         mqtt.publishMQTT("awtrixef9440/custom/energy", "")
         return;
     }
@@ -301,8 +301,8 @@ then
     val pv  = (Victron_PV_Power.state as QuantityType<Number>).doubleValue
     val soc = Math.max(0, Math.min(100, Math.round((Victron_Battery_Soc.state as QuantityType<Number>).doubleValue)))
 
-    // Breite im Awtrix-Font, am Gerät gemessen (Textbereich neben dem Icon: 23 px): "999W" 17 px,
-    // "9.9kW" 19 px, "15kW" 17 px — "10.0kW" wäre mit 23 px randlos, daher ab 10 kW ohne Nachkommastelle.
+    // Width in the Awtrix font, measured on the device (text area next to the icon: 23 px): "999W" 17 px,
+    // "9.9kW" 19 px, "15kW" 17 px. "10.0kW" would be 23 px with no margin -> whole kW from 10 kW.
     var pvText = String.format("%dW", Math.round(pv))
     if (pv >= 9950) {
         pvText = String.format("%dkW", Math.round(pv / 1000))
