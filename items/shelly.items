@@ -41,6 +41,12 @@ DateTime              Bathroom_Motor_On                     "Motor eingeschaltet
 Switch                Bathroom_Airing_Active                "Bad Lüftung aktiv"                              <switch>                             (gBathroom)                            ["Switch"]
 Switch                Bathroom_Airing_Suspended             "Bad Lüftung ausgesetzt (ineffektiv)"            <switch>                             (gBathroom)                            ["Switch"]
 DateTime              Bathroom_Airing_Started               "Bad Lüftung gestartet"                          <Time>                               (gBathroom)                            ["Point"]
+// Airing controller v2 (bathroomAiringController.rules)
+String                Bathroom_Airing_Mode                  "Bad Lüftung Modus [%s]"                         <if:mdi:window-open-variant>         (gBathroom)                            ["Status"]
+String                Bathroom_Airing_Reason                "Bad Lüftung Grund [%s]"                         <text>                               (gBathroom)                            ["Status"]
+DateTime              Bathroom_Airing_Mode_Since            "Bad Lüftung Modus seit"                         <Time>                               (gBathroom)                            ["Point"]
+DateTime              Bathroom_Airing_Last_Move             "Bad Fenster zuletzt bewegt"                     <Time>                               (gBathroom)                            ["Point"]
+Switch                Bathroom_Airing_Shadow                "Bad Lüftung Testmodus (nur Log)"                <switch>                             (gBathroom)                            ["Switch"]
 
 
 //Esszimmer

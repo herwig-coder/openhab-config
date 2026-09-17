@@ -1,0 +1,311 @@
+// ────────────────────────────────────────────────────────────────────────────
+// Bathroom airing controller v2 — one decision every 5 minutes, one mode at a time:
+//   FAIR           pleasant weather: keep the window open while it is mild, calm and the
+//                  outdoor air is drier than the bathroom air (quiet hours 22-06 excluded)
+//   SHOWER         after a humidity jump: air until back near the pre-shower level (also at night)
+//   MANUAL_OPEN /  KNX button Bathroom_Window_Open: automation pauses for CTL_MANUAL_PAUSE_MINUTES
+//   MANUAL_CLOSED
+//   CLOSED         nothing to do
+//   OFF            master switch Bathroom_Airing_Automation is OFF (cuts power to both Shellys)
+// Storms (heavy rain or strong gusts) and stale sensors close the window. Light rain does not:
+// the window is small and normal rain does not get in.
+// Decisions use sampled values (5-min buffers), never single sensor readings — the v1 rules
+// reacted to every 0.1 °C dewpoint wobble and flapped the window.
+//
+// SHADOW MODE: while Bathroom_Airing_Shadow is ON (or NULL) this file only logs and tracks a
+// virtual window in Bathroom_Airing_Mode; bathroomAiring.rules still drives the motor.
+// After cut-over it commands Bathroom_Airing_Open/Close_Request (motor layer).
+// Design, parameters and history validation: docs/bathroom-airing.md
+// ────────────────────────────────────────────────────────────────────────────
+
+val Number CTL_FAIR_OPEN_MIN          = 16.0  // °C outdoor (15-min mean) to open for fair weather
+val Number CTL_FAIR_OPEN_MAX          = 26.0
+val Number CTL_FAIR_KEEP_MIN          = 14.0  // °C outdoor band to stay open (hysteresis)
+val Number CTL_FAIR_KEEP_MAX          = 28.0
+val Number CTL_HEAT_ABOVE             = 24.0  // °C outdoor above which the heat guard applies
+val Number CTL_HEAT_OPEN_MARGIN       = 0.5   // °C don't open if outdoor > indoor + this
+val Number CTL_HEAT_CLOSE_MARGIN      = 2.0   // °C close if outdoor > indoor + this
+val Number CTL_DP_KEEP_MARGIN         = 1.0   // °C stay open while outdoor dewpoint <= indoor + this
+val Number CTL_GUST_OPEN_MAX          = 40.0  // km/h max gusts to open for fair weather
+val Number CTL_GUST_STORM             = 50.0  // km/h gusts that count as storm -> close
+val Number CTL_RAIN_HEAVY             = 4.0   // mm (OWM current rain) that counts as storm -> close
+val Number CTL_STORM_CALM_MINUTES     = 60    // no fair-weather opening this long after a storm
+val Number CTL_DAY_START_HOUR         = 6     // fair-weather airing only between these hours
+val Number CTL_DAY_END_HOUR           = 22
+val Number CTL_MIN_DWELL_MINUTES      = 60    // min time between motor runs for fair-weather changes
+val Number CTL_SHOWER_RISE            = 8.0   // % RH rise within 15 min = shower
+val Number CTL_SHOWER_END_DROP        = 3.0   // % RH below the shower peak = water is off, shower over
+val Number CTL_SHOWER_EXPIRE_MINUTES  = 90    // give up airing a shower not over after this long
+val Number CTL_LIGHT_RECENT_MINUTES   = 45    // a bathroom light switched on this recently = someone inside
+val Number CTL_SHOWER_DEDUP_MINUTES   = 90    // one shower detection per this period
+val Number CTL_SHOWER_MIN_OUTDOOR     = 5.0   // °C no shower airing below this
+val Number CTL_SHOWER_DONE_MARGIN     = 3.0   // % RH above pre-shower level that counts as done
+val Number CTL_SHOWER_COLD_BELOW      = 12.0  // °C outdoor below which the short cap applies
+val Number CTL_SHOWER_MAX_COLD_MINUTES = 45
+val Number CTL_SHOWER_MAX_MINUTES     = 90
+val Number CTL_MANUAL_PAUSE_MINUTES   = 120
+val Number CTL_POWER_UP_GRACE_MINUTES = 3     // Shellys need time to reconnect after the master switch
+val Number CTL_STALE_OUTDOOR_MINUTES  = 30    // weather station temperature
+val Number CTL_STALE_INDOOR_MINUTES   = 90    // BLE bathroom sensor
+val Number CTL_STALE_OWM_MINUTES      = 180   // OpenWeatherMap (hourly)
+val Number CTL_ALERT_RH_ON            = 80.0  // % RH sustained for CTL_ALERT_MINUTES -> humidity alert
+val Number CTL_ALERT_RH_OFF           = 70.0
+val Number CTL_ALERT_MINUTES          = 120
+
+// Sample buffers, filled once per tick (5-min spacing, oldest first). Lost on file reload,
+// which only delays shower detection by a few ticks.
+val java.util.List<Double> ctlRhSamples   = newArrayList
+val java.util.List<Double> ctlToutSamples = newArrayList
+var ZonedDateTime ctlLastStorm        = null
+var ZonedDateTime ctlShowerAt         = null   // pending shower (waiting to open / being aired)
+var ZonedDateTime ctlShowerLastDetect = null
+var Double        ctlShowerBase       = null   // RH before the shower
+var Double        ctlShowerPeak       = null   // highest RH since detection
+var ZonedDateTime ctlRhHighSince      = null
+var boolean       ctlAlert            = false
+
+// Motor command (or its shadow) plus mode bookkeeping. Motor layer: bathroomAiring.rules
+// "bathroom_airing_action" / "bathroom_airing_motor_off".
+val ctlMove = [ Boolean open, String mode, String reason |
+    val String dir = if (open) "OPEN" else "CLOSE"
+    if (Bathroom_Airing_Shadow.state != OFF) {
+        logInfo("bathroom_airing_ctl", "SHADOW would {} -> {} ({})", dir, mode, reason)
+    } else {
+        logInfo("bathroom_airing_ctl", "{} -> {} ({})", dir, mode, reason)
+        if (open) {
+            Bathroom_Airing_Close_Request.sendCommand(OFF)
+            Bathroom_Airing_Open_Request.sendCommand(ON)
+        } else {
+            Bathroom_Airing_Open_Request.sendCommand(OFF)
+            Bathroom_Airing_Close_Request.sendCommand(ON)
+        }
+    }
+    Bathroom_Airing_Last_Move.postUpdate(now.toLocalDateTime.toString())
+    Bathroom_Airing_Mode.postUpdate(mode)
+    Bathroom_Airing_Mode_Since.postUpdate(now.toLocalDateTime.toString())
+    Bathroom_Airing_Reason.postUpdate(reason)
+    true
+]
+
+// Mode change without moving the window.
+val ctlSetMode = [ String mode, String reason |
+    logInfo("bathroom_airing_ctl", "mode -> {} ({})", mode, reason)
+    Bathroom_Airing_Mode.postUpdate(mode)
+    Bathroom_Airing_Mode_Since.postUpdate(now.toLocalDateTime.toString())
+    Bathroom_Airing_Reason.postUpdate(reason)
+    true
+]
+
+val ctlMinutesSince = [ org.openhab.core.types.State s |
+    if (s instanceof DateTimeType) java.time.Duration.between(s.getInstant.atZone(ZoneId.systemDefault()), now).toMinutes
+    else 100000L
+]
+
+rule "bathroom_airing_ctl_tick"
+when
+    Time cron "30 */5 * * * ?"
+then
+    val String mode = if (Bathroom_Airing_Mode.state instanceof StringType) Bathroom_Airing_Mode.state.toString else "CLOSED"
+
+    // 0) Master switch. OFF = no power for motor and contacts -> nothing to control.
+    if (Bathroom_Airing_Automation.state != ON) {
+        if (mode != "OFF") ctlSetMode.apply("OFF", "master switch off")
+        return;
+    }
+    if (mode == "OFF") {
+        val powerOn = Bathroom_Airing_Automation.lastStateChange
+        if (powerOn !== null && powerOn.isAfter(now.minusMinutes(CTL_POWER_UP_GRACE_MINUTES.intValue))) {
+            logInfo("bathroom_airing_ctl", "master switch on, waiting for Shellys to reconnect")
+            return;
+        }
+        // Window position is unknown after a power cut -> close to get a known state.
+        ctlMove.apply(false, "CLOSED", "power-up resync")
+        return;
+    }
+
+    // 1) Inputs. Unknown update time (just after startup) -> skip the tick; known but old -> stale.
+    if (Weatherstation_Temperature_1.lastStateUpdate === null || Bathroom_Humidity.lastStateUpdate === null ||
+        Bathroom_Temperature.lastStateUpdate === null || OneCallAPIweatherandforecast_Current_Dewpoint.lastStateUpdate === null) {
+        logDebug("bathroom_airing_ctl", "input update times not known yet, skipping")
+        return;
+    }
+    var String stale = ""
+    if (Weatherstation_Temperature_1.lastStateUpdate.isBefore(now.minusMinutes(CTL_STALE_OUTDOOR_MINUTES.intValue)) ||
+        !(Weatherstation_Temperature_1.state instanceof QuantityType)) stale = stale + "outdoor-temp "
+    if (Bathroom_Humidity.lastStateUpdate.isBefore(now.minusMinutes(CTL_STALE_INDOOR_MINUTES.intValue)) ||
+        Bathroom_Temperature.lastStateUpdate.isBefore(now.minusMinutes(CTL_STALE_INDOOR_MINUTES.intValue)) ||
+        !(Bathroom_Humidity.state instanceof QuantityType) || !(Bathroom_Temperature.state instanceof QuantityType) ||
+        !(Bathroom_DewPoint.state instanceof QuantityType)) stale = stale + "bathroom-sensor "
+    if (OneCallAPIweatherandforecast_Current_Dewpoint.lastStateUpdate.isBefore(now.minusMinutes(CTL_STALE_OWM_MINUTES.intValue)) ||
+        !(OneCallAPIweatherandforecast_Current_Dewpoint.state instanceof QuantityType)) stale = stale + "openweathermap "
+    if (stale != "") {
+        if (mode == "FAIR" || mode == "SHOWER") {
+            ctlMove.apply(false, "CLOSED", "stale input: " + stale.trim)
+        } else {
+            logWarn("bathroom_airing_ctl", "stale input: {}", stale.trim)
+        }
+        return;
+    }
+
+    val double toutNow = (Weatherstation_Temperature_1.state as QuantityType<Number>).toUnit("°C").doubleValue
+    val double tin     = (Bathroom_Temperature.state as QuantityType<Number>).toUnit("°C").doubleValue
+    val double rh      = (Bathroom_Humidity.state as QuantityType<Number>).toUnit("%").doubleValue
+    val double dpin    = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
+    val double dpout   = (OneCallAPIweatherandforecast_Current_Dewpoint.state as QuantityType<Number>).toUnit("°C").doubleValue
+    // Gusts/rain may be UNDEF when calm/dry -> 0
+    var double gust = 0.0
+    if (OneCallAPIweatherandforecast_Current_Gustspeed.state instanceof QuantityType)
+        gust = (OneCallAPIweatherandforecast_Current_Gustspeed.state as QuantityType<Number>).toUnit("km/h").doubleValue
+    var double rain = 0.0
+    if (OneCallAPIweatherandforecast_Current_Rain.state instanceof QuantityType)
+        rain = (OneCallAPIweatherandforecast_Current_Rain.state as QuantityType<Number>).toUnit("mm").doubleValue
+    val String condId = if (OneCallAPIweatherandforecast_Current_Conditionid.state instanceof StringType) OneCallAPIweatherandforecast_Current_Conditionid.state.toString else ""
+
+    // 2) Sample buffers: 15-min outdoor mean, 20-min humidity history.
+    ctlToutSamples.add(toutNow)
+    while (ctlToutSamples.size > 3) ctlToutSamples.remove(0)
+    val double tout = ctlToutSamples.reduce[ a, b | a + b ] / ctlToutSamples.size
+    ctlRhSamples.add(rh)
+    while (ctlRhSamples.size > 5) ctlRhSamples.remove(0)
+
+    // 3) Shower detection: RH rose >= CTL_SHOWER_RISE above the 15-min minimum.
+    var boolean newShower = false
+    if (ctlRhSamples.size >= 2) {
+        val double rhMin15 = ctlRhSamples.subList(Math.max(0, ctlRhSamples.size - 4), ctlRhSamples.size).reduce[ a, b | Math.min(a, b) ]
+        if (rh - rhMin15 >= CTL_SHOWER_RISE.doubleValue &&
+            (ctlShowerLastDetect === null || ctlShowerLastDetect.isBefore(now.minusMinutes(CTL_SHOWER_DEDUP_MINUTES.intValue)))) {
+            ctlShowerLastDetect = now
+            ctlShowerAt = now
+            ctlShowerBase = ctlRhSamples.get(0)
+            ctlShowerPeak = rh
+            newShower = true
+            logInfo("bathroom_airing_ctl", "shower detected: RH {} % (15-min min {} %, base {} %)", rh, rhMin15, ctlShowerBase)
+        }
+    }
+    val boolean rhRising = ctlRhSamples.size >= 4 && rh - ctlRhSamples.get(ctlRhSamples.size - 4) >= 3.0
+    if (ctlShowerAt !== null && (ctlShowerPeak === null || rh > ctlShowerPeak)) ctlShowerPeak = rh
+    // Shower over = RH has fallen CTL_SHOWER_END_DROP below its peak. Never open on a timer:
+    // in 19 % of past showers RH was still rising 10 min after detection (water still running).
+    val boolean showerOver = ctlShowerAt !== null && ctlShowerPeak !== null && rh <= ctlShowerPeak - CTL_SHOWER_END_DROP.doubleValue
+    // A pending shower that could not be aired in time is dropped.
+    if (ctlShowerAt !== null && mode != "SHOWER" && ctlShowerAt.isBefore(now.minusMinutes(CTL_SHOWER_EXPIRE_MINUTES.intValue))) {
+        ctlShowerAt = null
+    }
+    // Someone likely in the bathroom: a light switched on recently (lights left on for ages are ignored).
+    val boolean lightRecent =
+        (Bathroom_Ceiling_Light.state == ON && (Bathroom_Ceiling_Light.lastStateChange === null ||
+            Bathroom_Ceiling_Light.lastStateChange.isAfter(now.minusMinutes(CTL_LIGHT_RECENT_MINUTES.intValue)))) ||
+        (Bathroom_Mirror_Light.state == ON && (Bathroom_Mirror_Light.lastStateChange === null ||
+            Bathroom_Mirror_Light.lastStateChange.isAfter(now.minusMinutes(CTL_LIGHT_RECENT_MINUTES.intValue))))
+
+    // 4) Humidity alert: RH >= 80 % for 2 h -> alert (KNX indicator, Ulanzi) + one Telegram.
+    if (rh >= CTL_ALERT_RH_ON.doubleValue) {
+        if (ctlRhHighSince === null) ctlRhHighSince = now
+    } else {
+        ctlRhHighSince = null
+    }
+    if (!ctlAlert && ctlRhHighSince !== null && ctlRhHighSince.isBefore(now.minusMinutes(CTL_ALERT_MINUTES.intValue))) {
+        ctlAlert = true
+        val String msg = "Bad: Luftfeuchte seit über " + CTL_ALERT_MINUTES.intValue + " min über " + CTL_ALERT_RH_ON.intValue + " % (jetzt " + String.format("%.0f", rh) +
+            " %, Modus " + mode + "). Lüften reicht nicht — Ventilator/Entfeuchter prüfen."
+        if (Bathroom_Airing_Shadow.state != OFF) {
+            logInfo("bathroom_airing_ctl", "SHADOW humidity alert ON: {}", msg)
+        } else {
+            logInfo("bathroom_airing_ctl", "humidity alert ON: {}", msg)
+            Bathroom_DewPoint_Alert.postUpdate(ON)
+            getActions("telegram", "telegram:telegramBot:Telegram_Bot").sendTelegram(msg)
+        }
+    } else if (ctlAlert && rh <= CTL_ALERT_RH_OFF.doubleValue) {
+        ctlAlert = false
+        if (Bathroom_Airing_Shadow.state != OFF) {
+            logInfo("bathroom_airing_ctl", "SHADOW humidity alert OFF (RH {} %)", rh)
+        } else {
+            logInfo("bathroom_airing_ctl", "humidity alert OFF (RH {} %)", rh)
+            Bathroom_DewPoint_Alert.postUpdate(OFF)
+        }
+    }
+
+    // 5) Conditions.
+    val boolean storm = rain >= CTL_RAIN_HEAVY.doubleValue || gust >= CTL_GUST_STORM.doubleValue || (condId.length == 3 && condId.startsWith("2"))
+    if (storm) ctlLastStorm = now
+    val boolean calm = ctlLastStorm === null || ctlLastStorm.isBefore(now.minusMinutes(CTL_STORM_CALM_MINUTES.intValue))
+    val int hour = now.getHour
+    val boolean day = hour >= CTL_DAY_START_HOUR.intValue && hour < CTL_DAY_END_HOUR.intValue
+    val boolean heatEnter = tout > CTL_HEAT_ABOVE.doubleValue && tout > tin + CTL_HEAT_OPEN_MARGIN.doubleValue
+    val boolean heatExit  = tout > CTL_HEAT_ABOVE.doubleValue && tout > tin + CTL_HEAT_CLOSE_MARGIN.doubleValue
+    // Never start fair-weather airing during a shower or while someone just came in.
+    val boolean fairEnter = tout >= CTL_FAIR_OPEN_MIN.doubleValue && tout <= CTL_FAIR_OPEN_MAX.doubleValue && calm &&
+                            gust < CTL_GUST_OPEN_MAX.doubleValue && dpout < dpin && day && !heatEnter &&
+                            ctlShowerAt === null && !rhRising && !lightRecent
+    val boolean fairKeep  = tout >= CTL_FAIR_KEEP_MIN.doubleValue && tout <= CTL_FAIR_KEEP_MAX.doubleValue && !storm &&
+                            dpout <= dpin + CTL_DP_KEEP_MARGIN.doubleValue && day && !heatExit
+    // Handle locked or tilted by hand: the motor must not drive (same guard as the motor layer).
+    val boolean handleBlocked = Bathroom_Alarm_Tilted.state == ON || Bathroom_Alarm_Locked.state == ON
+    val long sinceMove = ctlMinutesSince.apply(Bathroom_Airing_Last_Move.state)
+    val long inMode    = ctlMinutesSince.apply(Bathroom_Airing_Mode_Since.state)
+
+    logDebug("bathroom_airing_ctl", "mode {} ({} min, move {} min) tout {} tin {} rh {} dpin {} dpout {} gust {} rain {} cond {} | storm {} calm {} day {} fairEnter {} fairKeep {} rising {} shower {}",
+        mode, inMode, sinceMove, tout, tin, rh, dpin, dpout, gust, rain, condId, storm, calm, day, fairEnter, fairKeep, rhRising, ctlShowerAt)
+
+    // 6) State machine.
+    if (storm && (mode == "FAIR" || mode == "SHOWER" || mode == "MANUAL_OPEN")) {
+        ctlShowerAt = null
+        ctlMove.apply(false, "CLOSED", String.format("storm: rain %.1f mm, gusts %.0f km/h, condition %s", rain, gust, condId))
+    }
+    else if (mode == "MANUAL_OPEN" || mode == "MANUAL_CLOSED") {
+        if (inMode >= CTL_MANUAL_PAUSE_MINUTES.intValue) {
+            if (mode == "MANUAL_OPEN" && fairKeep) ctlSetMode.apply("FAIR", "manual pause over, fair weather")
+            else if (mode == "MANUAL_OPEN") ctlMove.apply(false, "CLOSED", "manual pause over")
+            else ctlSetMode.apply("CLOSED", "manual pause over")
+        }
+    }
+    else if (mode == "SHOWER") {
+        val long cap = if (tout < CTL_SHOWER_COLD_BELOW.doubleValue) CTL_SHOWER_MAX_COLD_MINUTES.longValue else CTL_SHOWER_MAX_MINUTES.longValue
+        val boolean dry = (ctlShowerBase !== null && rh <= ctlShowerBase + CTL_SHOWER_DONE_MARGIN.doubleValue) || (dpin - dpout <= 1.0)
+        if (dry || inMode >= cap) {
+            ctlShowerAt = null
+            val String why = if (dry) "shower aired" else "shower max time " + cap + " min"
+            if (fairKeep) ctlSetMode.apply("FAIR", why + ", fair weather")
+            else ctlMove.apply(false, "CLOSED", why)
+        }
+    }
+    else if (mode == "FAIR") {
+        if (newShower) {
+            ctlSetMode.apply("SHOWER", "shower during fair weather")
+        } else if (!day) {
+            ctlMove.apply(false, "CLOSED", "quiet hours")
+        } else if (!fairKeep && sinceMove >= CTL_MIN_DWELL_MINUTES.intValue && !rhRising) {
+            ctlMove.apply(false, "CLOSED", String.format("fair weather over: out %.1f °C, in %.1f °C, dp out %.1f / in %.1f °C", tout, tin, dpout, dpin))
+        }
+    }
+    else {
+        // CLOSED (or unknown)
+        if (ctlShowerAt !== null && showerOver && !storm && tout >= CTL_SHOWER_MIN_OUTDOOR.doubleValue) {
+            if (handleBlocked) logInfo("bathroom_airing_ctl", "shower airing blocked: handle locked or tilted")
+            else if (lightRecent) logInfo("bathroom_airing_ctl", "shower over, waiting: bathroom light recently switched on")
+            else ctlMove.apply(true, "SHOWER", String.format("shower over (RH %.0f %%, peak %.0f %%, base %.0f %%)", rh, ctlShowerPeak, ctlShowerBase))
+        } else if (fairEnter && sinceMove >= CTL_MIN_DWELL_MINUTES.intValue) {
+            if (handleBlocked) logInfo("bathroom_airing_ctl", "fair-weather airing blocked: handle locked or tilted")
+            else ctlMove.apply(true, "FAIR", String.format("fair weather: out %.1f °C, in %.1f °C, dp out %.1f / in %.1f °C, gusts %.0f km/h", tout, tin, dpout, dpin, gust))
+        }
+    }
+end
+
+// KNX button: manual open/close, automation pauses for CTL_MANUAL_PAUSE_MINUTES.
+// Only real transitions (not NULL -> OFF at startup).
+rule "bathroom_airing_ctl_manual"
+when
+    Item Bathroom_Window_Open changed from OFF to ON or
+    Item Bathroom_Window_Open changed from ON to OFF
+then
+    if (Bathroom_Airing_Automation.state != ON) {
+        logInfo("bathroom_airing_ctl", "KNX button ignored: master switch off")
+        return;
+    }
+    if (Bathroom_Window_Open.state == ON) {
+        ctlMove.apply(true, "MANUAL_OPEN", "KNX button")
+    } else {
+        ctlShowerAt = null
+        ctlMove.apply(false, "MANUAL_CLOSED", "KNX button")
+    }
+end
