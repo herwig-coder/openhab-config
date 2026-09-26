@@ -1,11 +1,11 @@
 # Runbook: Bad-Lüftung v2 (Controller)
 
-Stand: 2026-09-17 · openHAB 5.1.0 · Rule: `rules/bathroomAiringController.rules`
+Stand: 2026-09-26 (Untergrenze Innentemperatur) · openHAB 5.1.0 · Rule: `rules/bathroomAiringController.rules`
 
 | Schritt | Inhalt | Status |
 |---------|--------|--------|
-| 1 | Schattenbetrieb: v2 loggt nur, v1 (`bathroomAiring.rules`) fährt den Motor | [ ] offen — deployt am … |
-| 2 | Auswertung ~3 Tage: v2-Modi (Influx) vs. echte Motorfahrten | [ ] offen |
+| 1 | Schattenbetrieb: v2 loggt nur, v1 (`bathroomAiring.rules`) fährt den Motor | [x] ~~erledigt~~ 2026-09-17 |
+| 2 | Auswertung ~3 Tage: v2-Modi (Influx) vs. echte Motorfahrten | [x] ~~erledigt~~ 2026-09-26 — 9 Tage ausgewertet, siehe unten |
 | 3 | Umschalten: v1-Entscheidungsregeln + `dewpointBadAlert` entfernen, `Bathroom_Airing_Shadow` = OFF | [ ] offen |
 | 4 | Aufräumen: `Bathroom_DewPoint_Previous`, `Bathroom_Someone_Showering`, `Bathroom_Airing_Suspended/Active/Started` | [ ] offen |
 
@@ -26,13 +26,13 @@ Eine Entscheidung alle 5 min (`cron 30 */5`), genau ein Modus in `Bathroom_Airin
 
 | Modus | Öffnen wenn | Offen halten solange | Schließen wenn |
 |-------|-------------|----------------------|----------------|
-| **FAIR** | außen 16–26 °C (15-min-Mittel Wetterstation), 60 min kein Sturm, Böen < 40 km/h, Taupunkt außen < innen, 06–22 Uhr, nicht wärmer als innen +0,5 °C (über 24 °C) | außen 14–28 °C, kein Sturm, Taupunkt außen ≤ innen +1 °C, nicht wärmer als innen +2 °C (über 24 °C) | Bedingung weg **und** ≥ 60 min seit letzter Fahrt; um 22:00 sofort |
-| **SHOWER** | rF steigt ≥ 8 %-Punkte in 15 min (Erkennung) → geöffnet erst wenn **Duschen vorbei**: rF ≥ 3 Punkte unter dem Spitzenwert, kein Licht in den letzten 45 min eingeschaltet, kein Sturm, außen ≥ 5 °C — **auch nachts**; nach 90 min ohne Ende verworfen | — | rF ≤ Wert vor dem Duschen +3, oder Taupunkt innen ≤ außen +1 °C, oder max. 45 min (außen < 12 °C) / 90 min. Bei FAIR-Wetter Übergabe an FAIR statt Schließen |
+| **FAIR** | außen 16–26 °C (15-min-Mittel Wetterstation), 60 min kein Sturm, Böen < 55 km/h, Taupunkt außen < innen, 06–22 Uhr, nicht wärmer als innen +0,5 °C (über 24 °C), **Bad ≥ 21,5 °C** | außen 14–28 °C, kein Sturm, Taupunkt außen ≤ innen +1 °C, nicht wärmer als innen +2 °C (über 24 °C), **Bad ≥ 21 °C** | Bedingung weg **und** ≥ 60 min seit letzter Fahrt; um 22:00 sofort |
+| **SHOWER** | rF steigt ≥ 8 %-Punkte in 15 min (Erkennung) → geöffnet erst wenn **Duschen vorbei**: rF ≥ 3 Punkte unter dem Spitzenwert, kein Licht in den letzten 45 min eingeschaltet, kein Sturm, außen ≥ 5 °C — **auch nachts**; nach 90 min ohne Ende verworfen | — | rF ≤ Wert vor dem Duschen +3, oder Taupunkt innen ≤ außen +1 °C, oder max. 45 min (außen < 12 °C) / 90 min, oder Bad unter 19 °C (harte Grenze). Bei FAIR-Wetter Übergabe an FAIR statt Schließen |
 | **MANUAL_OPEN / MANUAL_CLOSED** | KNX-Taster `Bathroom_Window_Open` ON/OFF | 120 min Automatik-Pause | danach Neubewertung |
 | **OFF** | Master-Schalter `Bathroom_Airing_Automation` aus | — | nach Einschalten 3 min warten, dann Schließfahrt als Resync |
 
 Immer, in jedem offenen Modus:
-- **Sturm** schließt sofort: Regen ≥ 4 mm (OWM) oder Böen ≥ 50 km/h oder OWM-Gewitter-Code 2xx.
+- **Sturm** schließt sofort: Regen ≥ 4 mm (OWM) oder Böen ≥ 60 km/h oder OWM-Gewitter-Code 2xx.
   Normaler Regen schließt **nicht** (kleines Fenster, Regen kommt nicht rein).
 - **Veraltete Sensoren** schließen FAIR/SHOWER: Wetterstation > 30 min, Bad-Sensor > 90 min, OWM > 180 min ohne Update (`lastStateUpdate`).
 - **Griff verriegelt/gekippt** (`Bathroom_Alarm_Locked/Tilted`) → nicht öffnen (wie Motor-Layer).
@@ -78,6 +78,42 @@ Ist das Fenster wegen FAIR schon offen, wenn geduscht wird, bleibt es offen.
 - OWM-Regen/Böen nur stündlich; Wetterstation-Regensensor liefert nichts (3 Werte in 6 Monaten), Windsensor zeigt fast immer 0.
 - Keine Winterdaten → Kälte-Parameter (≥ 5 °C, 45 min) sind Schätzwerte.
 - Sensor-Ausfälle in der Historie: Bad-Sensor 06.–18.08. ohne Daten, Wetterstation bis 4,8 Tage Lücken.
+
+## Auswertung Schattenbetrieb (17.–26.09.2026, 9,4 Tage)
+
+v2 lief nur als Log/virtuelles Fenster, v1 hat gefahren. Vergleich aus Influx (`Bathroom_Airing_Mode` vs. Motor-Relais):
+
+| | v1 (real gefahren) | v2 (Schatten) |
+|---|---|---|
+| Fenster offen | 2,0 h/Tag | **8,2 h/Tag** |
+| Motorfahrten | 5,1/Tag (48) | **3,6/Tag (34)** |
+| Nachts offen (22–06) | — | 2,4 h gesamt (Dusche + manuell) |
+| Feuchte-Alarm | 18× ON in 9 Tagen (≈ 36 Telegrams) | **0×** (rF nie 2 h ≥ 80 %, Spitze 93 %) |
+
+Duschen: 12 erkannt, 10 als SHOWER behandelt (2 fielen in die manuelle Pause — korrekt).
+Bei 6 Öffnungen aus CLOSED war die Dusche laut rF-Verlauf beendet; in einem Fall (18.09. 17:25)
+begann ~5 min nach dem Öffnen eine **weitere** Dusche (rF 66 → 93 %) — Fenster war dann offen, der Motor fuhr aber nicht.
+
+**Erkenntnisse**
+1. **Böen-Grenze 40 km/h war zu streng.** 21.–23.09. durchgehend Böen 41–47 km/h → v2 hielt 1,5 Tage zu
+   (0,8 bzw. 0 h offen), obwohl 16–20 °C und trocken. Grenze auf **Öffnen < 55, Sturm ≥ 60 km/h** angehoben (2026-09-26).
+2. **Auskühlung ist nicht abgedeckt.** 21 reale Lüftungen ≥ 25 min im Zeitraum: Median **−0,45 °C/h**
+   (Extremwert −1,9 °C/h) bei ~10 °C Differenz innen/außen. Alle gemessenen Episoden ≤ 95 min; v2 würde an
+   milden Tagen 8–15 h offen halten → mehrere °C Abkühlung und im Herbst/Winter Heizverlust.
+   → **erledigt 2026-09-26: Untergrenze Innentemperatur** — FAIR schließt unter 21 °C, öffnet erst ab 21,5 °C;
+   SHOWER hat eine harte Grenze bei 19 °C. Modell aus den gemessenen Raten (Abkühlung k = 0,048/h,
+   Aufheizung geschlossen nur 0,05 °C/h — Heizung im September aus, Bad kühlt also kaum nach):
+
+   | | FAIR offen | modellierte Bad-Temperatur |
+   |---|---|---|
+   | ohne Grenze | 8,5 h/Tag | Minimum 19,4 °C, Median 20,8 °C |
+   | **Grenze 21 / 21,5 °C** | 7,2 h/Tag | Minimum 21,0 °C, Median 21,6 °C |
+   | Grenze 22 / 22,5 °C | 6,2 h/Tag | Minimum 22,0 °C |
+
+   Kostet ~1,3 h/Tag Lüftung. Aufheiz-Rate ist der schwächste Teil des Modells (nur 10 Segmente, Heizung aus)
+   — im Winter mit Heizung erholt sich das Bad schneller, dann aber auf Kosten der Heizenergie.
+3. Der Rest lief wie geplant: keine Flatter-Zyklen, Sturm-/Ruhezeiten-/Manuell-Logik wie entworfen,
+   Alarm deutlich ruhiger.
 
 ## Hardware-Fakten
 

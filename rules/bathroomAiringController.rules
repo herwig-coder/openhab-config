@@ -26,8 +26,11 @@ val Number CTL_HEAT_ABOVE             = 24.0  // °C outdoor above which the hea
 val Number CTL_HEAT_OPEN_MARGIN       = 0.5   // °C don't open if outdoor > indoor + this
 val Number CTL_HEAT_CLOSE_MARGIN      = 2.0   // °C close if outdoor > indoor + this
 val Number CTL_DP_KEEP_MARGIN         = 1.0   // °C stay open while outdoor dewpoint <= indoor + this
-val Number CTL_GUST_OPEN_MAX          = 40.0  // km/h max gusts to open for fair weather
-val Number CTL_GUST_STORM             = 50.0  // km/h gusts that count as storm -> close
+val Number CTL_TIN_MIN_OPEN           = 21.5  // °C bathroom must be at least this warm to start fair-weather airing
+val Number CTL_TIN_MIN_KEEP           = 21.0  // °C fair-weather airing stops when the bathroom cools below this
+val Number CTL_TIN_MIN_SHOWER         = 19.0  // °C hard floor: even shower airing stops here
+val Number CTL_GUST_OPEN_MAX          = 55.0  // km/h max gusts to open for fair weather
+val Number CTL_GUST_STORM             = 60.0  // km/h gusts that count as storm -> close
 val Number CTL_RAIN_HEAVY             = 4.0   // mm (OWM current rain) that counts as storm -> close
 val Number CTL_STORM_CALM_MINUTES     = 60    // no fair-weather opening this long after a storm
 val Number CTL_DAY_START_HOUR         = 6     // fair-weather airing only between these hours
@@ -236,9 +239,10 @@ then
     // Never start fair-weather airing during a shower or while someone just came in.
     val boolean fairEnter = tout >= CTL_FAIR_OPEN_MIN.doubleValue && tout <= CTL_FAIR_OPEN_MAX.doubleValue && calm &&
                             gust < CTL_GUST_OPEN_MAX.doubleValue && dpout < dpin && day && !heatEnter &&
-                            ctlShowerAt === null && !rhRising && !lightRecent
+                            ctlShowerAt === null && !rhRising && !lightRecent && tin >= CTL_TIN_MIN_OPEN.doubleValue
     val boolean fairKeep  = tout >= CTL_FAIR_KEEP_MIN.doubleValue && tout <= CTL_FAIR_KEEP_MAX.doubleValue && !storm &&
-                            dpout <= dpin + CTL_DP_KEEP_MARGIN.doubleValue && day && !heatExit
+                            dpout <= dpin + CTL_DP_KEEP_MARGIN.doubleValue && day && !heatExit &&
+                            tin >= CTL_TIN_MIN_KEEP.doubleValue
     // Handle locked or tilted by hand: the motor must not drive (same guard as the motor layer).
     val boolean handleBlocked = Bathroom_Alarm_Tilted.state == ON || Bathroom_Alarm_Locked.state == ON
     val long sinceMove = ctlMinutesSince.apply(Bathroom_Airing_Last_Move.state)
@@ -262,7 +266,10 @@ then
     else if (mode == "SHOWER") {
         val long cap = if (tout < CTL_SHOWER_COLD_BELOW.doubleValue) CTL_SHOWER_MAX_COLD_MINUTES.longValue else CTL_SHOWER_MAX_MINUTES.longValue
         val boolean dry = (ctlShowerBase !== null && rh <= ctlShowerBase + CTL_SHOWER_DONE_MARGIN.doubleValue) || (dpin - dpout <= 1.0)
-        if (dry || inMode >= cap) {
+        if (tin < CTL_TIN_MIN_SHOWER.doubleValue) {
+            ctlShowerAt = null
+            ctlMove.apply(false, "CLOSED", String.format("bathroom cooled to %.1f °C", tin))
+        } else if (dry || inMode >= cap) {
             ctlShowerAt = null
             val String why = if (dry) "shower aired" else "shower max time " + cap + " min"
             if (fairKeep) ctlSetMode.apply("FAIR", why + ", fair weather")
