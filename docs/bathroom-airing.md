@@ -1,12 +1,12 @@
 # Runbook: Bad-Lüftung v2 (Controller)
 
-Stand: 2026-09-26 (Untergrenze Innentemperatur) · openHAB 5.1.0 · Rule: `rules/bathroomAiringController.rules`
+Stand: 2026-09-27 (Umschaltung auf v2) · openHAB 5.1.0 · Rule: `rules/bathroomAiringController.rules`
 
 | Schritt | Inhalt | Status |
 |---------|--------|--------|
 | 1 | Schattenbetrieb: v2 loggt nur, v1 (`bathroomAiring.rules`) fährt den Motor | [x] ~~erledigt~~ 2026-09-17 |
 | 2 | Auswertung ~3 Tage: v2-Modi (Influx) vs. echte Motorfahrten | [x] ~~erledigt~~ 2026-09-26 — 9 Tage ausgewertet, siehe unten |
-| 3 | Umschalten: v1-Entscheidungsregeln + `dewpointBadAlert` entfernen, `Bathroom_Airing_Shadow` = OFF | [ ] offen |
+| 3 | Umschalten: v1-Entscheidungsregeln + `dewpointBadAlert` entfernt, v2 steuert | [x] ~~erledigt~~ 2026-09-27 |
 | 4 | Aufräumen: `Bathroom_DewPoint_Previous`, `Bathroom_Someone_Showering`, `Bathroom_Airing_Suspended/Active/Started` | [ ] offen |
 
 ---
@@ -139,14 +139,28 @@ Prüfen:
 - `Bathroom_Airing_Mode` / `Bathroom_Airing_Reason` bekommen Werte (REST oder UI)
 - Detail-Log bei Bedarf: `log:set DEBUG org.openhab.core.model.script.bathroom_airing_ctl`
 
-## Schritt 3 — Umschalten
+## Schritt 3 — Umschaltung (erledigt 2026-09-27)
 
-1. In `bathroomAiring.rules` entfernen: `someone_showering`, `bathroom_airing`, `bathroom_airing_watchdog`,
-   `bathroom_airing_reset_suspend`, `bathroom_airing_init`, `bathroom_airing_button`. Behalten: `bathroom_airing_action`, `bathroom_airing_motor_off`.
-2. In `senddewpointalert.rules` die Rule `dewpointBadAlert` entfernen (Schlafzimmer-Regeln bleiben).
-3. `Bathroom_DewPoint_Alert` auf OFF setzen, `Bathroom_Airing_Shadow` auf OFF.
+Anlass: am 27.09. (17–22 °C, trocken) wollte v2 ab 09:55 rund 11 h lüften, real war das Fenster
+1,6 h offen (v1: 05:02–05:35 und 17:26–18:30) und der alte Taupunkt-Alarm war den halben Nachmittag an.
+
+1. `bathroomAiring.rules` enthält nur noch den Motor-Layer (`bathroom_airing_action`,
+   `bathroom_airing_motor_off`). Entfernt: `someone_showering`, `bathroom_airing`,
+   `bathroom_airing_watchdog`, `bathroom_airing_reset_suspend`, `bathroom_airing_init`, `bathroom_airing_button`.
+2. `dewpointBadAlert` aus `senddewpointalert.rules` entfernt (Schlafzimmer-Regeln unverändert).
+3. **Schattenbetrieb ist jetzt opt-in:** nur `Bathroom_Airing_Shadow = ON` schaltet v2 auf reines Logging.
+   NULL/OFF = live. Nach dem Deploy steuert v2 also ohne weiteren Handgriff.
+4. `Bathroom_DewPoint_Alert` gehört jetzt v2: die Rule gleicht das Item bei jedem Tick an ihren
+   internen Alarmzustand an (der alte Wert ON vom 27.09. wird damit automatisch zurückgesetzt),
+   Telegram nur beim Einschalten.
+
+**Erste Prüfung nach dem Deploy**
+- `Bathroom_Airing_Mode`/`_Reason` ändern sich weiter, Log zeigt `OPEN/CLOSE` statt `SHADOW would …`
+- `Bathroom_DewPoint_Alert` fällt binnen 5 min auf OFF (rF < 80 %)
+- keine 05:00-Öffnung mehr
 
 ## Rollback
 
-`Bathroom_Airing_Shadow` → ON (v2 sofort nur noch Log). Nach Schritt 3 zusätzlich den Umschalt-Commit reverten:
-`git revert <commit> && git push`, am Server `sudo git pull`.
+`Bathroom_Airing_Shadow` → ON: v2 loggt nur noch, das Fenster bleibt dann aber stehen, wo es ist
+(die v1-Regeln sind weg). Vollständig zurück auf v1: Umschalt-Commit reverten
+(`git revert <commit> && git push`, am Server `sudo git pull`).

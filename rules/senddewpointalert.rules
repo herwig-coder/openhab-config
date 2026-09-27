@@ -21,61 +21,12 @@ val Number AIR_HEAT_MARGIN = 2.0  // °C outdoor may exceed indoor and still be 
 val Number AIR_MAX_OUTDOOR = 25.0 // °C absolute outdoor cap: above this, never air bedrooms
 
 ////////////////////////////////////////////////////////
-/// Bathroom Dewpoint Alert
+/// Bathroom: handled by bathroomAiringController.rules
 ////////////////////////////////////////////////////////
-rule "dewpointBadAlert"
-when
-    Item Bathroom_DewPoint changed
-then
-    logInfo("Bad_Dewpoint_Alert", "Trigger: Bathroom_Dewpoint changed")
-
-    // NULL guards - CRITICAL
-    if (Bathroom_DewPoint.state == NULL || Bathroom_DewPoint.state == UNDEF) {
-        logWarn("Bad_Dewpoint_Alert", "Bathroom_DewPoint is NULL/UNDEF, skipping")
-        return;
-    }
-    if (OneCallAPIweatherandforecast_Current_Dewpoint.state == NULL || OneCallAPIweatherandforecast_Current_Dewpoint.state == UNDEF) {
-        logWarn("Bad_Dewpoint_Alert", "OneCallAPIweatherandforecast_Current_Dewpoint is NULL/UNDEF, skipping")
-        return;
-    }
-
-    if (Bathroom_DewPoint.state instanceof QuantityType ) {
-        // Indoor vs. outdoor dewpoint: airing only removes moisture when indoor > outdoor.
-        val temp        = (Bathroom_DewPoint.state as QuantityType<Number>).toUnit("°C").doubleValue
-        val outdewpoint = (OneCallAPIweatherandforecast_Current_Dewpoint.state as QuantityType<Number>).toUnit("°C").doubleValue
-        val delta       = temp - outdewpoint
-        logInfo("Bad_Dewpoint_Alert", "Indoor dewpoint: {} °C, Outdoor: {} °C, Delta: {} °C", temp, outdewpoint, delta)
-
-        // Removable excess moisture present AND mold-relevant -> air.
-        if ((delta >= AIR_DELTA_ON.doubleValue) && (temp > AIR_MOLD_FLOOR_ON.doubleValue)) {
-            if (Bathroom_DewPoint_Alert.state != ON){
-                val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
-                val message = "ALERT! Bathroom: Time to air. Dewpoint at: " + String.format("%.1f",temp) + " °C (outside " + String.format("%.1f",outdewpoint) + " °C)"
-                telegramAction.sendTelegram(message)
-                logInfo("Bad_Dewpoint_Alert", "Alert sent: {}", message)
-                Bathroom_DewPoint_Alert.postUpdate(ON)
-            }
-            else{
-                logInfo("Bad_Dewpoint_Alert", "Already alerting, not re-sending")
-            }
-        }
-        // Aired to practical floor, or moisture harmless anyway -> stop.
-        else if ((delta <= AIR_DELTA_OFF.doubleValue) || (temp <= AIR_MOLD_FLOOR_OFF.doubleValue)) {
-            if (Bathroom_DewPoint_Alert.state == ON){
-                val telegramAction = getActions("telegram","telegram:telegramBot:Telegram_Bot")
-                val message = "Bathroom: aired enough. Dewpoint at: " + String.format("%.1f",temp) + " °C (outside " + String.format("%.1f",outdewpoint) + " °C)"
-                telegramAction.sendTelegram(message)
-                logInfo("Bad_Dewpoint_Alert", "Alert off sent: {}", message)
-                Bathroom_DewPoint_Alert.postUpdate(OFF)
-            }
-        }
-        // else: delta within hysteresis band (AIR_DELTA_OFF..AIR_DELTA_ON) -> keep current state.
-    }
-    else {
-        logWarn("Bad_Dewpoint_Alert", "Invalid input: Bathroom_DewPoint state is not a QuantityType")
-    }
-end
-
+// The bathroom dewpoint alert (rule "dewpointBadAlert") was removed with the v2
+// airing cut-over on 2026-09-27: it was ON 65-83 % of the summer and sent a Telegram
+// on every flip. Bathroom_DewPoint_Alert is now set by the controller when the
+// humidity stays >= 80 % for 2 h. The bedroom alerts below are unchanged.
 
 ////////////////////////////////////////////////////////
 /// Paretns Beddroom Dewpoint Alert

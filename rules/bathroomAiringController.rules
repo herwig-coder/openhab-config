@@ -12,10 +12,10 @@
 // Decisions use sampled values (5-min buffers), never single sensor readings — the v1 rules
 // reacted to every 0.1 °C dewpoint wobble and flapped the window.
 //
-// SHADOW MODE: while Bathroom_Airing_Shadow is ON (or NULL) this file only logs and tracks a
-// virtual window in Bathroom_Airing_Mode; bathroomAiring.rules still drives the motor.
-// After cut-over it commands Bathroom_Airing_Open/Close_Request (motor layer).
-// Design, parameters and history validation: docs/bathroom-airing.md
+// LIVE since the v2 cut-over on 2026-09-27: this file commands Bathroom_Airing_Open/Close_Request
+// and owns Bathroom_DewPoint_Alert. Set Bathroom_Airing_Shadow = ON to fall back to log-only
+// (rollback); any other state, including NULL after a restart, means live.
+// Design, parameters, history validation and rollout: docs/bathroom-airing.md
 // ────────────────────────────────────────────────────────────────────────────
 
 val Number CTL_FAIR_OPEN_MIN          = 16.0  // °C outdoor (15-min mean) to open for fair weather
@@ -71,7 +71,7 @@ var boolean       ctlAlert            = false
 // "bathroom_airing_action" / "bathroom_airing_motor_off".
 val ctlMove = [ Boolean open, String mode, String reason |
     val String dir = if (open) "OPEN" else "CLOSE"
-    if (Bathroom_Airing_Shadow.state != OFF) {
+    if (Bathroom_Airing_Shadow.state == ON) {
         logInfo("bathroom_airing_ctl", "SHADOW would {} -> {} ({})", dir, mode, reason)
     } else {
         logInfo("bathroom_airing_ctl", "{} -> {} ({})", dir, mode, reason)
@@ -211,7 +211,7 @@ then
         ctlAlert = true
         val String msg = "Bad: Luftfeuchte seit über " + CTL_ALERT_MINUTES.intValue + " min über " + CTL_ALERT_RH_ON.intValue + " % (jetzt " + String.format("%.0f", rh) +
             " %, Modus " + mode + "). Lüften reicht nicht — Ventilator/Entfeuchter prüfen."
-        if (Bathroom_Airing_Shadow.state != OFF) {
+        if (Bathroom_Airing_Shadow.state == ON) {
             logInfo("bathroom_airing_ctl", "SHADOW humidity alert ON: {}", msg)
         } else {
             logInfo("bathroom_airing_ctl", "humidity alert ON: {}", msg)
@@ -220,11 +220,19 @@ then
         }
     } else if (ctlAlert && rh <= CTL_ALERT_RH_OFF.doubleValue) {
         ctlAlert = false
-        if (Bathroom_Airing_Shadow.state != OFF) {
+        if (Bathroom_Airing_Shadow.state == ON) {
             logInfo("bathroom_airing_ctl", "SHADOW humidity alert OFF (RH {} %)", rh)
         } else {
             logInfo("bathroom_airing_ctl", "humidity alert OFF (RH {} %)", rh)
-            Bathroom_DewPoint_Alert.postUpdate(OFF)
+        }
+    }
+    // The alert item is ours now: keep it in sync (it may be stale from the removed v1 rule
+    // or from a restart). Telegram is only sent on the ON transition above.
+    if (Bathroom_Airing_Shadow.state != ON) {
+        val wanted = if (ctlAlert) ON else OFF
+        if (Bathroom_DewPoint_Alert.state != wanted) {
+            logInfo("bathroom_airing_ctl", "humidity alert item -> {} (RH {} %)", wanted, rh)
+            Bathroom_DewPoint_Alert.postUpdate(wanted)
         }
     }
 
