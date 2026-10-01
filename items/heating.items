@@ -1,0 +1,7 @@
+// Heizbetrieb-Indikator — vorerst von Hand gesetzt, später automatisiert
+// (Quelle dann: Heizungs-WP bzw. Kessel, siehe docs/projects/heizungstausch).
+// Verwendet von rules/bathroomAiringController.rules: bestimmt die Komfort-Temperatur,
+// an der sich entscheidet, ob Abkühlen oder Aufwärmen durch Lüften "kostet":
+//   Heizung ein  -> Komfort 23 °C
+//   Heizung aus  -> Komfort 22 °C
+Switch  Heating_Active          "Heizung in Betrieb [%s]"       <if:mdi:radiator>       (gStrasshof)    ["Switchable"]

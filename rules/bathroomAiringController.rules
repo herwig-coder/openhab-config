@@ -1,7 +1,8 @@
 // ────────────────────────────────────────────────────────────────────────────
 // Bathroom airing controller v2 — one decision every 5 minutes, one mode at a time:
-//   FAIR           pleasant weather: keep the window open while it is mild, calm and the
-//                  outdoor air is drier than the bathroom air (quiet hours 22-06 excluded)
+//   DRYING         moisture-driven: air while the dewpoint is above the mould-safe target and
+//                  the outside air can actually remove water, as long as the thermal price stays
+//                  within a budget that grows with urgency (night allowed, with limits)
 //   SHOWER         after a humidity jump: air until back near the pre-shower level (also at night)
 //   MANUAL_OPEN /  KNX button Bathroom_Window_Open: automation pauses for CTL_MANUAL_PAUSE_MINUTES
 //   MANUAL_CLOSED
@@ -12,30 +13,46 @@
 // Decisions use sampled values (5-min buffers), never single sensor readings — the v1 rules
 // reacted to every 0.1 °C dewpoint wobble and flapped the window.
 //
+// The DRYING decision is a price, not a gate (revised 2026-10-01). Every tick:
+//   need    = dewpoint above the mould-safe target  (°C)   — why we would air
+//   benefit = absolute humidity indoors minus outdoors (g/m³) — how fast airing removes water
+//   price   = degrees of UNWANTED drift: warming when the room is above comfort, cooling when
+//             it is at or below it; comfort is 23 °C with the heating on, 22 °C without
+//             (Heating_Active, set by hand for now)
+// Air while need > 0 and price/benefit stays under a budget that grows with need. A small
+// moisture problem only buys cheap airing, a big one justifies paying some degrees. This is what
+// makes summer nights the airing window and summer middays not, without any season logic.
+//
 // LIVE since the v2 cut-over on 2026-09-27: this file commands Bathroom_Airing_Open/Close_Request
 // and owns Bathroom_DewPoint_Alert. Set Bathroom_Airing_Shadow = ON to fall back to log-only
 // (rollback); any other state, including NULL after a restart, means live.
 // Design, parameters, history validation and rollout: docs/bathroom-airing.md
 // ────────────────────────────────────────────────────────────────────────────
 
-val Number CTL_FAIR_OPEN_MIN          = 16.0  // °C outdoor (15-min mean) to open for fair weather
-val Number CTL_FAIR_OPEN_MAX          = 26.0
-val Number CTL_FAIR_KEEP_MIN          = 14.0  // °C outdoor band to stay open (hysteresis)
-val Number CTL_FAIR_KEEP_MAX          = 28.0
-val Number CTL_HEAT_ABOVE             = 24.0  // °C outdoor above which the heat guard applies
-val Number CTL_HEAT_OPEN_MARGIN       = 0.5   // °C don't open if outdoor > indoor + this
-val Number CTL_HEAT_CLOSE_MARGIN      = 2.0   // °C close if outdoor > indoor + this
-val Number CTL_DP_KEEP_MARGIN         = 1.0   // °C stay open while outdoor dewpoint <= indoor + this
-val Number CTL_TIN_MIN_OPEN           = 21.5  // °C bathroom must be at least this warm to start fair-weather airing
-val Number CTL_TIN_MIN_KEEP           = 21.0  // °C fair-weather airing stops when the bathroom cools below this
+val Number CTL_SURFACE_F              = 0.7   // coldest-wall estimate: tsurf = tout + f*(tin - tout)
+val Number CTL_SAFE_SURFACE_RH        = 75.0  // % humidity at that surface we consider safe
+val Number CTL_DP_TARGET_MIN          = 11.0  // °C never chase a dewpoint below this
+val Number CTL_DP_TARGET_MAX          = 16.5  // °C absolute cap: above this it is never "safe enough"
+val Number CTL_NEED_START             = 0.3   // °C above target to start airing (stop at target)
+val Number CTL_BENEFIT_START          = 0.5   // g/m³ min drying power to start
+val Number CTL_BENEFIT_KEEP           = 0.3   // g/m³ min drying power to stay open
+val Number CTL_PRICE_BASE             = 0.5   // K per g/m³ tolerated at zero urgency
+val Number CTL_PRICE_PER_K            = 0.5   // ... plus this much per °C of need
+val Number CTL_PRICE_CAP              = 3.0   // ... never more than this
+val Number CTL_COMFORT_HEATING        = 23.0  // °C comfort pivot while Heating_Active is ON
+val Number CTL_COMFORT_OFF            = 22.0  // °C comfort pivot while it is OFF
+val Number CTL_TIN_MIN_OPEN           = 21.5  // °C bathroom must be at least this warm to start drying
+val Number CTL_TIN_MIN_KEEP           = 21.0  // °C drying stops when the bathroom cools below this
 val Number CTL_TIN_MIN_SHOWER         = 19.0  // °C hard floor: even shower airing stops here
+val Number CTL_NIGHT_START_HOUR       = 22    // night window (noise / sleeping with the window open)
+val Number CTL_NIGHT_END_HOUR         = 6
+val Number CTL_NIGHT_MAX_OPENS        = 2     // at most this many openings per night
+val Number CTL_NIGHT_MIN_OPEN_MINUTES = 60    // once open at night, stay open at least this long
 val Number CTL_GUST_OPEN_MAX          = 55.0  // km/h max gusts to open for fair weather
 val Number CTL_GUST_STORM             = 60.0  // km/h gusts that count as storm -> close
 val Number CTL_RAIN_HEAVY             = 4.0   // mm (OWM current rain) that counts as storm -> close
-val Number CTL_STORM_CALM_MINUTES     = 60    // no fair-weather opening this long after a storm
-val Number CTL_DAY_START_HOUR         = 6     // fair-weather airing only between these hours
-val Number CTL_DAY_END_HOUR           = 22
-val Number CTL_MIN_DWELL_MINUTES      = 60    // min time between motor runs for fair-weather changes
+val Number CTL_STORM_CALM_MINUTES     = 60    // no opening this long after a storm
+val Number CTL_MIN_DWELL_MINUTES      = 60    // min time between motor runs for drying decisions
 val Number CTL_SHOWER_RISE            = 8.0   // % RH rise within 15 min = shower
 val Number CTL_SHOWER_END_DROP        = 3.0   // % RH below the shower peak = water is off, shower over
 val Number CTL_SHOWER_EXPIRE_MINUTES  = 90    // give up airing a shower not over after this long
@@ -66,6 +83,8 @@ var Double        ctlShowerBase       = null   // RH before the shower
 var Double        ctlShowerPeak       = null   // highest RH since detection
 var ZonedDateTime ctlRhHighSince      = null
 var boolean       ctlAlert            = false
+var int           ctlNightOpens       = 0      // openings in the current night window
+var int           ctlNightOfYear      = -1     // day-of-year the counter belongs to
 
 // Motor command (or its shadow) plus mode bookkeeping. Motor layer: bathroomAiring.rules
 // "bathroom_airing_action" / "bathroom_airing_motor_off".
@@ -142,7 +161,7 @@ then
     if (OneCallAPIweatherandforecast_Current_Dewpoint.lastStateUpdate.isBefore(now.minusMinutes(CTL_STALE_OWM_MINUTES.intValue)) ||
         !(OneCallAPIweatherandforecast_Current_Dewpoint.state instanceof QuantityType)) stale = stale + "openweathermap "
     if (stale != "") {
-        if (mode == "FAIR" || mode == "SHOWER") {
+        if (mode == "DRYING" || mode == "SHOWER") {
             ctlMove.apply(false, "CLOSED", "stale input: " + stale.trim)
         } else {
             logWarn("bathroom_airing_ctl", "stale input: {}", stale.trim)
@@ -236,61 +255,91 @@ then
         }
     }
 
-    // 5) Conditions.
+    // 5) Conditions: storm, night budget, and the need/benefit/price trade-off.
     val boolean storm = rain >= CTL_RAIN_HEAVY.doubleValue || gust >= CTL_GUST_STORM.doubleValue || (condId.length == 3 && condId.startsWith("2"))
     if (storm) ctlLastStorm = now
     val boolean calm = ctlLastStorm === null || ctlLastStorm.isBefore(now.minusMinutes(CTL_STORM_CALM_MINUTES.intValue))
     val int hour = now.getHour
-    val boolean day = hour >= CTL_DAY_START_HOUR.intValue && hour < CTL_DAY_END_HOUR.intValue
-    val boolean heatEnter = tout > CTL_HEAT_ABOVE.doubleValue && tout > tin + CTL_HEAT_OPEN_MARGIN.doubleValue
-    val boolean heatExit  = tout > CTL_HEAT_ABOVE.doubleValue && tout > tin + CTL_HEAT_CLOSE_MARGIN.doubleValue
-    // Never start fair-weather airing during a shower or while someone just came in.
-    val boolean fairEnter = tout >= CTL_FAIR_OPEN_MIN.doubleValue && tout <= CTL_FAIR_OPEN_MAX.doubleValue && calm &&
-                            gust < CTL_GUST_OPEN_MAX.doubleValue && dpout < dpin && day && !heatEnter &&
-                            ctlShowerAt === null && !rhRising && !lightRecent && tin >= CTL_TIN_MIN_OPEN.doubleValue
-    val boolean fairKeep  = tout >= CTL_FAIR_KEEP_MIN.doubleValue && tout <= CTL_FAIR_KEEP_MAX.doubleValue && !storm &&
-                            dpout <= dpin + CTL_DP_KEEP_MARGIN.doubleValue && day && !heatExit &&
-                            tin >= CTL_TIN_MIN_KEEP.doubleValue
+    val boolean night = hour >= CTL_NIGHT_START_HOUR.intValue || hour < CTL_NIGHT_END_HOUR.intValue
+    // Night counter resets at the start of each night window.
+    val int doy = now.getDayOfYear
+    if (!night) { ctlNightOpens = 0; ctlNightOfYear = -1 }
+    else if (ctlNightOfYear != doy) { ctlNightOpens = 0; ctlNightOfYear = doy }
+
+    // Mould-safe dewpoint target from the coldest-wall estimate, capped at both ends.
+    val double tsurf  = tout + CTL_SURFACE_F.doubleValue * (tin - tout)
+    val double esSurf = 6.112 * Math.exp(17.62 * tsurf / (243.12 + tsurf))
+    val double eTarget = CTL_SAFE_SURFACE_RH.doubleValue / 100.0 * esSurf
+    var double dpTarget = 243.12 * Math.log(eTarget / 6.112) / (17.62 - Math.log(eTarget / 6.112))
+    if (dpTarget < CTL_DP_TARGET_MIN.doubleValue) dpTarget = CTL_DP_TARGET_MIN.doubleValue
+    if (dpTarget > CTL_DP_TARGET_MAX.doubleValue) dpTarget = CTL_DP_TARGET_MAX.doubleValue
+    val double need = dpin - dpTarget
+
+    // Benefit: absolute humidity difference (g/m³) — how much water an air exchange actually removes.
+    val double ahIn  = 216.7 * (6.112 * Math.exp(17.62 * dpin  / (243.12 + dpin)))  / (273.15 + tin)
+    val double ahOut = 216.7 * (6.112 * Math.exp(17.62 * dpout / (243.12 + dpout))) / (273.15 + tout)
+    val double benefit = ahIn - ahOut
+
+    // Price: only drift in the unwanted direction counts. Above comfort, warming costs and cooling
+    // is free; at or below comfort, cooling costs.
+    val double comfort = if (Heating_Active.state == ON) CTL_COMFORT_HEATING.doubleValue else CTL_COMFORT_OFF.doubleValue
+    var double price = 0.0
+    if (tin > comfort) { if (tout > tin) price = tout - tin } else { if (tout < tin) price = tin - tout }
+    val double ratio  = price / Math.max(benefit, 0.1)
+    var double budget = CTL_PRICE_BASE.doubleValue + CTL_PRICE_PER_K.doubleValue * Math.max(need, 0.0)
+    if (budget > CTL_PRICE_CAP.doubleValue) budget = CTL_PRICE_CAP.doubleValue
+
+    val boolean nightOk = !night || ctlNightOpens < CTL_NIGHT_MAX_OPENS.intValue
+    val boolean dryStart = need >= CTL_NEED_START.doubleValue && benefit >= CTL_BENEFIT_START.doubleValue &&
+                           ratio <= budget && calm && gust < CTL_GUST_OPEN_MAX.doubleValue &&
+                           tin >= CTL_TIN_MIN_OPEN.doubleValue &&
+                           ctlShowerAt === null && !rhRising && !lightRecent && nightOk
+    val boolean dryKeep  = need > 0 && benefit >= CTL_BENEFIT_KEEP.doubleValue && ratio <= budget &&
+                           !storm && tin >= CTL_TIN_MIN_KEEP.doubleValue
     // Handle locked or tilted by hand: the motor must not drive (same guard as the motor layer).
     val boolean handleBlocked = Bathroom_Alarm_Tilted.state == ON || Bathroom_Alarm_Locked.state == ON
     val long sinceMove = ctlMinutesSince.apply(Bathroom_Airing_Last_Move.state)
     val long inMode    = ctlMinutesSince.apply(Bathroom_Airing_Mode_Since.state)
 
-    logDebug("bathroom_airing_ctl", "mode {} ({} min, move {} min) tout {} tin {} rh {} dpin {} dpout {} gust {} rain {} cond {} | storm {} calm {} day {} fairEnter {} fairKeep {} rising {} shower {}",
-        mode, inMode, sinceMove, tout, tin, rh, dpin, dpout, gust, rain, condId, storm, calm, day, fairEnter, fairKeep, rhRising, ctlShowerAt)
+    logDebug("bathroom_airing_ctl", "mode {} ({} min, move {} min) tout {} tin {} rh {} dpin {} target {} need {} benefit {} price {} ratio {} budget {} comfort {} | storm {} night {}/{} start {} keep {}",
+        mode, inMode, sinceMove, tout, tin, rh, dpin, dpTarget, need, benefit, price, ratio, budget, comfort, storm, night, ctlNightOpens, dryStart, dryKeep)
 
     // 6) State machine.
-    if (storm && (mode == "FAIR" || mode == "SHOWER" || mode == "MANUAL_OPEN")) {
+    if (storm && (mode == "DRYING" || mode == "SHOWER" || mode == "MANUAL_OPEN")) {
         ctlShowerAt = null
         ctlMove.apply(false, "CLOSED", String.format("storm: rain %.1f mm, gusts %.0f km/h, condition %s", rain, gust, condId))
     }
     else if (mode == "MANUAL_OPEN" || mode == "MANUAL_CLOSED") {
         if (inMode >= CTL_MANUAL_PAUSE_MINUTES.intValue) {
-            if (mode == "MANUAL_OPEN" && fairKeep) ctlSetMode.apply("FAIR", "manual pause over, fair weather")
+            if (mode == "MANUAL_OPEN" && dryKeep) ctlSetMode.apply("DRYING", "manual pause over, still drying")
             else if (mode == "MANUAL_OPEN") ctlMove.apply(false, "CLOSED", "manual pause over")
             else ctlSetMode.apply("CLOSED", "manual pause over")
         }
     }
     else if (mode == "SHOWER") {
         val long cap = if (tout < CTL_SHOWER_COLD_BELOW.doubleValue) CTL_SHOWER_MAX_COLD_MINUTES.longValue else CTL_SHOWER_MAX_MINUTES.longValue
-        val boolean dry = (ctlShowerBase !== null && rh <= ctlShowerBase + CTL_SHOWER_DONE_MARGIN.doubleValue) || (dpin - dpout <= 1.0)
+        val boolean dry = (ctlShowerBase !== null && rh <= ctlShowerBase + CTL_SHOWER_DONE_MARGIN.doubleValue) || need <= 0 || benefit < CTL_BENEFIT_KEEP.doubleValue
         if (tin < CTL_TIN_MIN_SHOWER.doubleValue) {
             ctlShowerAt = null
             ctlMove.apply(false, "CLOSED", String.format("bathroom cooled to %.1f °C", tin))
         } else if (dry || inMode >= cap) {
             ctlShowerAt = null
             val String why = if (dry) "shower aired" else "shower max time " + cap + " min"
-            if (fairKeep) ctlSetMode.apply("FAIR", why + ", fair weather")
+            if (dryKeep) ctlSetMode.apply("DRYING", why + ", still above mould target")
             else ctlMove.apply(false, "CLOSED", why)
         }
     }
-    else if (mode == "FAIR") {
+    else if (mode == "DRYING") {
+        val boolean nightHold = night && inMode < CTL_NIGHT_MIN_OPEN_MINUTES.intValue
         if (newShower) {
-            ctlSetMode.apply("SHOWER", "shower during fair weather")
-        } else if (!day) {
-            ctlMove.apply(false, "CLOSED", "quiet hours")
-        } else if (!fairKeep && sinceMove >= CTL_MIN_DWELL_MINUTES.intValue && !rhRising) {
-            ctlMove.apply(false, "CLOSED", String.format("fair weather over: out %.1f °C, in %.1f °C, dp out %.1f / in %.1f °C", tout, tin, dpout, dpin))
+            ctlSetMode.apply("SHOWER", "shower while airing")
+        } else if (!dryKeep && !nightHold && sinceMove >= CTL_MIN_DWELL_MINUTES.intValue) {
+            val String why =
+                if (need <= 0) String.format("dewpoint %.1f °C at target %.1f °C", dpin, dpTarget)
+                else if (tin < CTL_TIN_MIN_KEEP.doubleValue) String.format("bathroom cooled to %.1f °C", tin)
+                else if (benefit < CTL_BENEFIT_KEEP.doubleValue) String.format("outside air no longer drier (%.1f g/m³)", benefit)
+                else String.format("too expensive: %.1f K per g/m³, budget %.1f (need %.1f °C)", ratio, budget, need)
+            ctlMove.apply(false, "CLOSED", why)
         }
     }
     else {
@@ -298,10 +347,17 @@ then
         if (ctlShowerAt !== null && showerOver && !storm && tout >= CTL_SHOWER_MIN_OUTDOOR.doubleValue) {
             if (handleBlocked) logInfo("bathroom_airing_ctl", "shower airing blocked: handle locked or tilted")
             else if (lightRecent) logInfo("bathroom_airing_ctl", "shower over, waiting: bathroom light recently switched on")
-            else ctlMove.apply(true, "SHOWER", String.format("shower over (RH %.0f %%, peak %.0f %%, base %.0f %%)", rh, ctlShowerPeak, ctlShowerBase))
-        } else if (fairEnter && sinceMove >= CTL_MIN_DWELL_MINUTES.intValue) {
-            if (handleBlocked) logInfo("bathroom_airing_ctl", "fair-weather airing blocked: handle locked or tilted")
-            else ctlMove.apply(true, "FAIR", String.format("fair weather: out %.1f °C, in %.1f °C, dp out %.1f / in %.1f °C, gusts %.0f km/h", tout, tin, dpout, dpin, gust))
+            else {
+                if (night) ctlNightOpens = ctlNightOpens + 1
+                ctlMove.apply(true, "SHOWER", String.format("shower over (RH %.0f %%, peak %.0f %%, base %.0f %%)", rh, ctlShowerPeak, ctlShowerBase))
+            }
+        } else if (dryStart && sinceMove >= CTL_MIN_DWELL_MINUTES.intValue) {
+            if (handleBlocked) logInfo("bathroom_airing_ctl", "drying blocked: handle locked or tilted")
+            else {
+                if (night) ctlNightOpens = ctlNightOpens + 1
+                ctlMove.apply(true, "DRYING", String.format("dewpoint %.1f °C above target %.1f °C, %.1f g/m³ to gain, price %.1f of %.1f K per g/m³ (out %.1f °C, in %.1f °C)",
+                    dpin, dpTarget, benefit, ratio, budget, tout, tin))
+            }
         }
     }
 end

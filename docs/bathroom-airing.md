@@ -1,6 +1,6 @@
 # Runbook: Bad-Lüftung v2 (Controller)
 
-Stand: 2026-09-27 (Umschaltung auf v2) · openHAB 5.1.0 · Rule: `rules/bathroomAiringController.rules`
+Stand: 2026-10-01 (v3: Kosten-Nutzen statt Wetterfenster) · openHAB 5.1.0 · Rule: `rules/bathroomAiringController.rules`
 
 | Schritt | Inhalt | Status |
 |---------|--------|--------|
@@ -26,10 +26,44 @@ Eine Entscheidung alle 5 min (`cron 30 */5`), genau ein Modus in `Bathroom_Airin
 
 | Modus | Öffnen wenn | Offen halten solange | Schließen wenn |
 |-------|-------------|----------------------|----------------|
-| **FAIR** | außen 16–26 °C (15-min-Mittel Wetterstation), 60 min kein Sturm, Böen < 55 km/h, Taupunkt außen < innen, 06–22 Uhr, nicht wärmer als innen +0,5 °C (über 24 °C), **Bad ≥ 21,5 °C** | außen 14–28 °C, kein Sturm, Taupunkt außen ≤ innen +1 °C, nicht wärmer als innen +2 °C (über 24 °C), **Bad ≥ 21 °C** | Bedingung weg **und** ≥ 60 min seit letzter Fahrt; um 22:00 sofort |
-| **SHOWER** | rF steigt ≥ 8 %-Punkte in 15 min (Erkennung) → geöffnet erst wenn **Duschen vorbei**: rF ≥ 3 Punkte unter dem Spitzenwert, kein Licht in den letzten 45 min eingeschaltet, kein Sturm, außen ≥ 5 °C — **auch nachts**; nach 90 min ohne Ende verworfen | — | rF ≤ Wert vor dem Duschen +3, oder Taupunkt innen ≤ außen +1 °C, oder max. 45 min (außen < 12 °C) / 90 min, oder Bad unter 19 °C (harte Grenze). Bei FAIR-Wetter Übergabe an FAIR statt Schließen |
+| **DRYING** | `need` > 0,3 °C **und** `benefit` ≥ 0,5 g/m³ **und** `ratio` ≤ Budget, Bad ≥ 21,5 °C, kein Sturm, keine laufende Dusche, kein Licht in 45 min, nachts nur bis 2 Öffnungen | `need` > 0, `benefit` ≥ 0,3 g/m³, `ratio` ≤ Budget, Bad ≥ 21 °C | Ziel erreicht, Luft draußen nicht mehr trockener, zu teuer, oder Bad unter 21 °C — frühestens 60 min nach der letzten Fahrt; nachts mindestens 60 min offen |
+| **SHOWER** (Vorrang) | rF steigt ≥ 8 %-Punkte in 15 min (Erkennung) → geöffnet erst wenn **Duschen vorbei**: rF ≥ 3 Punkte unter dem Spitzenwert, kein Licht in den letzten 45 min eingeschaltet, kein Sturm, außen ≥ 5 °C — **auch nachts**; nach 90 min ohne Ende verworfen | — | rF ≤ Wert vor dem Duschen +3, oder Taupunkt innen ≤ außen +1 °C, oder max. 45 min (außen < 12 °C) / 90 min, oder Bad unter 19 °C (harte Grenze). Bei FAIR-Wetter Übergabe an FAIR statt Schließen |
 | **MANUAL_OPEN / MANUAL_CLOSED** | KNX-Taster `Bathroom_Window_Open` ON/OFF | 120 min Automatik-Pause | danach Neubewertung |
 | **OFF** | Master-Schalter `Bathroom_Airing_Automation` aus | — | nach Einschalten 3 min warten, dann Schließfahrt als Resync |
+
+### Die DRYING-Entscheidung: ein Preis, kein Wetterfenster (seit 2026-10-01)
+
+v2 lüftete bei „schönem Wetter" — mild, trocken, draußen trockener. Das war am Ziel vorbei: von 54 offenen
+Stunden in den ersten 5 Tagen lagen **37–40 h unterhalb des Schimmel-Ziels**, gelüftet wurde also ohne Grund,
+und zwar mittags, wenn es wärmer ist als drinnen. Umgekehrt war das beste Sommerfenster — die Nacht — gesperrt.
+
+Jeder Tick rechnet drei Größen:
+
+| Größe | Bedeutung | Formel |
+|---|---|---|
+| **need** | wie weit der Taupunkt über dem schimmelsicheren Ziel liegt (°C) | `dpin − dpTarget` |
+| **benefit** | wie viel Wasser ein Luftwechsel tatsächlich mitnimmt (g/m³) | absolute Feuchte innen − außen |
+| **price** | Grad **unerwünschter** Drift (K) | über Komfort zählt Erwärmen, auf/unter Komfort zählt Abkühlen |
+
+Gelüftet wird, solange `need > 0` **und** `price / benefit` unter einem Budget bleibt, das mit `need` wächst:
+`Budget = 0,5 + 0,5 × need`, gedeckelt bei 3,0 K je g/m³. Ein kleines Feuchteproblem kauft also nur billige
+Lüftung, ein großes rechtfertigt ein paar Grad.
+
+**dpTarget** kommt aus dem Schimmelkriterium: Oberflächentemperatur `tout + 0,7 × (tin − tout)`, daraus der
+Taupunkt für 75 % Oberflächenfeuchte, begrenzt auf **11 … 16,5 °C**. Die Obergrenze ist eine Setzung, keine
+Physik: im Sommer sind die Wände warm, aber kalte Flächen (Kaltwasserleitung, Fliesenboden über dem Keller)
+bleiben — daher gilt ein Taupunkt über 16,5 °C nie als „sicher genug".
+
+**Komfortschwelle** entscheidet, welche Richtung weh tut: **23 °C bei Heizbetrieb, 22 °C ohne** —
+gesteuert über das neue Item `Heating_Active` (vorerst von Hand, später automatisch).
+
+**Warum das die Jahreszeiten ohne Jahreszeitenlogik trifft:** im Sommer ist nachts draußen kühler *und*
+trockener (12,3 h/Tag im Juli/August), mittags wärmer — der Preis sortiert das von allein. Im Frühjahr und
+Herbst ist kühle Trockenluft fast gratis, im Winter begrenzen Komfortschwelle, 21-°C-Boden und Zeitdeckel.
+
+**Nachts** ist Lüften erlaubt (ohne die Nacht fehlen 40 % der Lüftungszeit und im Sommer das beste Fenster),
+aber gedeckelt: **höchstens 2 Öffnungen** je Nacht 22–06 Uhr, und einmal offen bleibt das Fenster **mindestens
+60 min** offen — gegen Motorgeräusch im Minutentakt.
 
 Immer, in jedem offenen Modus:
 - **Sturm** schließt sofort: Regen ≥ 4 mm (OWM) oder Böen ≥ 60 km/h oder OWM-Gewitter-Code 2xx.
@@ -114,6 +148,32 @@ begann ~5 min nach dem Öffnen eine **weitere** Dusche (rF 66 → 93 %) — Fens
    — im Winter mit Heizung erholt sich das Bad schneller, dann aber auf Kosten der Heizenergie.
 3. Der Rest lief wie geplant: keine Flatter-Zyklen, Sturm-/Ruhezeiten-/Manuell-Logik wie entworfen,
    Alarm deutlich ruhiger.
+
+## Validierung v3 gegen die Historie (Apr–Okt 2026)
+
+Simulation der implementierten Logik auf dem 5-min-Raster, mit den gemessenen Werten:
+
+| Monat | DRYING offen | Öffnungen/Tag | davon nachts |
+|---|---|---|---|
+| April | 13,4 h/Tag | 1,0 | 0,2 |
+| Mai | 9,9 h/Tag | 1,6 | 0,3 |
+| Juni | 17,4 h/Tag | 1,7 | 0,2 |
+| Juli | 7,1 h/Tag | 1,5 | 0,4 |
+| August | 14,4 h/Tag | 2,7 | 0,5 |
+| September | 12,9 h/Tag | 2,7 | 0,5 |
+
+Im Sommer liegt das Fenster zu 64–70 % der Nachtstunden offen und nur zu 32–42 % mittags — genau die
+Umkehrung von v2. Motorfahrten bleiben mit 1–2,7 Öffnungen/Tag niedrig, die Nachtgrenze von 2 wird nie
+ausgereizt. Stichproben: 01.10. 17:05 (der Auslöser dieser Revision, v2 hatte geöffnet) → **zu**;
+28.09. 13:00 → **zu**; 15.08. 03:00 → **zu** (Ziel erreicht).
+
+**Die Offenzeiten sind nach oben verzerrt.** Die Simulation rechnet mit der *gemessenen* Innenfeuchte, die
+unter v1/v2-Lüftung entstanden ist. Real sinkt der Taupunkt beim Lüften, `need` geht gegen 0 und das Fenster
+schließt früher — besonders in Juni/August, wo die Simulation 14–17 h/Tag zeigt.
+
+**Offen bleibt:** ob 16,5 °C als Taupunkt-Deckel richtig gesetzt ist. Er allein entscheidet, ob im Hochsommer
+überhaupt gelüftet wird (Wandmodell allein sagt: Sommer ist sicher). Kontrolle in der Praxis: wenn im Sommer
+nachts dauernd gelüftet wird, ohne dass es ein Feuchteproblem gibt, Deckel anheben.
 
 ## Hardware-Fakten
 
