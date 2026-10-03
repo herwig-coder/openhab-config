@@ -247,30 +247,49 @@ class OpenHABBatteryMonitor:
         logger.debug(f"Thing {thing_uid} has {len(linked_items)} linked items: {item_names}")
         return linked_items
 
+    # Words that mark an item as an alarm/diagnostic flag of a MAINS-powered device rather
+    # than a battery reading. Without this, "Victron Generator Charger" was reported as a dead
+    # battery at 0 %: its item Victron_Generator_Alarm_LowBattery merely mentions "battery".
+    ALARM_WORDS = ('alarm', 'warning', 'fehler', 'error')
+    LOW_FLAG_WORDS = ('low_battery', 'lowbattery', 'battery_low', 'batterylow', 'lowbat',
+                      'batterie schwach', 'battery low')
+
+    def battery_kind(self, item: Dict) -> Optional[str]:
+        """
+        Classify an item: 'level' = battery charge reading, 'flag' = low-battery indicator,
+        None = not a battery item at all.
+
+        A charge reading must carry the semantic tag "Battery" — name matching alone pulls in
+        mains-powered equipment (Victron inverter alarms, battery-bank diagnostics).
+        """
+        if item.get('type') == 'Group':
+            return None
+        name = item.get('name', '').lower()
+        label = str(item.get('label', '')).lower()
+        tags = [t.lower() for t in item.get('tags', [])]
+
+        # Alarm/diagnostic flags first: they mention "battery" but say nothing about a battery.
+        if any(w in name or w in label for w in self.ALARM_WORDS):
+            return None
+        if 'lowbattery' in tags or any(w in name or w in label for w in self.LOW_FLAG_WORDS):
+            return 'flag'
+        if 'battery' in tags:
+            return 'level'
+        return None
+
     def has_battery_item(self, items: List[Dict]) -> Optional[Dict]:
         """
-        Check if any of the items is a battery item.
-
-        Args:
-            items: List of items
-
-        Returns:
-            First battery item found, or None
+        Return the item that represents this device's battery, preferring a charge reading
+        over a low-battery flag. None if the device is not battery-powered.
         """
+        flag = None
         for item in items:
-            name = item.get('name', '').lower()
-            label = item.get('label', '').lower()
-            tags = [tag.lower() for tag in item.get('tags', [])]
-
-            if ('battery' in name or
-                'batt' in name or
-                'battery' in label or
-                'batt' in label or
-                'battery' in tags or
-                'lowbattery' in name):
+            kind = self.battery_kind(item)
+            if kind == 'level':
                 return item
-
-        return None
+            if kind == 'flag' and flag is None:
+                flag = item
+        return flag
 
     def has_value_changed(self, item: Dict, hours: int = 24) -> bool:
         """
@@ -398,10 +417,11 @@ class OpenHABBatteryMonitor:
 
             # Battery items get a longer threshold (2 weeks) since they change slowly
             # Non-battery items get the standard threshold (24 hours)
-            is_battery_item = ('battery' in item_name or 'batt' in item_name)
+            kind = self.battery_kind(item)
+            is_battery_item = kind is not None
 
             # Special case: Battery at 100% is considered OK (smoke detectors, etc.)
-            if is_battery_item:
+            if kind == 'level':
                 battery_state = str(item.get('state', '')).strip()
                 # Check if battery is at 100% (handles "100", "100.0", "100 %", etc.)
                 if battery_state and (battery_state.startswith('100') or battery_state == '100'):
@@ -507,6 +527,7 @@ class OpenHABBatteryMonitor:
                     'thing_uid': thing_uid,
                     'thing_label': thing_label,
                     'battery_item': battery_item['name'],
+                    'battery_kind': self.battery_kind(battery_item),
                     'battery_level': battery_level,
                     'last_activity': last_activity,
                     'inactive_items': inactive_items,
@@ -650,7 +671,10 @@ class OpenHABBatteryMonitor:
                 time_str = "Never"
 
             message += f"• {thing_label}\n"
-            message += f"  Battery Level: {battery_level}%\n"
+            if device.get('battery_kind') == 'flag':
+                message += f"  Low-battery flag: {battery_level}\n"
+            else:
+                message += f"  Battery Level: {battery_level}%\n"
             message += f"  Last Activity: {time_str}\n\n"
 
         logger.info(f"Notification message:\n{message}")
@@ -725,7 +749,10 @@ def main():
             print(f"{idx}. {thing_label}")
             print(f"   Thing UID: {device['thing_uid']}")
             print(f"   Battery Item: {device['battery_item']}")
-            print(f"   Battery Level: {device['battery_level']}%")
+            if device.get('battery_kind') == 'flag':
+                print(f"   Low-battery flag: {device['battery_level']}")
+            else:
+                print(f"   Battery Level: {device['battery_level']}%")
 
             if device.get('thing_status'):
                 print(f"   Thing Status: {device['thing_status']}")
