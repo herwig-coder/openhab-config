@@ -188,8 +188,13 @@ Make sure:
 
 Check that:
 1. Your API token has correct permissions
-2. Battery items follow naming conventions (contain "battery" in name/label)
-3. Items are linked to Things properly
+2. The battery charge item carries the semantic tag `Battery` — this is what identifies a
+   battery-powered device. Name matching alone is not used: items like
+   `Victron_Generator_Alarm_LowBattery` mention "battery" but belong to mains-powered gear.
+3. Low-battery indicators are recognised separately, via the `LowBattery` tag or a
+   low-battery name (e.g. `Weatherstation_Battery_Low`), and are reported as a flag, not a
+   percentage. Items with alarm/warning/error in name or label are ignored entirely.
+4. Items are linked to Things properly
 
 ### False positives
 
