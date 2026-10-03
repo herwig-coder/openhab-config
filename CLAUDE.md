@@ -40,6 +40,7 @@ Also server-only: `html/` (garbage-calendar ICS served at `/static/`, see `thing
 - **KNX** — Building automation (lights, blinds/raffstores, temperatures) via IP tunnel at 10.1.0.16
 - **MQTT** — Broker at 10.1.0.10; connects Shelly, Gosund, Weatherstation, Smartmeter, Ulanzi, Matrix
 - **Victron** — Cerbo GX at 10.1.0.50, its own MQTT broker (bridge `mqtt:broker:victron`, portal ID `c0619ab6f9ea`). Needs `rules/victron_keepalive.rules` or it stops publishing after 60 s
+- **Samsung split AC** — NASA bus via ESPHome bridge `samsung-odu2` (10.1.0.31) on the main broker, plain-text topics `samsung-odu2/...` (`things/MQTT_Samsung.things`, `items/Samsung_Split.items`, `rules/samsung_split.rules`). Command channels never retained; ignore climate states ~60 s after an ESP reboot (boot defaults off/nan). Behaviour + rule checklist: `docs/samsung-split.md`
 - **Z-Wave** — Additional sensors/actuators
 - **BLE** — Bluetooth Low Energy sensors
 - **OpenWeatherMap** — External weather data (API v3, location: 48.317,16.675)

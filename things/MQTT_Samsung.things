@@ -1,0 +1,62 @@
+// Samsung FJM split AC via NASA bus — ESPHome bridge samsung-odu2 (ATOM Lite + RS485 base, 10.1.0.31)
+// Project doc: home-it-docs docs/projects/samsung-split-nasa.md
+//
+// ESPHome publishes plain-text payloads (no JSON). Topic scheme:
+//   samsung-odu2/climate/<id>/<attr>/state     samsung-odu2/climate/<id>/<attr>/command
+//   samsung-odu2/sensor/<id>/state             samsung-odu2/status (retained LWT online/offline)
+//
+// ODU 2 = outdoor unit AJ040TXJ2KG (carport) with Büro Herwig (NASA 20.00.01, AR07TXFC)
+//         and Keller-Hobbyraum (NASA 20.00.00, AR12TXFC).
+//
+// IMPORTANT:
+// - Command channels must NEVER be retained: a retained command is re-sent to the AC after every ESP reboot.
+// - After an ESP reboot the climate entities publish their boot defaults (mode "off", setpoint "nan")
+//   for ~20 s until the indoor unit's next status broadcast. Rules must not react to that window
+//   (check Split_Odu2_Esp_Uptime > 60 s).
+// - WindFree only works in cool/dry/fan_only, the unit ignores it in heat mode.
+
+// ---------------------------------------------------------------------------------------------
+// Büro Herwig — NASA 20.00.01
+// ---------------------------------------------------------------------------------------------
+Thing mqtt:topic:samsung_buero "Klimagerät Büro Herwig" (mqtt:broker:mqttbroker) @ "Büro Herwig" [ availabilityTopic="samsung-odu2/status", payloadAvailable="online", payloadNotAvailable="offline" ] {
+    Channels:
+    Type string : mode        "Modus"           [ stateTopic="samsung-odu2/climate/buero_split/mode/state",               commandTopic="samsung-odu2/climate/buero_split/mode/command",               retained=false, allowedStates="off,heat,cool,dry,fan_only,auto" ]
+    Type number : setpoint    "Solltemperatur"  [ stateTopic="samsung-odu2/climate/buero_split/target_temperature/state", commandTopic="samsung-odu2/climate/buero_split/target_temperature/command", retained=false, unit="°C", min=16, max=30, step=1, formatBeforePublish="%.1f" ]
+    Type string : fan_mode    "Lüfterstufe"     [ stateTopic="samsung-odu2/climate/buero_split/fan_mode/state",           commandTopic="samsung-odu2/climate/buero_split/fan_mode/command",           retained=false, allowedStates="auto,low,medium,high,Turbo" ]
+    Type string : swing       "Swing"           [ stateTopic="samsung-odu2/climate/buero_split/swing_mode/state",         commandTopic="samsung-odu2/climate/buero_split/swing_mode/command",         retained=false, allowedStates="off,vertical,horizontal,both" ]
+    Type string : preset      "Preset"          [ stateTopic="samsung-odu2/climate/buero_split/preset/state",             commandTopic="samsung-odu2/climate/buero_split/preset/command",             retained=false, allowedStates="none,WindFree" ]
+    Type number : temperature "Raumtemperatur"  [ stateTopic="samsung-odu2/sensor/buero_split_raumtemperatur/state", unit="°C" ]
+    Type number : humidity    "Luftfeuchte"     [ stateTopic="samsung-odu2/sensor/buero_split_luftfeuchte/state", unit="%" ]
+}
+
+// ---------------------------------------------------------------------------------------------
+// Keller-Hobbyraum — NASA 20.00.00
+// ---------------------------------------------------------------------------------------------
+Thing mqtt:topic:samsung_hobbyraum "Klimagerät Hobbyraum" (mqtt:broker:mqttbroker) @ "Hobbyraum" [ availabilityTopic="samsung-odu2/status", payloadAvailable="online", payloadNotAvailable="offline" ] {
+    Channels:
+    Type string : mode        "Modus"           [ stateTopic="samsung-odu2/climate/hobbyraum_split/mode/state",               commandTopic="samsung-odu2/climate/hobbyraum_split/mode/command",               retained=false, allowedStates="off,heat,cool,dry,fan_only,auto" ]
+    Type number : setpoint    "Solltemperatur"  [ stateTopic="samsung-odu2/climate/hobbyraum_split/target_temperature/state", commandTopic="samsung-odu2/climate/hobbyraum_split/target_temperature/command", retained=false, unit="°C", min=16, max=30, step=1, formatBeforePublish="%.1f" ]
+    Type string : fan_mode    "Lüfterstufe"     [ stateTopic="samsung-odu2/climate/hobbyraum_split/fan_mode/state",           commandTopic="samsung-odu2/climate/hobbyraum_split/fan_mode/command",           retained=false, allowedStates="auto,low,medium,high,Turbo" ]
+    Type string : swing       "Swing"           [ stateTopic="samsung-odu2/climate/hobbyraum_split/swing_mode/state",         commandTopic="samsung-odu2/climate/hobbyraum_split/swing_mode/command",         retained=false, allowedStates="off,vertical,horizontal,both" ]
+    Type string : preset      "Preset"          [ stateTopic="samsung-odu2/climate/hobbyraum_split/preset/state",             commandTopic="samsung-odu2/climate/hobbyraum_split/preset/command",             retained=false, allowedStates="none,WindFree" ]
+    Type number : temperature "Raumtemperatur"  [ stateTopic="samsung-odu2/sensor/hobbyraum_split_raumtemperatur/state", unit="°C" ]
+    Type number : humidity    "Luftfeuchte"     [ stateTopic="samsung-odu2/sensor/hobbyraum_split_luftfeuchte/state", unit="%" ]
+}
+
+// ---------------------------------------------------------------------------------------------
+// Outdoor unit ODU 2 (carport) + ESP diagnostics
+// ---------------------------------------------------------------------------------------------
+// power  = average real power of the LAST minute (lags ~1 min; 1st minute after start is partial)
+// energy = outdoor unit's cumulative counter (raw Wh, ESPHome converts to kWh)
+Thing mqtt:topic:samsung_odu2 "Klima-Außengerät ODU 2" (mqtt:broker:mqttbroker) @ "Carport" [ availabilityTopic="samsung-odu2/status", payloadAvailable="online", payloadNotAvailable="offline" ] {
+    Channels:
+    Type number : error_code   "Fehlercode"          [ stateTopic="samsung-odu2/sensor/odu2_fehlercode/state" ]
+    Type number : outdoor_temp "Außentemperatur"     [ stateTopic="samsung-odu2/sensor/odu2_aussentemperatur/state", unit="°C" ]
+    Type number : power        "Leistung"            [ stateTopic="samsung-odu2/sensor/odu2_leistung/state", unit="W" ]
+    Type number : energy       "Energie"             [ stateTopic="samsung-odu2/sensor/odu2_energie/state", unit="kWh" ]
+    Type number : current      "Strom"               [ stateTopic="samsung-odu2/sensor/odu2_strom/state", unit="A" ]
+    Type switch : esp_online   "ESP online"          [ stateTopic="samsung-odu2/status", on="online", off="offline" ]
+    Type number : esp_uptime   "ESP Uptime"          [ stateTopic="samsung-odu2/sensor/uptime/state", unit="s" ]
+    Type number : esp_wifi     "ESP WLAN-Signal"     [ stateTopic="samsung-odu2/sensor/wifi_signal/state", unit="dBm" ]
+    Type string : esp_reset    "ESP Reset-Grund"     [ stateTopic="samsung-odu2/sensor/reset_reason/state" ]
+}

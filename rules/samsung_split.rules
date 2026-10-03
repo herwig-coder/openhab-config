@@ -1,0 +1,29 @@
+// Samsung FJM split AC (NASA bus via ESPHome samsung-odu2) — items: items/Samsung_Split.items
+//
+// Error code of outdoor unit ODU 2 (Büro Herwig + Hobbyraum) → Telegram home alerts bot.
+// ESP offline/online is monitored by Uptime Kuma (MQTT monitor on samsung-odu2/status), not here.
+
+// ─── Error code alarm ──────────────────────────────────────────────────────
+rule "Samsung ODU2 Fehlercode"
+when
+    Item Split_Odu2_ErrorCode changed
+then
+    if (Split_Odu2_ErrorCode.state == NULL || Split_Odu2_ErrorCode.state == UNDEF) return;
+    // First value after openHAB/ESP start is not a change worth reporting
+    if (previousState == NULL || previousState == UNDEF) {
+        logInfo("samsung_split", "ODU2 error code initialised: {}", Split_Odu2_ErrorCode.state.toString)
+        return;
+    }
+
+    val int code = (Split_Odu2_ErrorCode.state as DecimalType).intValue
+    val int prev = (previousState as DecimalType).intValue
+    val telegramAction = getActions("telegram", "telegram:telegramBot:Telegram_Bot")
+
+    if (code != 0) {
+        logWarn("samsung_split", "ODU2 error code {} (previously {})", code, prev)
+        telegramAction.sendTelegram("⚠️ Klimaanlage ODU 2 (Büro Herwig / Hobbyraum): Fehlercode " + code + ". Code am Display/in der Samsung-Fehlerliste nachsehen.")
+    } else {
+        logInfo("samsung_split", "ODU2 error code cleared (was {})", prev)
+        telegramAction.sendTelegram("✅ Klimaanlage ODU 2: Fehlercode " + prev + " behoben.")
+    }
+end
