@@ -1,29 +1,32 @@
-// Samsung FJM split AC (NASA bus via ESPHome samsung-odu2) — items: items/Samsung_Split.items
+// Samsung FJM split AC (NASA bus via ESPHome) — items: items/Samsung_Split.items, behaviour/checklist: docs/samsung-split.md
 //
-// Error code of outdoor unit ODU 2 (Büro Herwig + Hobbyraum) → Telegram home alerts bot.
-// ESP offline/online is monitored by Uptime Kuma (MQTT monitor on samsung-odu2/status), not here.
+// Error code of an outdoor unit → Telegram home alerts bot. One rule for all outdoor units via gSamsungErrorCode:
+//   Split_Odu2_ErrorCode — ODU 2 (carport): Büro Herwig + Hobbyraum
+//   Split_Odu1_ErrorCode — ODU 1 (Garten hinten): Wohnzimmer + Wintergarten
+// ESP offline/online is monitored by Uptime Kuma (MQTT monitors on samsung-odu*/status), not here.
 
 // ─── Error code alarm ──────────────────────────────────────────────────────
-rule "Samsung ODU2 Fehlercode"
+rule "Samsung Fehlercode Aussengeraet"
 when
-    Item Split_Odu2_ErrorCode changed
+    Member of gSamsungErrorCode changed
 then
-    if (Split_Odu2_ErrorCode.state == NULL || Split_Odu2_ErrorCode.state == UNDEF) return;
+    if (triggeringItem.state == NULL || triggeringItem.state == UNDEF) return;
     // First value after openHAB/ESP start is not a change worth reporting
     if (previousState == NULL || previousState == UNDEF) {
-        logInfo("samsung_split", "ODU2 error code initialised: {}", Split_Odu2_ErrorCode.state.toString)
+        logInfo("samsung_split", "{} initialised: {}", triggeringItem.name, triggeringItem.state.toString)
         return;
     }
 
-    val int code = (Split_Odu2_ErrorCode.state as DecimalType).intValue
+    val int code = (triggeringItem.state as DecimalType).intValue
     val int prev = (previousState as DecimalType).intValue
+    val String unit = if (triggeringItem.name.startsWith("Split_Odu1_")) "ODU 1 (Wohnzimmer / Wintergarten)" else "ODU 2 (Büro Herwig / Hobbyraum)"
     val telegramAction = getActions("telegram", "telegram:telegramBot:Telegram_Bot")
 
     if (code != 0) {
-        logWarn("samsung_split", "ODU2 error code {} (previously {})", code, prev)
-        telegramAction.sendTelegram("⚠️ Klimaanlage ODU 2 (Büro Herwig / Hobbyraum): Fehlercode " + code + ". Code am Display/in der Samsung-Fehlerliste nachsehen.")
+        logWarn("samsung_split", "{} error code {} (previously {})", triggeringItem.name, code, prev)
+        telegramAction.sendTelegram("⚠️ Klimaanlage " + unit + ": Fehlercode " + code + ". Code am Display/in der Samsung-Fehlerliste nachsehen.")
     } else {
-        logInfo("samsung_split", "ODU2 error code cleared (was {})", prev)
-        telegramAction.sendTelegram("✅ Klimaanlage ODU 2: Fehlercode " + prev + " behoben.")
+        logInfo("samsung_split", "{} error code cleared (was {})", triggeringItem.name, prev)
+        telegramAction.sendTelegram("✅ Klimaanlage " + unit + ": Fehlercode " + prev + " behoben.")
     }
 end

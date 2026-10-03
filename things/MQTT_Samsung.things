@@ -1,4 +1,6 @@
-// Samsung FJM split AC via NASA bus — ESPHome bridge samsung-odu2 (ATOM Lite + RS485 base, 10.1.0.31)
+// Samsung FJM split AC via NASA bus — one ESPHome bridge per outdoor unit (ATOM Lite + RS485 base):
+//   samsung-odu2 (10.1.0.31): ODU 2 carport — Büro Herwig + Hobbyraum
+//   samsung-odu1 (10.1.0.30): ODU 1 Garten hinten — Wohnzimmer + Wintergarten (prepared 2026-10-03, ESP not on the bus yet)
 // Project doc: home-it-docs docs/projects/samsung-split-nasa.md
 //
 // ESPHome publishes plain-text payloads (no JSON). Topic scheme:
@@ -59,4 +61,54 @@ Thing mqtt:topic:samsung_odu2 "Klima-Außengerät ODU 2" (mqtt:broker:mqttbroker
     Type number : esp_uptime   "ESP Uptime"          [ stateTopic="samsung-odu2/sensor/uptime/state", unit="s" ]
     Type number : esp_wifi     "ESP WLAN-Signal"     [ stateTopic="samsung-odu2/sensor/wifi_signal/state", unit="dBm" ]
     Type string : esp_reset    "ESP Reset-Grund"     [ stateTopic="samsung-odu2/sensor/reset_reason/state" ]
+}
+
+
+// =============================================================================================
+// ODU 1 — Garten hinten (samsung-odu1). Topic ids follow the ESPHome names in samsung-odu1.yaml
+// ("Wohnzimmer Split" -> wohnzimmer_split ...). Address -> room mapping lives only in ESPHome.
+// =============================================================================================
+
+// ---------------------------------------------------------------------------------------------
+// Wohnzimmer — NASA address tbd on site (AR07TXFC)
+// ---------------------------------------------------------------------------------------------
+Thing mqtt:topic:samsung_wohnzimmer "Klimagerät Wohnzimmer" (mqtt:broker:mqttbroker) @ "Wohnzimmer" [ availabilityTopic="samsung-odu1/status", payloadAvailable="online", payloadNotAvailable="offline" ] {
+    Channels:
+    Type string : mode        "Modus"           [ stateTopic="samsung-odu1/climate/wohnzimmer_split/mode/state",               commandTopic="samsung-odu1/climate/wohnzimmer_split/mode/command",               retained=false, allowedStates="off,heat,cool,dry,fan_only,auto" ]
+    Type number : setpoint    "Solltemperatur"  [ stateTopic="samsung-odu1/climate/wohnzimmer_split/target_temperature/state", commandTopic="samsung-odu1/climate/wohnzimmer_split/target_temperature/command", retained=false, unit="°C", min=16, max=30, step=1, formatBeforePublish="%.1f" ]
+    Type string : fan_mode    "Lüfterstufe"     [ stateTopic="samsung-odu1/climate/wohnzimmer_split/fan_mode/state",           commandTopic="samsung-odu1/climate/wohnzimmer_split/fan_mode/command",           retained=false, allowedStates="auto,low,medium,high,Turbo" ]
+    Type string : swing       "Swing"           [ stateTopic="samsung-odu1/climate/wohnzimmer_split/swing_mode/state",         commandTopic="samsung-odu1/climate/wohnzimmer_split/swing_mode/command",         retained=false, allowedStates="off,vertical,horizontal,both" ]
+    Type string : preset      "Preset"          [ stateTopic="samsung-odu1/climate/wohnzimmer_split/preset/state",             commandTopic="samsung-odu1/climate/wohnzimmer_split/preset/command",             retained=false, allowedStates="none,WindFree" ]
+    Type number : temperature "Raumtemperatur"  [ stateTopic="samsung-odu1/sensor/wohnzimmer_split_raumtemperatur/state", unit="°C" ]
+    Type number : humidity    "Luftfeuchte"     [ stateTopic="samsung-odu1/sensor/wohnzimmer_split_luftfeuchte/state", unit="%" ]
+}
+
+// ---------------------------------------------------------------------------------------------
+// Wintergarten — NASA address tbd on site (AR12TXFC)
+// ---------------------------------------------------------------------------------------------
+Thing mqtt:topic:samsung_wintergarten "Klimagerät Wintergarten" (mqtt:broker:mqttbroker) @ "Wintergarten" [ availabilityTopic="samsung-odu1/status", payloadAvailable="online", payloadNotAvailable="offline" ] {
+    Channels:
+    Type string : mode        "Modus"           [ stateTopic="samsung-odu1/climate/wintergarten_split/mode/state",               commandTopic="samsung-odu1/climate/wintergarten_split/mode/command",               retained=false, allowedStates="off,heat,cool,dry,fan_only,auto" ]
+    Type number : setpoint    "Solltemperatur"  [ stateTopic="samsung-odu1/climate/wintergarten_split/target_temperature/state", commandTopic="samsung-odu1/climate/wintergarten_split/target_temperature/command", retained=false, unit="°C", min=16, max=30, step=1, formatBeforePublish="%.1f" ]
+    Type string : fan_mode    "Lüfterstufe"     [ stateTopic="samsung-odu1/climate/wintergarten_split/fan_mode/state",           commandTopic="samsung-odu1/climate/wintergarten_split/fan_mode/command",           retained=false, allowedStates="auto,low,medium,high,Turbo" ]
+    Type string : swing       "Swing"           [ stateTopic="samsung-odu1/climate/wintergarten_split/swing_mode/state",         commandTopic="samsung-odu1/climate/wintergarten_split/swing_mode/command",         retained=false, allowedStates="off,vertical,horizontal,both" ]
+    Type string : preset      "Preset"          [ stateTopic="samsung-odu1/climate/wintergarten_split/preset/state",             commandTopic="samsung-odu1/climate/wintergarten_split/preset/command",             retained=false, allowedStates="none,WindFree" ]
+    Type number : temperature "Raumtemperatur"  [ stateTopic="samsung-odu1/sensor/wintergarten_split_raumtemperatur/state", unit="°C" ]
+    Type number : humidity    "Luftfeuchte"     [ stateTopic="samsung-odu1/sensor/wintergarten_split_luftfeuchte/state", unit="%" ]
+}
+
+// ---------------------------------------------------------------------------------------------
+// Outdoor unit ODU 1 (Garten hinten) + ESP diagnostics
+// ---------------------------------------------------------------------------------------------
+Thing mqtt:topic:samsung_odu1 "Klima-Außengerät ODU 1" (mqtt:broker:mqttbroker) @ "Garten hinten" [ availabilityTopic="samsung-odu1/status", payloadAvailable="online", payloadNotAvailable="offline" ] {
+    Channels:
+    Type number : error_code   "Fehlercode"          [ stateTopic="samsung-odu1/sensor/odu1_fehlercode/state" ]
+    Type number : outdoor_temp "Außentemperatur"     [ stateTopic="samsung-odu1/sensor/odu1_aussentemperatur/state", unit="°C" ]
+    Type number : power        "Leistung"            [ stateTopic="samsung-odu1/sensor/odu1_leistung/state", unit="W" ]
+    Type number : energy       "Energie"             [ stateTopic="samsung-odu1/sensor/odu1_energie/state", unit="kWh" ]
+    Type number : current      "Strom"               [ stateTopic="samsung-odu1/sensor/odu1_strom/state", unit="A" ]
+    Type switch : esp_online   "ESP online"          [ stateTopic="samsung-odu1/status", on="online", off="offline" ]
+    Type number : esp_uptime   "ESP Uptime"          [ stateTopic="samsung-odu1/sensor/uptime/state", unit="s" ]
+    Type number : esp_wifi     "ESP WLAN-Signal"     [ stateTopic="samsung-odu1/sensor/wifi_signal/state", unit="dBm" ]
+    Type string : esp_reset    "ESP Reset-Grund"     [ stateTopic="samsung-odu1/sensor/reset_reason/state" ]
 }

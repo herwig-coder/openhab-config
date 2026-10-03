@@ -1,8 +1,9 @@
 // Filename: Samsung_Split.items
-// Samsung FJM split AC via NASA bus (ESPHome samsung-odu2) — things: things/MQTT_Samsung.things, rules: rules/samsung_split.rules
+// Samsung FJM split AC via NASA bus (ESPHome samsung-odu2 = ODU 2, samsung-odu1 = ODU 1) — things: things/MQTT_Samsung.things, rules: rules/samsung_split.rules
 //
 // Structure:
-//   Tier 1 — semantic HVAC equipment per location: Büro Herwig, Hobbyraum (indoor units), Carport (outdoor unit ODU 2)
+//   Tier 1 — semantic HVAC equipment per location: Büro Herwig, Hobbyraum, Wohnzimmer, Wintergarten (indoor units),
+//            Carport (outdoor unit ODU 2), Garten hinten (outdoor unit ODU 1)
 //   Tier 2 — non-semantic diagnostics: gSamsungDiag (ESP health), gSamsungEnergyDiag (power/energy → energy persistence, Grafana)
 //
 // Rules: ignore climate states for ~60 s after an ESP reboot (boot default mode "off"/setpoint "nan"),
@@ -16,7 +17,11 @@ Group                   gSplitHobbyraum                 "Klimagerät"           
 Group                   gSplitOdu2                      "Klima-Außengerät ODU 2"            <if:mdi:hvac>                   (gCarport)          ["HVAC"]
 
 Group                   gSamsungDiag                    "Samsung NASA Diagnose"             <if:mdi:lan-connect>
-Group                   gSamsungEnergyDiag              "Klima ODU 2 Energie"               <if:mdi:hvac>                   (gEnergyDiag)
+Group                   gSplitWohnzimmer                "Klimagerät"                        <if:mdi:air-conditioner>        (gLivingRoom)       ["HVAC"]
+Group                   gSplitWintergarten              "Klimagerät"                        <if:mdi:air-conditioner>        (gWintergarden)     ["HVAC"]
+Group                   gSplitOdu1                      "Klima-Außengerät ODU 1"            <if:mdi:hvac>                   (gBackYard)         ["HVAC"]
+Group                   gSamsungEnergyDiag              "Klima Energie"                     <if:mdi:hvac>                   (gEnergyDiag)
+Group                   gSamsungErrorCode               "Klima Fehlercodes"                 <if:mdi:alert-circle-outline>
 
 
 // ---------------------------------------------------------------------------------------------
@@ -46,7 +51,7 @@ Number:Dimensionless    Split_Hobbyraum_Humidity        "Luftfeuchte (Klima) [%.
 // ---------------------------------------------------------------------------------------------
 // Outdoor unit ODU 2 (carport) — AJ040TXJ2KG
 // ---------------------------------------------------------------------------------------------
-Number                  Split_Odu2_ErrorCode            "Fehlercode [%d]"                   <if:mdi:alert-circle-outline>   (gSplitOdu2)                            ["Alarm"]                   {channel="mqtt:topic:samsung_odu2:error_code", stateDescription=""[options="0=OK"]}
+Number                  Split_Odu2_ErrorCode            "Fehlercode [%d]"                   <if:mdi:alert-circle-outline>   (gSplitOdu2, gSamsungErrorCode)         ["Alarm"]                   {channel="mqtt:topic:samsung_odu2:error_code", stateDescription=""[options="0=OK"]}
 Number:Temperature      Split_Odu2_OutdoorTemp          "Außentemperatur (Klima) [%.1f °C]" <if:mdi:thermometer>            (gSplitOdu2)                            ["Measurement","Temperature"] {unit="°C", channel="mqtt:topic:samsung_odu2:outdoor_temp"}
 Number:Power            Split_Odu2_Power                "Leistung [%.0f W]"                 <if:mdi:flash>                  (gSplitOdu2, gSamsungEnergyDiag)        ["Measurement","Power"]     {unit="W", channel="mqtt:topic:samsung_odu2:power"}
 Number:Energy           Split_Odu2_Energy               "Energie [%.2f kWh]"                <if:mdi:counter>                (gSplitOdu2, gSamsungEnergyDiag)        ["Measurement","Energy"]    {unit="kWh", channel="mqtt:topic:samsung_odu2:energy"}
@@ -56,7 +61,50 @@ Number:ElectricCurrent  Split_Odu2_Current              "Strom [%.1f A]"        
 // ---------------------------------------------------------------------------------------------
 // ESP bridge diagnostics (non-semantic)
 // ---------------------------------------------------------------------------------------------
-Switch                  Split_Odu2_Esp_Online           "ESP online [%s]"                   <if:mdi:lan-connect>            (gSamsungDiag)                                                      {channel="mqtt:topic:samsung_odu2:esp_online"}
-Number:Time             Split_Odu2_Esp_Uptime           "ESP Uptime [%.0f s]"               <if:mdi:timer-outline>          (gSamsungDiag)                                                      {unit="s", channel="mqtt:topic:samsung_odu2:esp_uptime"}
-Number                  Split_Odu2_Esp_Wifi             "ESP WLAN-Signal [%.0f dBm]"        <if:mdi:wifi>                   (gSamsungDiag)                                                      {channel="mqtt:topic:samsung_odu2:esp_wifi"}
-String                  Split_Odu2_Esp_ResetReason      "ESP Reset-Grund [%s]"              <if:mdi:restart>                (gSamsungDiag)                                                      {channel="mqtt:topic:samsung_odu2:esp_reset"}
+Switch                  Split_Odu2_Esp_Online           "ESP ODU2 online [%s]"                   <if:mdi:lan-connect>            (gSamsungDiag)                                                      {channel="mqtt:topic:samsung_odu2:esp_online"}
+Number:Time             Split_Odu2_Esp_Uptime           "ESP ODU2 Uptime [%.0f s]"               <if:mdi:timer-outline>          (gSamsungDiag)                                                      {unit="s", channel="mqtt:topic:samsung_odu2:esp_uptime"}
+Number                  Split_Odu2_Esp_Wifi             "ESP ODU2 WLAN-Signal [%.0f dBm]"        <if:mdi:wifi>                   (gSamsungDiag)                                                      {channel="mqtt:topic:samsung_odu2:esp_wifi"}
+String                  Split_Odu2_Esp_ResetReason      "ESP ODU2 Reset-Grund [%s]"              <if:mdi:restart>                (gSamsungDiag)                                                      {channel="mqtt:topic:samsung_odu2:esp_reset"}
+
+
+// ---------------------------------------------------------------------------------------------
+// Wohnzimmer — ODU 1, NASA address tbd (AR07TXFC)
+// ---------------------------------------------------------------------------------------------
+String                  Split_Wohnzimmer_Mode          "Modus [%s]"                       <if:mdi:thermostat>             (gSplitWohnzimmer)  ["Control","Mode"]          {channel="mqtt:topic:samsung_wohnzimmer:mode", stateDescription=""[options="off=Aus,heat=Heizen,cool=Kühlen,dry=Entfeuchten,fan_only=Lüften,auto=Auto"], commandDescription=""[options="off=Aus,heat=Heizen,cool=Kühlen,dry=Entfeuchten,fan_only=Lüften,auto=Auto"]}
+Number:Temperature      Split_Wohnzimmer_Setpoint      "Solltemperatur [%.0f °C]"          <if:mdi:thermometer-lines>      (gSplitWohnzimmer)  ["Setpoint","Temperature"]  {unit="°C", channel="mqtt:topic:samsung_wohnzimmer:setpoint", stateDescription=""[min=16, max=30, step=1]}
+String                  Split_Wohnzimmer_FanMode       "Lüfterstufe [%s]"                  <if:mdi:fan>                    (gSplitWohnzimmer)  ["Control","Airflow"]       {channel="mqtt:topic:samsung_wohnzimmer:fan_mode", stateDescription=""[options="auto=Auto,low=Niedrig,medium=Mittel,high=Hoch,Turbo=Turbo"], commandDescription=""[options="auto=Auto,low=Niedrig,medium=Mittel,high=Hoch,Turbo=Turbo"]}
+String                  Split_Wohnzimmer_Swing         "Swing [%s]"                        <if:mdi:arrow-oscillating>      (gSplitWohnzimmer)  ["Control"]                 {channel="mqtt:topic:samsung_wohnzimmer:swing", stateDescription=""[options="off=Aus,vertical=Vertikal,horizontal=Horizontal,both=Beides"], commandDescription=""[options="off=Aus,vertical=Vertikal,horizontal=Horizontal,both=Beides"]}
+String                  Split_Wohnzimmer_Preset        "Preset [%s]"                       <if:mdi:weather-windy>          (gSplitWohnzimmer)  ["Control","Mode"]          {channel="mqtt:topic:samsung_wohnzimmer:preset", stateDescription=""[options="none=Kein,WindFree=WindFree"], commandDescription=""[options="none=Kein,WindFree=WindFree (nur Kühlen/Entfeuchten/Lüften)"]}
+Number:Temperature      Split_Wohnzimmer_Temperature   "Raumtemperatur (Klima) [%.1f °C]"  <if:mdi:thermometer>            (gSplitWohnzimmer)  ["Measurement","Temperature"] {unit="°C", channel="mqtt:topic:samsung_wohnzimmer:temperature"}
+Number:Dimensionless    Split_Wohnzimmer_Humidity      "Luftfeuchte (Klima) [%.0f %%]"     <if:mdi:water-percent>          (gSplitWohnzimmer)  ["Measurement","Humidity"]  {unit="%", channel="mqtt:topic:samsung_wohnzimmer:humidity"}
+
+
+// ---------------------------------------------------------------------------------------------
+// Wintergarten — ODU 1, NASA address tbd (AR12TXFC)
+// ---------------------------------------------------------------------------------------------
+String                  Split_Wintergarten_Mode            "Modus [%s]"                       <if:mdi:thermostat>             (gSplitWintergarten) ["Control","Mode"]          {channel="mqtt:topic:samsung_wintergarten:mode", stateDescription=""[options="off=Aus,heat=Heizen,cool=Kühlen,dry=Entfeuchten,fan_only=Lüften,auto=Auto"], commandDescription=""[options="off=Aus,heat=Heizen,cool=Kühlen,dry=Entfeuchten,fan_only=Lüften,auto=Auto"]}
+Number:Temperature      Split_Wintergarten_Setpoint        "Solltemperatur [%.0f °C]"          <if:mdi:thermometer-lines>      (gSplitWintergarten) ["Setpoint","Temperature"]  {unit="°C", channel="mqtt:topic:samsung_wintergarten:setpoint", stateDescription=""[min=16, max=30, step=1]}
+String                  Split_Wintergarten_FanMode         "Lüfterstufe [%s]"                  <if:mdi:fan>                    (gSplitWintergarten) ["Control","Airflow"]       {channel="mqtt:topic:samsung_wintergarten:fan_mode", stateDescription=""[options="auto=Auto,low=Niedrig,medium=Mittel,high=Hoch,Turbo=Turbo"], commandDescription=""[options="auto=Auto,low=Niedrig,medium=Mittel,high=Hoch,Turbo=Turbo"]}
+String                  Split_Wintergarten_Swing           "Swing [%s]"                        <if:mdi:arrow-oscillating>      (gSplitWintergarten) ["Control"]                 {channel="mqtt:topic:samsung_wintergarten:swing", stateDescription=""[options="off=Aus,vertical=Vertikal,horizontal=Horizontal,both=Beides"], commandDescription=""[options="off=Aus,vertical=Vertikal,horizontal=Horizontal,both=Beides"]}
+String                  Split_Wintergarten_Preset          "Preset [%s]"                       <if:mdi:weather-windy>          (gSplitWintergarten) ["Control","Mode"]          {channel="mqtt:topic:samsung_wintergarten:preset", stateDescription=""[options="none=Kein,WindFree=WindFree"], commandDescription=""[options="none=Kein,WindFree=WindFree (nur Kühlen/Entfeuchten/Lüften)"]}
+Number:Temperature      Split_Wintergarten_Temperature     "Raumtemperatur (Klima) [%.1f °C]"  <if:mdi:thermometer>            (gSplitWintergarten) ["Measurement","Temperature"] {unit="°C", channel="mqtt:topic:samsung_wintergarten:temperature"}
+Number:Dimensionless    Split_Wintergarten_Humidity        "Luftfeuchte (Klima) [%.0f %%]"     <if:mdi:water-percent>          (gSplitWintergarten) ["Measurement","Humidity"]  {unit="%", channel="mqtt:topic:samsung_wintergarten:humidity"}
+
+
+// ---------------------------------------------------------------------------------------------
+// Outdoor unit ODU 1 (Garten hinten) — AJ040TXJ2KG
+// ---------------------------------------------------------------------------------------------
+Number                  Split_Odu1_ErrorCode            "Fehlercode [%d]"                   <if:mdi:alert-circle-outline>   (gSplitOdu1, gSamsungErrorCode)         ["Alarm"]                   {channel="mqtt:topic:samsung_odu1:error_code", stateDescription=""[options="0=OK"]}
+Number:Temperature      Split_Odu1_OutdoorTemp          "Außentemperatur (Klima) [%.1f °C]" <if:mdi:thermometer>            (gSplitOdu1)                            ["Measurement","Temperature"] {unit="°C", channel="mqtt:topic:samsung_odu1:outdoor_temp"}
+Number:Power            Split_Odu1_Power                "Leistung [%.0f W]"                 <if:mdi:flash>                  (gSplitOdu1, gSamsungEnergyDiag)        ["Measurement","Power"]     {unit="W", channel="mqtt:topic:samsung_odu1:power"}
+Number:Energy           Split_Odu1_Energy               "Energie [%.2f kWh]"                <if:mdi:counter>                (gSplitOdu1, gSamsungEnergyDiag)        ["Measurement","Energy"]    {unit="kWh", channel="mqtt:topic:samsung_odu1:energy"}
+Number:ElectricCurrent  Split_Odu1_Current              "Strom [%.1f A]"                    <if:mdi:current-ac>             (gSamsungEnergyDiag)                                                {unit="A", channel="mqtt:topic:samsung_odu1:current"}
+
+
+// ---------------------------------------------------------------------------------------------
+// ESP bridge diagnostics ODU 1 (non-semantic)
+// ---------------------------------------------------------------------------------------------
+Switch                  Split_Odu1_Esp_Online           "ESP ODU1 online [%s]"                   <if:mdi:lan-connect>            (gSamsungDiag)                                                      {channel="mqtt:topic:samsung_odu1:esp_online"}
+Number:Time             Split_Odu1_Esp_Uptime           "ESP ODU1 Uptime [%.0f s]"               <if:mdi:timer-outline>          (gSamsungDiag)                                                      {unit="s", channel="mqtt:topic:samsung_odu1:esp_uptime"}
+Number                  Split_Odu1_Esp_Wifi             "ESP ODU1 WLAN-Signal [%.0f dBm]"        <if:mdi:wifi>                   (gSamsungDiag)                                                      {channel="mqtt:topic:samsung_odu1:esp_wifi"}
+String                  Split_Odu1_Esp_ResetReason      "ESP ODU1 Reset-Grund [%s]"              <if:mdi:restart>                (gSamsungDiag)                                                      {channel="mqtt:topic:samsung_odu1:esp_reset"}

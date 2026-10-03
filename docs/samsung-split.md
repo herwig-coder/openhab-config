@@ -1,7 +1,7 @@
 # Samsung-Splits (NASA-Bus via ESPHome) — Verhalten und Regel-Checkliste
 
 Stand 2026-10-03. Betrifft ODU 2 (Außengerät Carport) mit **Büro Herwig** (NASA `20.00.01`, AR07TXFC) und **Keller-Hobbyraum** (NASA `20.00.00`, AR12TXFC).
-ODU 1 (Wohnzimmer + Wintergarten, ESP `samsung-odu1`) folgt später nach demselben Muster.
+**ODU 1** (Außengerät Garten hinten) mit **Wohnzimmer** (AR07TXFC) und **Wintergarten** (AR12TXFC), ESP `samsung-odu1` (10.1.0.30): Things/Items **vorbereitet 2026-10-03** (Things bleiben OFFLINE, Items NULL, bis der ESP am Bus ist). Die Zuordnung NASA-Adresse → Raum liegt ausschließlich in der ESPHome-YAML; openHAB hängt nur an den Topic-Namen (`wohnzimmer_split`, `wintergarten_split`, `odu1_*`).
 
 Dateien: `things/MQTT_Samsung.things`, `items/Samsung_Split.items`, `rules/samsung_split.rules`.
 Projekt-Doku mit Hardware, Inbetriebnahme und allen Messungen: `home-it-docs` → `docs/projects/samsung-split-nasa.md`.
@@ -34,12 +34,12 @@ openHAB Item ◄──state──── MQTT ◄──────────�
 | **Leistung** `Split_Odu2_Power` | Wirkleistungs-Mittel der **letzten Minute**, läuft ~1 min nach; erste Minute nach Start nur teilweise (z. B. 134 W statt ~375 W) | Nicht für schnelle Reaktionen nutzen; für „läuft der Kompressor?" `Split_Odu2_Current > 0` nehmen |
 | **Strom** `Split_Odu2_Current` | Momentanwert, 0,00 A bei stehendem Kompressor | Bester Indikator „Außengerät arbeitet" |
 | **Energie** `Split_Odu2_Energy` | Zähler des Außengeräts (roh Wh → kWh). Stand 2026-10-03: 29,97 kWh — für die Laufzeit niedrig, Plausibilität noch offen | Nur **je Außengerät**, nicht je Raum. Vor Abrechnungen über einige Tage gegen Smartmeter/Leistung prüfen |
-| **Fehlercode** `Split_Odu2_ErrorCode` | 0 = OK; ≠ 0 löst `samsung_split.rules` → Telegram aus | Ein Code gilt fürs Außengerät samt beiden Innengeräten |
+| **Fehlercode** `Split_Odu2_ErrorCode` / `Split_Odu1_ErrorCode` | 0 = OK; ≠ 0 löst `samsung_split.rules` (Gruppe `gSamsungErrorCode`) → Telegram aus | Ein Code gilt fürs Außengerät samt beiden Innengeräten |
 
 ## Checkliste für Regeln, die Klima-Items lesen oder steuern
 
 - [ ] **NULL/UNDEF-Guard** auf jedem gelesenen Item (Standard).
-- [ ] **ESP-Neustart abfangen:** Entscheidungen auf Basis von `Split_*_Mode`/`Setpoint` nur, wenn `Split_Odu2_Esp_Online == ON` **und** `Split_Odu2_Esp_Uptime > 60 s`. Sonst ist ein `off` möglicherweise nur der Boot-Default.
+- [ ] **ESP-Neustart abfangen:** Entscheidungen auf Basis von `Split_*_Mode`/`Setpoint` nur, wenn der **zuständige** ESP online ist **und** Uptime > 60 s — `Split_Odu2_Esp_*` für Büro/Hobbyraum, `Split_Odu1_Esp_*` für Wohnzimmer/Wintergarten. Sonst ist ein `off` möglicherweise nur der Boot-Default.
   ```xtend
   if (Split_Odu2_Esp_Online.state != ON) return;
   if (Split_Odu2_Esp_Uptime.state == NULL || Split_Odu2_Esp_Uptime.state == UNDEF) return;
