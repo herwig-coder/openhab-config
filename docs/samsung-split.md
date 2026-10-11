@@ -21,12 +21,13 @@ openHAB Item ◄──state──── MQTT ◄──────────�
 
 | Thema | Verhalten | Bedeutung für openHAB |
 |---|---|---|
+| **MQTT-Last / Publish-Verhalten** | Seit lokalem Komponenten-Patch (2026-10-11, `publish_if_changed`) wird der Climate-Zustand **nur bei Änderung** publiziert; im Ruhezustand kaum Traffic. Nach Reconnect republiziert ESPHome alle States | Nicht annehmen, dass States periodisch kommen — nur bei Änderung bzw. Reconnect |
 | **Latenz** | Kommando → State-Rückmeldung in 0,5–1,3 s; Gerät piept | Nach einem Command ~3 s auf den State warten, bevor man Erfolg prüft |
 | **Fernbedienung** | Jeder Tastendruck kommt als State-Änderung an | Items sind auch bei Bedienung per FB aktuell; Regeln sehen FB-Änderungen als normale `changed`-Events |
 | **Status-Broadcast** | Innengeräte senden ihren Vollzustand ca. alle 20 s | Spätestens nach ~20 s ist ein Item wieder korrekt |
 | **ESP-Neustart** | Climate-Entitäten publizieren Boot-Defaults **Modus `off`, Sollwert `nan`** bis zum nächsten Broadcast (~20 s). Ein Kommando, das in den Neustart fällt, **geht verloren** | **Falsches „aus" möglich** → siehe Checkliste. Thing geht kurz OFFLINE, wenn der Broker das LWT setzt |
 | **Sollwert `nan`** | Sollwert-Channel kann `nan` empfangen (Boot, Lüftermodus-Wechsel) | Erzeugt ggf. eine Parse-Warnung im openHAB-Log; Item behält den alten Wert — harmlos |
-| **Sollwert bei ausgeschaltetem Gerät** | Wird ignoriert bzw. nicht zurückgemeldet | Sollwert nur bei eingeschaltetem Gerät setzen oder Modus + Sollwert zusammen senden |
+| **Sollwert bei ausgeschaltetem Gerät oder im Lüftermodus** | Wird **ignoriert** (nicht gespeichert, bestätigt 2026-10-11) — beim nächsten Einschalten gilt der zuletzt im jeweiligen Modus gesetzte Sollwert | **Erst Modus setzen, dann Sollwert** (zwei Kommandos, nach dem Modus ~2 s warten); nicht bei `off`/`fan_only` |
 | **Lüftermodus** | Gerät meldet eigenen Sollwert **24 °C** | Kein echter Sollwert — nicht persistent auswerten |
 | **WindFree** | Nur in Kühlen/Entfeuchten/Lüften; **im Heizmodus ignoriert** (kein State-Wechsel) | Preset nur in passenden Modi senden; beim Ausschalten fällt Preset auf `none` |
 | **Swing** | `off`/`vertical`/`horizontal`/`both` funktionieren | — |
