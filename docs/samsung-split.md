@@ -34,7 +34,7 @@ openHAB Item ◄──state──── MQTT ◄──────────�
 | **Raumtemperatur** | Springt beim Einschalten (z. B. 23,3 → 21,3 °C), weil der Lüfter ansaugt; im Standby träger | Für Regelentscheidungen besser einen Raumsensor nehmen (BLE/KNX) oder Werte erst nach einigen Minuten Laufzeit verwenden |
 | **Leistung** `Split_Odu2_Power` | Wirkleistungs-Mittel der **letzten Minute**, läuft ~1 min nach; erste Minute nach Start nur teilweise (z. B. 134 W statt ~375 W) | Nicht für schnelle Reaktionen nutzen; für „läuft der Kompressor?" `Split_Odu2_Current > 0` nehmen |
 | **Strom** `Split_Odu2_Current` | Momentanwert, 0,00 A bei stehendem Kompressor | Bester Indikator „Außengerät arbeitet" |
-| **Energie** `Split_Odu2_Energy` | Zähler des Außengeräts (roh Wh → kWh). Stand 2026-10-03: 29,97 kWh — für die Laufzeit niedrig, Plausibilität noch offen | Nur **je Außengerät**, nicht je Raum. Vor Abrechnungen über einige Tage gegen Smartmeter/Leistung prüfen |
+| **Energie** `Split_Odu2_Energy` / `Split_Odu1_Energy` | Kumulativer Zähler des Außengeräts seit Inbetriebnahme (roh Wh → kWh). Stand 2026-10-11 ~30 kWh je Außengerät — plausibel, Anlage läuft erst wenige Tage | Nur **je Außengerät**, nicht je Raum |
 | **Fehlercode** `Split_Odu2_ErrorCode` / `Split_Odu1_ErrorCode` | 0 = OK; ≠ 0 löst `samsung_split.rules` (Gruppe `gSamsungErrorCode`) → Telegram aus | Ein Code gilt fürs Außengerät samt beiden Innengeräten |
 
 ## Checkliste für Regeln, die Klima-Items lesen oder steuern
