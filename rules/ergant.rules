@@ -1,0 +1,30 @@
+// ergant -> Telegram relay.
+// Trigger channel: things/MQTT_ergant.things. Only forwards text, switches nothing.
+// Until MQTT hardening (TLS + ACL) anyone on the IoT broker can publish on ergant/notify.
+
+rule "ergant notify -> Telegram"
+when
+    Channel "mqtt:topic:mqtt_ergant:notify" triggered
+then
+    // The trigger channel hands over the raw JSON: {"level","title","message","ts"}.
+    // Depending on the openHAB version receivedEvent is the payload itself or a
+    // "<channel> triggered <payload>" string; cut everything before the first brace.
+    var json = receivedEvent.toString
+    if (!json.startsWith("{") && json.indexOf("{") >= 0) {
+        json = json.substring(json.indexOf("{"))
+    }
+    var title = "Hinweis"
+    var message = json
+    try {
+        title = transform("JSONPATH", "$.title", json)
+        message = transform("JSONPATH", "$.message", json)
+    } catch (Exception e) {
+        logWarn("ergant", "ergant/notify payload is not the expected JSON: " + json)
+    }
+    val telegram = getActions("telegram", "telegram:telegramBot:Telegram_Bot")
+    if (telegram === null) {
+        logError("ergant", "Telegram bot thing telegram:telegramBot:Telegram_Bot not available")
+        return
+    }
+    telegram.sendTelegram("[ergant] " + title + ": " + message)
+end

@@ -1,0 +1,9 @@
+// ergant energy optimizer (NUC CT 204, 10.1.0.204) — notifications on the main broker.
+//
+// ergant publishes JSON {"level","title","message","ts"} on ergant/notify (not retained) and
+// drives the Ulanzi itself; openHAB only relays to Telegram (rules/ergant.rules).
+// Same UI-managed broker bridge as Ulanzi and Matrix; no credentials here.
+Thing mqtt:topic:mqtt_ergant "MQTT ergant" (mqtt:broker:9a73e5895e) {
+    Channels:
+    Type trigger       : notify                "Meldung"     [ stateTopic="ergant/notify"]
+}

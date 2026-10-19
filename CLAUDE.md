@@ -46,6 +46,7 @@ Also server-only: `html/` (garbage-calendar ICS served at `/static/`, see `thing
 - **OpenWeatherMap** — External weather data (API v3, location: 48.317,16.675)
 - **Awattar** — Real-time electricity pricing (also drives Ulanzi LED display)
 - **Telegram** — Notifications (main bot + washing machine bot)
+- **ergant** — Energy optimizer on NUC CT 204 (repo `herwig-coder/ergant`). Advisory only: openHAB relays `ergant/notify` (JSON) to Telegram (`things/MQTT_ergant.things`, `rules/ergant.rules`); ergant drives the Ulanzi itself. Test: `mosquitto_pub -h 10.1.0.10 -u <user> -P <pw> -t ergant/notify -m '{"level":"info","title":"Test","message":"Hallo","ts":0}'` → Telegram `[ergant] Test: Hallo`
 - **Reolink** — 6 IP cameras via NVR at 10.1.2.1 (channels 0–3, 6, 7)
 - **iCalendar** — Garbage collection calendar
 - **ÖBB trains** — Real-time delays via HAFAS API (`Scripts/train-tracker/`)
