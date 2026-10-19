@@ -1,9 +1,20 @@
-// ergant energy optimizer (NUC CT 204, 10.1.0.204) — notifications on the main broker.
+// ergant energy optimizer (NUC CT 204, 10.1.0.204) — notifications and peak guard on the main broker.
 //
 // ergant publishes JSON {"level","title","message","ts"} on ergant/notify (not retained) and
 // drives the Ulanzi itself; openHAB only relays to Telegram (rules/ergant.rules).
+// Peak guard topics are retained and read-only here: openHAB only notifies, it sheds nothing
+// (capacity tariff not billed yet). Items: items/ergant.items.
+// No availabilityTopic on purpose: ergant/status is a normal channel so the offline rule can
+// time it; the thing stays ONLINE while ergant is down.
 // Same UI-managed broker bridge as Ulanzi and Matrix; no credentials here.
 Thing mqtt:topic:mqtt_ergant "MQTT ergant" (mqtt:broker:9a73e5895e) {
     Channels:
-    Type trigger       : notify                "Meldung"     [ stateTopic="ergant/notify"]
+    Type trigger       : notify                "Meldung"            [ stateTopic="ergant/notify"]
+    Type number        : shed_level            "Abwurf-Stufe"       [ stateTopic="ergant/shed_level"]
+    Type string        : shed_devices          "Abwurf-Geräte"      [ stateTopic="ergant/shed_devices"]
+    Type string        : shed_blocked          "Zurückgehalten"     [ stateTopic="ergant/shed_blocked"]
+    Type string        : guard_state           "Wächter-Status"     [ stateTopic="ergant/guard/state"]
+    Type number        : grid_limit            "Netzbudget"         [ stateTopic="ergant/grid_limit_kw", unit="kW"]
+    Type number        : peak_month            "Monatsspitze"       [ stateTopic="ergant/peak/month_kw", unit="kW"]
+    Type string        : status                "Verbindung"         [ stateTopic="ergant/status"]
 }

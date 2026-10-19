@@ -1,0 +1,30 @@
+// Filename: ergant.items
+// ergant peak guard (NUC CT 204) — things: things/MQTT_ergant.things, rules: rules/ergant.rules
+// Notification only: no item here is linked to a device, openHAB sheds nothing.
+//
+// Structure (see gEnergySystem in semantic_model.items):
+//   Tier 1 — dashboard: semantic points under gErgant (persistence: everyChange via gEnergySystem)
+//   Tier 2 — diagnostics: non-semantic gErgantDiag (persistence: everyMinute via gEnergyDiag)
+
+// ---------------------------------------------------------------------------------------------
+// Groups
+// ---------------------------------------------------------------------------------------------
+Group                   gErgant                         "Spitzenwächter"                    <if:mdi:shield-half-full>       (gEnergySystem)     ["Equipment"]
+Group                   gErgantDiag                     "ergant Diagnose"                   <if:mdi:lan-connect>            (gEnergyDiag)
+
+
+// ---------------------------------------------------------------------------------------------
+// Tier 1 — dashboard
+// ---------------------------------------------------------------------------------------------
+Number                  Ergant_ShedLevel                "Abwurf-Stufe [%d]"                 <if:mdi:transmission-tower-off> (gErgant)           ["Status"]                  {channel="mqtt:topic:mqtt_ergant:shed_level", stateDescription=""[options="0=Kein Abwurf"]}
+String                  Ergant_GuardState               "Wächter [%s]"                      <if:mdi:shield-check>           (gErgant)           ["Status"]                  {channel="mqtt:topic:mqtt_ergant:guard_state", stateDescription=""[options="ok=OK,shedding=Abwurf aktiv,alarm=Grenze überschritten,no_data=Keine Zählerdaten"]}
+Number:Power            Ergant_GridLimit                "Netzbudget [%.2f kW]"              <if:mdi:speedometer>            (gErgant)           ["Setpoint","Power"]        {unit="kW", channel="mqtt:topic:mqtt_ergant:grid_limit"}
+Number:Power            Ergant_PeakMonth                "Monatsspitze [%.2f kW]"            <if:mdi:chart-bell-curve>       (gErgant)           ["Measurement","Power"]     {unit="kW", channel="mqtt:topic:mqtt_ergant:peak_month"}
+
+
+// ---------------------------------------------------------------------------------------------
+// Tier 2 — diagnostics
+// ---------------------------------------------------------------------------------------------
+String                  Ergant_ShedDevices              "Abwurf-Geräte [%s]"                <if:mdi:power-plug-off>         (gErgantDiag)       {channel="mqtt:topic:mqtt_ergant:shed_devices"}
+String                  Ergant_ShedBlocked              "Zurückgehalten [%s]"               <if:mdi:lock-clock>             (gErgantDiag)       {channel="mqtt:topic:mqtt_ergant:shed_blocked"}
+String                  Ergant_Status                   "ergant [%s]"                       <if:mdi:lan-connect>            (gErgantDiag)       {channel="mqtt:topic:mqtt_ergant:status", stateDescription=""[options="online=Online,offline=Offline"]}

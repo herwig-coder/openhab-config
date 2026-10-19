@@ -1,6 +1,42 @@
-// ergant -> Telegram relay.
-// Trigger channel: things/MQTT_ergant.things. Only forwards text, switches nothing.
-// Until MQTT hardening (TLS + ACL) anyone on the IoT broker can publish on ergant/notify.
+// ergant -> Telegram: notify relay + peak guard notifications.
+// Things: things/MQTT_ergant.things, items: items/ergant.items.
+// Notification only — nothing here switches a device (capacity tariff not billed yet, we only
+// want to see what ergant would shed). Do not add sendCommand/postUpdate to real devices.
+// Until MQTT hardening (TLS + ACL) anyone on the IoT broker can publish on ergant/*.
+//
+// Test (retained topics — ergant republishes its real state within seconds; afterwards check
+// with mosquitto_sub -h 10.1.0.10 -u <user> -P <pw> -v -t 'ergant/#' that shed_level and
+// guard/state are back to ergant's values):
+//   mosquitto_pub -h 10.1.0.10 -u <user> -P <pw> -t ergant/notify -m '{"level":"info","title":"Test","message":"Hallo","ts":0}'
+//     → "[ergant] Test: Hallo"
+//   mosquitto_pub ... -r -t ergant/shed_devices -m '["car_charger","splits"]'
+//   mosquitto_pub ... -r -t ergant/shed_level -m 2
+//     → after ~5 s "⚠️ [ergant] Abwurf Stufe 2: car_charger, splits (Grenze 2.00 kW)"
+//   mosquitto_pub ... -r -t ergant/shed_level -m 0
+//     → "[ergant] Abwurf beendet" no earlier than 5 min after the previous shed message
+//   mosquitto_pub ... -r -t ergant/guard/state -m alarm   → "⚠️ [ergant] Grenze trotz höchster Stufe überschritten"
+//   mosquitto_pub ... -r -t ergant/guard/state -m ok      → "✅ [ergant] Wächter wieder ok"
+//   Offline: stop ergant-watchdog on CT 204 for > 5 min → "⚠️ [ergant] offline", start → "✅ [ergant] wieder online"
+
+// File-level state
+var Timer         shedTimer            = null   // pending shed report (5 s settle / 5 min throttle)
+var ZonedDateTime lastShedMsg          = null
+var Integer       shedReported         = null   // last shed level the user was told about
+var ZonedDateTime lastAlarmMsg         = null
+var ZonedDateTime lastNoDataMsg        = null
+var ZonedDateTime lastGuardOkMsg       = null
+var boolean       guardProblemReported = false
+var Timer         offlineTimer         = null
+var boolean       offlineReported      = false
+
+val Procedures$Procedure1<String> ergantTelegram = [ String msg |
+    val telegram = getActions("telegram", "telegram:telegramBot:Telegram_Bot")
+    if (telegram === null) {
+        logError("ergant", "Telegram bot thing telegram:telegramBot:Telegram_Bot not available, dropped: {}", msg)
+    } else {
+        telegram.sendTelegram(msg)
+    }
+]
 
 // ─── Relay ─────────────────────────────────────────────────────────────────
 rule "ergant notify -> Telegram"
@@ -26,12 +62,145 @@ then
     } catch (Exception e) {
         logWarn("ergant", "ergant/notify payload is not the expected JSON: {}", json)
     }
-    val telegram = getActions("telegram", "telegram:telegramBot:Telegram_Bot")
-    if (telegram === null) {
-        logError("ergant", "Telegram bot thing telegram:telegramBot:Telegram_Bot not available")
-        return;
-    }
     val String prefix = if (level == "warn" || level == "error") "⚠️ " else ""
     logInfo("ergant", "relay [{}] {}: {}", level, title, message)
-    telegram.sendTelegram(prefix + "[ergant] " + title + ": " + message)
+    ergantTelegram.apply(prefix + "[ergant] " + title + ": " + message)
+end
+
+// ─── Shed level ────────────────────────────────────────────────────────────
+// Reports a rise above the last reported level and the return to 0. Throttle: the first change
+// is reported after 5 s (shed_devices/grid_limit arrive on their own topics), further changes at
+// most once per 5 min — the pending timer reads the state when it fires, so the last state wins.
+// A drop to a lower level > 0 sends nothing but becomes the new baseline.
+rule "ergant shed -> Telegram"
+when
+    Item Ergant_ShedLevel changed
+then
+    if (Ergant_ShedLevel.state == NULL || Ergant_ShedLevel.state == UNDEF) return;
+    if (shedReported === null) {
+        // First value after start/reload: baseline only, nothing new to report
+        if (previousState == NULL || previousState == UNDEF) {
+            shedReported = (Ergant_ShedLevel.state as Number).intValue
+            logInfo("ergant", "shed level initialised: {}", shedReported)
+            return;
+        }
+        shedReported = (previousState as Number).intValue
+    }
+    // Throttle, not a debounce restart: keep the pending timer so it fires on schedule
+    if (shedTimer !== null) {
+        logInfo("ergant", "shed level {} -> {}, report pending", previousState, Ergant_ShedLevel.state)
+        return;
+    }
+    val ZonedDateTime settle = now.plusSeconds(5)
+    val ZonedDateTime fire = if (lastShedMsg !== null && lastShedMsg.plusMinutes(5).isAfter(settle)) lastShedMsg.plusMinutes(5) else settle
+    logInfo("ergant", "shed level {} -> {}, report at {}", previousState, Ergant_ShedLevel.state, fire.toLocalTime)
+    shedTimer = createTimer(fire, [ |
+        shedTimer = null
+        if (Ergant_ShedLevel.state instanceof Number) {
+            val int level = (Ergant_ShedLevel.state as Number).intValue
+            if (level > shedReported) {
+                val String devices = if (Ergant_ShedDevices.state == NULL || Ergant_ShedDevices.state == UNDEF) "?"
+                    else Ergant_ShedDevices.state.toString.replaceAll("[\\[\\]\"]", "").replaceAll("\\s*,\\s*", ", ").trim
+                val String limit = if (Ergant_GridLimit.state instanceof Number)
+                    String.format("%.2f", (Ergant_GridLimit.state as Number).doubleValue) else "?"
+                logInfo("ergant", "shed report: level {} (was {}), devices {}, limit {} kW", level, shedReported, devices, limit)
+                ergantTelegram.apply("⚠️ [ergant] Abwurf Stufe " + level + ": " + (if (devices == "") "–" else devices) + " (Grenze " + limit + " kW)")
+                lastShedMsg = now
+            } else if (level == 0 && shedReported > 0) {
+                logInfo("ergant", "shed report: ended (was {})", shedReported)
+                ergantTelegram.apply("[ergant] Abwurf beendet")
+                lastShedMsg = now
+            } else {
+                logInfo("ergant", "shed report: level {} (was {}), nothing to send", level, shedReported)
+            }
+            shedReported = level
+        }
+    ])
+end
+
+// ─── Shed blocked ──────────────────────────────────────────────────────────
+// Devices ergant holds back to protect them from cycling — log only.
+rule "ergant shed blocked"
+when
+    Item Ergant_ShedBlocked changed
+then
+    if (Ergant_ShedBlocked.state == NULL || Ergant_ShedBlocked.state == UNDEF) return;
+    logInfo("ergant", "shed blocked: {}", Ergant_ShedBlocked.state.toString)
+end
+
+// ─── Guard state ───────────────────────────────────────────────────────────
+// alarm / no_data / recovery to ok: each kind at most once per hour. Recovery only after an
+// alarm or no_data message actually went out. "shedding" is covered by the shed rule.
+rule "ergant guard state"
+when
+    Item Ergant_GuardState changed
+then
+    if (Ergant_GuardState.state == NULL || Ergant_GuardState.state == UNDEF) return;
+    if (previousState == NULL || previousState == UNDEF) {
+        logInfo("ergant", "guard state initialised: {}", Ergant_GuardState.state.toString)
+        return;
+    }
+    val String state = Ergant_GuardState.state.toString
+    logInfo("ergant", "guard state {} -> {}", previousState, state)
+
+    if (state == "alarm") {
+        if (lastAlarmMsg === null || lastAlarmMsg.isBefore(now.minusHours(1))) {
+            ergantTelegram.apply("⚠️ [ergant] Grenze trotz höchster Stufe überschritten")
+            lastAlarmMsg = now
+            guardProblemReported = true
+        } else {
+            logInfo("ergant", "guard alarm not sent, last message {}", lastAlarmMsg.toLocalTime)
+        }
+    } else if (state == "no_data") {
+        if (lastNoDataMsg === null || lastNoDataMsg.isBefore(now.minusHours(1))) {
+            ergantTelegram.apply("⚠️ [ergant] Wächter ohne Zählerdaten")
+            lastNoDataMsg = now
+            guardProblemReported = true
+        } else {
+            logInfo("ergant", "guard no_data not sent, last message {}", lastNoDataMsg.toLocalTime)
+        }
+    } else if (state == "ok" && guardProblemReported) {
+        guardProblemReported = false
+        if (lastGuardOkMsg === null || lastGuardOkMsg.isBefore(now.minusHours(1))) {
+            ergantTelegram.apply("✅ [ergant] Wächter wieder ok")
+            lastGuardOkMsg = now
+        } else {
+            logInfo("ergant", "guard recovery not sent, last message {}", lastGuardOkMsg.toLocalTime)
+        }
+    }
+end
+
+// ─── Offline ───────────────────────────────────────────────────────────────
+// ergant/status is the retained LWT. Alert after 5 min offline, recovery only after an alert.
+// System started covers a status that was already offline (restored) when openHAB came up.
+rule "ergant offline"
+when
+    Item Ergant_Status changed or
+    System started
+then
+    if (Ergant_Status.state == NULL || Ergant_Status.state == UNDEF) return;
+    if (Ergant_Status.state.toString == "offline") {
+        // Keep a pending timer: the 5 min count from the first offline
+        if (offlineTimer !== null) return;
+        logInfo("ergant", "ergant offline, alert in 5 min")
+        offlineTimer = createTimer(now.plusMinutes(5), [ |
+            offlineTimer = null
+            if (Ergant_Status.state.toString == "offline") {
+                logWarn("ergant", "ergant offline for 5 min")
+                ergantTelegram.apply("⚠️ [ergant] offline")
+                offlineReported = true
+            }
+        ])
+    } else {
+        if (offlineTimer !== null) {
+            offlineTimer.cancel()
+            offlineTimer = null
+            logInfo("ergant", "ergant back ({}) within 5 min, no alert", Ergant_Status.state.toString)
+        }
+        if (offlineReported) {
+            offlineReported = false
+            logInfo("ergant", "ergant back: {}", Ergant_Status.state.toString)
+            ergantTelegram.apply("✅ [ergant] wieder online")
+        }
+    }
 end
