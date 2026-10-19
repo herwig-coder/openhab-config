@@ -2,6 +2,7 @@
 // Trigger channel: things/MQTT_ergant.things. Only forwards text, switches nothing.
 // Until MQTT hardening (TLS + ACL) anyone on the IoT broker can publish on ergant/notify.
 
+// ─── Relay ─────────────────────────────────────────────────────────────────
 rule "ergant notify -> Telegram"
 when
     Channel "mqtt:topic:mqtt_ergant:notify" triggered
@@ -13,18 +14,24 @@ then
     if (!json.startsWith("{") && json.indexOf("{") >= 0) {
         json = json.substring(json.indexOf("{"))
     }
+    var level = "info"
     var title = "Hinweis"
     var message = json
     try {
-        title = transform("JSONPATH", "$.title", json)
-        message = transform("JSONPATH", "$.message", json)
+        // transformRaw throws on bad JSON / missing path; transform() would silently return the input.
+        // level last, so a payload without level still keeps title and message.
+        title = transformRaw("JSONPATH", "$.title", json)
+        message = transformRaw("JSONPATH", "$.message", json)
+        level = transformRaw("JSONPATH", "$.level", json)
     } catch (Exception e) {
-        logWarn("ergant", "ergant/notify payload is not the expected JSON: " + json)
+        logWarn("ergant", "ergant/notify payload is not the expected JSON: {}", json)
     }
     val telegram = getActions("telegram", "telegram:telegramBot:Telegram_Bot")
     if (telegram === null) {
         logError("ergant", "Telegram bot thing telegram:telegramBot:Telegram_Bot not available")
-        return
+        return;
     }
-    telegram.sendTelegram("[ergant] " + title + ": " + message)
+    val String prefix = if (level == "warn" || level == "error") "⚠️ " else ""
+    logInfo("ergant", "relay [{}] {}: {}", level, title, message)
+    telegram.sendTelegram(prefix + "[ergant] " + title + ": " + message)
 end

@@ -39,24 +39,24 @@ then
 
     logDebug("RouterACL", "Script output: {}", result)
 
+    // transformRaw throws on bad JSON / missing path; transform() would silently return the input.
+    // Failure output is {"success": false, "error": ...} without state/applied, and on an exception
+    // the script's traceback (stderr) lands in front of the JSON, so it does not parse at all.
+    // Either way the item is re-synced from the router instead of guessing.
+    var boolean resync = false
     try {
-        val String success = transform("JSONPATH", "$.success", result)
-        val String state   = transform("JSONPATH", "$.state",   result)
+        val String success = transformRaw("JSONPATH", "$.success", result)
 
         if (!"true".equals(success)) {
-            val String errMsg = transform("JSONPATH", "$.error", result)
+            val String errMsg = transformRaw("JSONPATH", "$.error", result)
             logError("RouterACL", "Script reported failure: {}", errMsg)
-            // Revert the item to the last known state from the router
+            resync = true
+        } else {
+            val String state   = transformRaw("JSONPATH", "$.state",   result)
+            val String applied = transformRaw("JSONPATH", "$.applied", result)
             Router_MacACL.postUpdate(if ("ON".equals(state)) ON else OFF)
-            return
-        }
-
-        if (!state.equals("null") && state !== null) {
-            val newState = if ("ON".equals(state)) ON else OFF
-            Router_MacACL.postUpdate(newState)
             logInfo("RouterACL", "MAC ACL is now: {}", state)
 
-            val String applied = transform("JSONPATH", "$.applied", result)
             if ("false".equals(applied)) {
                 logWarn("RouterACL",
                     "Router state ({}) differs from requested ({}) — " +
@@ -65,7 +65,28 @@ then
             }
         }
     } catch (Exception e) {
-        logError("RouterACL", "Error parsing script output: {}", e.getMessage())
+        logError("RouterACL", "Error parsing script output: {}", result)
+        resync = true
+    }
+
+    if (!resync) return;
+
+    logInfo("RouterACL", "Re-reading MAC ACL state from router …")
+    val String status = executeCommandLine(
+        Duration.ofSeconds(20),
+        PYTHON_BIN, SCRIPT_PATH,
+        "--status"
+    )
+    try {
+        if ("true".equals(transformRaw("JSONPATH", "$.success", status))) {
+            val String actual = transformRaw("JSONPATH", "$.state", status)
+            Router_MacACL.postUpdate(if ("ON".equals(actual)) ON else OFF)
+            logInfo("RouterACL", "MAC ACL re-synced to router state: {}", actual)
+        } else {
+            logError("RouterACL", "Router state unknown, status read failed: {}", transformRaw("JSONPATH", "$.error", status))
+        }
+    } catch (Exception e) {
+        logError("RouterACL", "Router state unknown, status read unparseable: {}", status)
     }
 end
 
@@ -141,17 +162,15 @@ then
     logDebug("RouterACL", "Startup sync output: {}", result)
 
     try {
-        val String success = transform("JSONPATH", "$.success", result)
-        val String state   = transform("JSONPATH", "$.state",   result)
-
-        if ("true".equals(success) && state !== null && !state.equals("null")) {
+        if ("true".equals(transformRaw("JSONPATH", "$.success", result))) {
+            val String state = transformRaw("JSONPATH", "$.state", result)
             Router_MacACL.postUpdate(if ("ON".equals(state)) ON else OFF)
             logInfo("RouterACL", "Initial MAC ACL state: {}", state)
         } else {
-            val String errMsg = transform("JSONPATH", "$.error", result)
+            val String errMsg = transformRaw("JSONPATH", "$.error", result)
             logWarn("RouterACL", "Startup sync failed: {}", errMsg)
         }
     } catch (Exception e) {
-        logError("RouterACL", "Error parsing startup sync output: {}", e.getMessage())
+        logError("RouterACL", "Error parsing startup sync output: {}", result)
     }
 end
