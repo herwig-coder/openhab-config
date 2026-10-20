@@ -41,11 +41,19 @@ val Functions$Function2<String, String, String> jsonField = [ String json, Strin
 ]
 
 // ─── A: socket follows ergant ──────────────────────────────────────────────
+// System started (also fires when this file is (re)loaded): the retained charge can arrive before
+// the rules are loaded — seen on the first deploy 2026-10-20 — and then never changes again.
+// While ergant is offline the fallback rule owns the socket.
 rule "ergant car charge -> socket"
 when
-    Item Ergant_CarCharge changed
+    Item Ergant_CarCharge changed or
+    System started
 then
     if (Ergant_CarCharge.state == NULL || Ergant_CarCharge.state == UNDEF) return;
+    if (Ergant_Status.state.toString == "offline") {
+        logInfo("ergant", "car charge {}: ergant offline, socket left to the fallback", Ergant_CarCharge.state)
+        return;
+    }
     val String charge = Ergant_CarCharge.state.toString
     if (charge != "on" && charge != "off") {
         logWarn("ergant", "car charge: unexpected value '{}', socket unchanged", charge)
@@ -138,9 +146,12 @@ then
 end
 
 // ─── C: display items + charge level query ─────────────────────────────────
+// System started: fill the display items even if the retained JSON came before the rules loaded.
+// No double query — the session is deduplicated by Ergant_CarSocAskedSince.
 rule "ergant car state"
 when
-    Item Ergant_CarStateJson changed
+    Item Ergant_CarStateJson changed or
+    System started
 then
     if (Ergant_CarStateJson.state == NULL || Ergant_CarStateJson.state == UNDEF) return;
     val String json = Ergant_CarStateJson.state.toString
