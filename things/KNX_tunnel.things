@@ -10,10 +10,12 @@ Bridge knx:ip:bridge [
     autoReconnectPeriod=60,
     localSourceAddr="0.0.0"
 ] {
+    // address/pingInterval detect a desynced tunnel ("invalid rcv-seq"): the ping
+    // to 1.1.103 times out and knx_main goes OFFLINE. Keep both, see knx-todo.md.
     Thing device knx_main [
         address="1.1.103",
         fetch=true,
-        pingInterval=300,
+        pingInterval=60,
         readInterval=3600
     ] {
 
