@@ -4,7 +4,10 @@
 // drives the Ulanzi itself; openHAB only relays to Telegram (rules/ergant.rules).
 // Peak guard topics are retained and read-only here: openHAB only notifies, it sheds nothing
 // (capacity tariff not billed yet). Items: items/ergant.items.
-// No availabilityTopic on purpose: ergant/status is a normal channel so the offline rule can
+// C-Zero charging: ergant decides (ergant/car/*), rules/ergant_car.rules switches Garage_SmartPlug.
+// The inputs ergant/car/soc_hint and ergant/car/override are published by the rules via the MQTT
+// action (one-shot, never retained) — no command channels for them.
+// No availabilityTopic on purpose: ergant/status is a normal channel so the offline rules can
 // time it; the thing stays ONLINE while ergant is down.
 // Same UI-managed broker bridge as Ulanzi and Matrix; no credentials here.
 Thing mqtt:topic:mqtt_ergant "MQTT ergant" (mqtt:broker:9a73e5895e) {
@@ -17,4 +20,7 @@ Thing mqtt:topic:mqtt_ergant "MQTT ergant" (mqtt:broker:9a73e5895e) {
     Type number        : grid_limit            "Netzbudget"         [ stateTopic="ergant/grid_limit_kw", unit="kW"]
     Type number        : peak_month            "Monatsspitze"       [ stateTopic="ergant/peak/month_kw", unit="kW"]
     Type string        : status                "Verbindung"         [ stateTopic="ergant/status"]
+    Type string        : car_charge            "Auto laden (Soll)"  [ stateTopic="ergant/car/charge"]
+    Type string        : car_state             "Auto Ladezustand"   [ stateTopic="ergant/car/state"]
+    Type string        : car_plan              "Auto Ladeplan"      [ stateTopic="ergant/car/plan"]
 }

@@ -1,6 +1,7 @@
 // Filename: ergant.items
-// ergant peak guard (NUC CT 204) — things: things/MQTT_ergant.things, rules: rules/ergant.rules
-// Notification only: no item here is linked to a device, openHAB sheds nothing.
+// ergant (NUC CT 204) — things: things/MQTT_ergant.things, rules: rules/ergant.rules, rules/ergant_car.rules
+// Peak guard: notification only, openHAB sheds nothing. No item here is linked to a device;
+// the C-Zero rules switch Garage_SmartPlug (items/Gosund.items).
 //
 // Structure (see gEnergySystem in semantic_model.items):
 //   Tier 1 — dashboard: semantic points under gErgant (persistence: everyChange via gEnergySystem)
@@ -28,3 +29,23 @@ Number:Power            Ergant_PeakMonth                "Monatsspitze [%.2f kW]"
 String                  Ergant_ShedDevices              "Abwurf-Geräte [%s]"                <if:mdi:power-plug-off>         (gErgantDiag)       {channel="mqtt:topic:mqtt_ergant:shed_devices"}
 String                  Ergant_ShedBlocked              "Zurückgehalten [%s]"               <if:mdi:lock-clock>             (gErgantDiag)       {channel="mqtt:topic:mqtt_ergant:shed_blocked"}
 String                  Ergant_Status                   "ergant [%s]"                       <if:mdi:lan-connect>            (gErgantDiag)       {channel="mqtt:topic:mqtt_ergant:status", stateDescription=""[options="online=Online,offline=Offline"]}
+
+
+// ---------------------------------------------------------------------------------------------
+// C-Zero charging (rules/ergant_car.rules switches Garage_SmartPlug, items/Gosund.items)
+// Display items are virtual: the rule fills them from ergant/car/state (JSON null → UNDEF).
+// Not in the energy groups on purpose: Ergant_CarSocAskedSince must be persisted on every change
+// (default * strategy, restoreOnStartup) or a restart could ask the same session twice.
+// ---------------------------------------------------------------------------------------------
+Group                   gErgantCar                      "E-Auto Laden"                      <if:mdi:car-electric>           (gGarage)           ["Equipment"]
+Group                   gErgantCarDiag                  "ergant Auto Diagnose"              <if:mdi:car-electric>
+
+String                  Ergant_CarState                 "Ladezustand [%s]"                  <if:mdi:ev-station>             (gErgantCar)        ["Status"]                  {stateDescription=""[options="idle=Nicht angesteckt,charging=Lädt,paused=Pausiert,full=Voll,ended=Beendet"]}
+String                  Ergant_CarReason                "Grund [%s]"                        <if:mdi:information-outline>    (gErgantCar)        ["Status"]
+Number                  Ergant_CarSocHint               "Ladestand (geschätzt) [%d %%]"     <if:mdi:battery-medium>         (gErgantCar)        ["Measurement","Level"]
+String                  Ergant_CarDeadlineGuard         "Abfahrtsschutz [%s]"               <if:mdi:clock-alert-outline>    (gErgantCar)        ["Status"]
+
+String                  Ergant_CarCharge                "Laden Soll [%s]"                   <if:mdi:power-plug>             (gErgantCarDiag)    {channel="mqtt:topic:mqtt_ergant:car_charge", stateDescription=""[options="on=Ein,off=Aus"]}
+String                  Ergant_CarStateJson             "Ladezustand JSON [%s]"             <if:mdi:code-json>              (gErgantCarDiag)    {channel="mqtt:topic:mqtt_ergant:car_state"}
+String                  Ergant_CarPlan                  "Ladeplan JSON [%s]"                <if:mdi:code-json>              (gErgantCarDiag)    {channel="mqtt:topic:mqtt_ergant:car_plan"}
+String                  Ergant_CarSocAskedSince         "Ladestand gefragt für [%s]"        <if:mdi:help-circle-outline>    (gErgantCarDiag)

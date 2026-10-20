@@ -1,0 +1,224 @@
+// ergant C-Zero charging: ergant decides, openHAB switches Garage_SmartPlug (Gosund/Tasmota tasmota10).
+// Things: things/MQTT_ergant.things, items: items/ergant.items (Ergant_Car*), items/Gosund.items.
+// Unlike rules/ergant.rules this file DOES switch a device — only Garage_SmartPlug.
+// Replaces the UI rules "Carloader On" (a3eaace4ca, 01:00 ON) and "Carloader Off" (47d4df986d,
+// 06:00 OFF) — they must be disabled, or the 01:00 ON looks like a manual switch-on (rule B → urgent).
+//
+//   A  Socket follows ergant/car/charge (command only if it differs). Fallback: ergant/status
+//      offline > 2 min → socket ON; back online → socket follows ergant/car/charge again (after 30 s).
+//   B  Socket OFF → ON while charge is "off" and A sent nothing in the last 10 s → ergant/car/override "urgent".
+//   C  Once per session (state charging/paused, soc_hint null, new `since`) a Telegram query for the
+//      charge level → ergant/car/soc_hint. Ergant_CarSocAskedSince is persisted, so a restart asks nothing.
+//
+// Test (retained topics — ergant republishes its real values; afterwards check with
+// mosquitto_sub -h 10.1.0.10 -u <user> -P <pw> -v -t 'ergant/car/#' that charge/state are ergant's again):
+//   mosquitto_pub -h 10.1.0.10 -u <user> -P <pw> -r -t ergant/car/charge -m off   → Garage_SmartPlug OFF
+//   mosquitto_pub ... -r -t ergant/car/charge -m on                                 → Garage_SmartPlug ON
+//   charge off, then switch the socket on by hand (button or UI)                    → ergant/car/override "urgent"
+//     (watch: mosquitto_sub ... -v -t ergant/car/override)
+//   mosquitto_pub ... -r -t ergant/car/state -m '{"state":"charging","since":"2026-10-20T18:00:00+02:00","energy_kwh":0,"soc_hint":null,"override":null,"reason":"test","deadline_guard":false,"to_full":null,"windows_used":0,"hold_until":null}'
+//     → one Telegram "C-Zero angesteckt – wie voll?"; answer ½ → ergant/car/soc_hint 50 (mosquitto_sub ... -t ergant/car/soc_hint)
+//   restart openHAB → no second query; with ergant stopped > 2 min the socket goes ON (fallback)
+
+// File-level state
+var ZonedDateTime lastCarCmd        = null   // last command rule A sent (rule B ignores 10 s after it)
+var Timer         carFallbackTimer  = null
+var boolean       carFallbackActive = false
+var Timer         carResyncTimer    = null
+var String        carAskedSince     = null   // guards against two JSON updates before the item update lands
+
+val String ERGANT_BROKER = "mqtt:broker:9a73e5895e"
+val String SOC_REPLY_ID  = "ergant_soc"
+
+// JSON field or null (missing path, JSON null, bad JSON)
+val Functions$Function2<String, String, String> jsonField = [ String json, String path |
+    try {
+        val String v = transformRaw("JSONPATH", path, json)
+        if (v === null || v == "null" || v == "") null else v
+    } catch (Exception e) {
+        null
+    }
+]
+
+// ─── A: socket follows ergant ──────────────────────────────────────────────
+rule "ergant car charge -> socket"
+when
+    Item Ergant_CarCharge changed
+then
+    if (Ergant_CarCharge.state == NULL || Ergant_CarCharge.state == UNDEF) return;
+    val String charge = Ergant_CarCharge.state.toString
+    if (charge != "on" && charge != "off") {
+        logWarn("ergant", "car charge: unexpected value '{}', socket unchanged", charge)
+        return;
+    }
+    val OnOffType wanted = if (charge == "on") ON else OFF
+    if (Garage_SmartPlug.state == wanted) {
+        logInfo("ergant", "car charge {}: socket already {}", charge, wanted)
+        return;
+    }
+    logInfo("ergant", "car charge {}: socket {} -> {}", charge, Garage_SmartPlug.state, wanted)
+    lastCarCmd = now
+    Garage_SmartPlug.sendCommand(wanted)
+end
+
+// ─── A: fallback when ergant is offline ────────────────────────────────────
+// System started: the retained "offline" (restored or from the broker) produces no change event.
+rule "ergant car fallback"
+when
+    Item Ergant_Status changed or
+    System started
+then
+    if (Ergant_Status.state == NULL || Ergant_Status.state == UNDEF) return;
+    if (Ergant_Status.state.toString == "offline") {
+        if (carResyncTimer !== null) { carResyncTimer.cancel(); carResyncTimer = null }
+        // Keep a pending timer: the 2 min count from the first offline
+        if (carFallbackTimer !== null) return;
+        logInfo("ergant", "car fallback: ergant offline, socket ON in 2 min")
+        carFallbackTimer = createTimer(now.plusMinutes(2), [ |
+            carFallbackTimer = null
+            if (Ergant_Status.state.toString == "offline") {
+                carFallbackActive = true
+                if (Garage_SmartPlug.state != ON) {
+                    logWarn("ergant", "car fallback: ergant offline for 2 min, socket ON")
+                    lastCarCmd = now
+                    Garage_SmartPlug.sendCommand(ON)
+                } else {
+                    logWarn("ergant", "car fallback: ergant offline for 2 min, socket already ON")
+                }
+            }
+        ])
+    } else {
+        if (carFallbackTimer !== null) {
+            carFallbackTimer.cancel()
+            carFallbackTimer = null
+            logInfo("ergant", "car fallback: ergant back ({}) within 2 min", Ergant_Status.state.toString)
+        }
+        if (carFallbackActive) {
+            carFallbackActive = false
+            // ergant/car/charge usually doesn't change across a restart → no event for rule A.
+            // Give ergant 30 s to publish its decision, then follow it.
+            logInfo("ergant", "car fallback ended, socket follows ergant/car/charge in 30 s")
+            if (carResyncTimer !== null) carResyncTimer.cancel()
+            carResyncTimer = createTimer(now.plusSeconds(30), [ |
+                carResyncTimer = null
+                val String charge = Ergant_CarCharge.state.toString
+                if (charge == "on" || charge == "off") {
+                    val OnOffType wanted = if (charge == "on") ON else OFF
+                    if (Garage_SmartPlug.state != wanted) {
+                        logInfo("ergant", "car resync: charge {}, socket {} -> {}", charge, Garage_SmartPlug.state, wanted)
+                        lastCarCmd = now
+                        Garage_SmartPlug.sendCommand(wanted)
+                    } else {
+                        logInfo("ergant", "car resync: socket already {}", wanted)
+                    }
+                } else {
+                    logWarn("ergant", "car resync: charge is '{}', socket left {}", charge, Garage_SmartPlug.state)
+                }
+            ])
+        }
+    }
+end
+
+// ─── B: manual switch-on = urgent ──────────────────────────────────────────
+// "from OFF" so the restore at startup (NULL → ON) is no switch-on.
+rule "ergant car manual on -> urgent"
+when
+    Item Garage_SmartPlug changed from OFF to ON
+then
+    if (Ergant_CarCharge.state == NULL || Ergant_CarCharge.state == UNDEF) return;
+    if (Ergant_CarCharge.state.toString != "off") return;
+    if (lastCarCmd !== null && lastCarCmd.isAfter(now.minusSeconds(10))) return;
+    val mqtt = getActions("mqtt", ERGANT_BROKER)
+    if (mqtt === null) {
+        logError("ergant", "car override: MQTT broker {} not available", ERGANT_BROKER)
+        return;
+    }
+    logInfo("ergant", "car override: socket switched on by hand while charge is off -> urgent")
+    mqtt.publishMQTT("ergant/car/override", "urgent", false)
+end
+
+// ─── C: display items + charge level query ─────────────────────────────────
+rule "ergant car state"
+when
+    Item Ergant_CarStateJson changed
+then
+    if (Ergant_CarStateJson.state == NULL || Ergant_CarStateJson.state == UNDEF) return;
+    val String json = Ergant_CarStateJson.state.toString
+    val String state = jsonField.apply(json, "$.state")
+    if (state === null) {
+        logWarn("ergant", "ergant/car/state without state: {}", json)
+        return;
+    }
+    val String reason   = jsonField.apply(json, "$.reason")
+    val String soc      = jsonField.apply(json, "$.soc_hint")
+    val String deadline = jsonField.apply(json, "$.deadline_guard")
+    val String since    = jsonField.apply(json, "$.since")
+
+    Ergant_CarState.postUpdate(state)
+    if (reason === null) Ergant_CarReason.postUpdate(UNDEF) else Ergant_CarReason.postUpdate(reason)
+    if (soc === null) Ergant_CarSocHint.postUpdate(UNDEF) else Ergant_CarSocHint.postUpdate(soc)
+    if (deadline === null) Ergant_CarDeadlineGuard.postUpdate(UNDEF) else Ergant_CarDeadlineGuard.postUpdate(deadline)
+
+    if (state != "charging" && state != "paused") return;
+    if (soc !== null) return;
+    if (since === null) {
+        logWarn("ergant", "car state {} without since, cannot ask for the charge level", state)
+        return;
+    }
+    if (since == carAskedSince || since == Ergant_CarSocAskedSince.state.toString) return;
+
+    // Remember first: a restart right after the query must not ask again
+    carAskedSince = since
+    Ergant_CarSocAskedSince.postUpdate(since)
+    val telegram = getActions("telegram", "telegram:telegramBot:Telegram_Bot")
+    if (telegram === null) {
+        logError("ergant", "car soc query: Telegram bot thing telegram:telegramBot:Telegram_Bot not available")
+        return;
+    }
+    logInfo("ergant", "car soc query for session since {}", since)
+    telegram.sendTelegramQuery("C-Zero angesteckt – wie voll?", SOC_REPLY_ID, "fast leer", "¼", "½", "¾", "fast voll")
+end
+
+// ─── C: answer → ergant/car/soc_hint ───────────────────────────────────────
+rule "ergant car soc answer"
+when
+    Channel "telegram:telegramBot:Telegram_Bot:callbackEvent" triggered
+then
+    // Same defensive cut as the notify relay: payload may come with a "<channel> triggered " prefix
+    var json = receivedEvent.toString
+    if (!json.startsWith("{") && json.indexOf("{") >= 0) {
+        json = json.substring(json.indexOf("{"))
+    }
+    if (jsonField.apply(json, "$.reply_id") != SOC_REPLY_ID) return;
+    val String answer = jsonField.apply(json, "$.text")
+    val String chatId = jsonField.apply(json, "$.chat_id")
+    if (answer === null) {
+        logWarn("ergant", "car soc answer without text: {}", json)
+        return;
+    }
+    val String soc = switch (answer) {
+        case "fast leer": "5"
+        case "¼":         "25"
+        case "½":         "50"
+        case "¾":         "75"
+        case "fast voll": "95"
+        default:          null
+    }
+    if (soc === null) {
+        logWarn("ergant", "car soc answer not understood: {}", json)
+        return;
+    }
+    val mqtt = getActions("mqtt", ERGANT_BROKER)
+    if (mqtt === null) {
+        logError("ergant", "car soc answer: MQTT broker {} not available", ERGANT_BROKER)
+        return;
+    }
+    logInfo("ergant", "car soc answer '{}' -> soc_hint {}", answer, soc)
+    mqtt.publishMQTT("ergant/car/soc_hint", soc, false)
+
+    // Removes the buttons and stops the spinner in the Telegram client
+    val telegram = getActions("telegram", "telegram:telegramBot:Telegram_Bot")
+    if (telegram !== null && chatId !== null) {
+        telegram.sendTelegramAnswer(Long.parseLong(chatId), SOC_REPLY_ID, "Danke – Ladestand " + answer + " an ergant gemeldet.")
+    }
+end
