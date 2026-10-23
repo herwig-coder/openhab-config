@@ -37,6 +37,8 @@ openHAB Item ◄──state──── MQTT ◄──────────�
 | **Energie** `Split_Odu2_Energy` / `Split_Odu1_Energy` | Kumulativer Zähler des Außengeräts seit Inbetriebnahme (roh Wh → kWh). Stand 2026-10-11 ~30 kWh je Außengerät — plausibel, Anlage läuft erst wenige Tage | Nur **je Außengerät**, nicht je Raum |
 | **Fehlercode** `Split_Odu2_ErrorCode` / `Split_Odu1_ErrorCode` | 0 = OK; ≠ 0 löst `samsung_split.rules` (Gruppe `gSamsungErrorCode`) → Telegram aus | Ein Code gilt fürs Außengerät samt beiden Innengeräten |
 
+> **Verfügbarkeit (Stand 2026-10-23):** `samsung-odu2` (Büro/Hobbyraum) stabil. `samsung-odu1` (Wohnzimmer/Wintergarten) hat wenige Aussetzer pro Tag (~3 × > 70 s, gelegentlich ein Neustart) — bewusst akzeptiert. Regeln auf Wohnzimmer/Wintergarten müssen damit rechnen: Kommando kann verloren gehen, Thing kurz OFFLINE → Erfolg prüfen und ggf. wiederholen (siehe Checkliste).
+
 ## Checkliste für Regeln, die Klima-Items lesen oder steuern
 
 - [ ] **NULL/UNDEF-Guard** auf jedem gelesenen Item (Standard).
