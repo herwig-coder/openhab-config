@@ -33,15 +33,19 @@ end
 
 
 // ─── Auto-Reinigung nach Ausschalten durch openHAB ─────────────────────────
-// The IR remote sends the stored auto-clean setting with every OFF -> the unit goes straight into
-// coil drying (10-30 min, display 1-99 %). A NASA "off" from openHAB does not, so the unit stops.
-// Tested 2026-10-24 (Büro): OFF via openHAB, then AutoClean ON -> unit starts the drying cycle.
-// AutoClean ON is sent immediately with the off: the component merges requests for a unit within
-// 200 ms into ONE NASA packet (power off + auto-clean), like the remote; per manual, auto-clean
-// received while running starts as soon as the unit switches off.
-// Only when openHAB switches a RUNNING unit off. The mode items have autoupdate="false", so at
-// command time triggeringItem.state is still the previous mode (state follows device feedback).
-rule "Samsung Auto-Reinigung nach Ausschalten"
+// The IR remote can trigger coil drying when switching off (10-30 min, display 1-99 %); the unit
+// decides by condition (after short heating it may skip). A NASA "off" from openHAB never does.
+// Tests 2026-10-24:
+//   - off via openHAB, THEN AutoClean ON  -> drying starts (Büro)                       ✔
+//   - AutoClean ON while running, then off -> beep, no effect, unit just off (Wohnzimmer) ✘
+// So: openHAB "off" for a RUNNING unit marks it; as soon as the unit itself reports "off",
+// AutoClean ON is sent (event-driven, no fixed delay). The mark expires after 30 s, so an off
+// from the remote or an ESP reboot (boot default "off") never triggers a cleaning.
+// Mode items have autoupdate="false": at command time triggeringItem.state is still the previous
+// mode, and the later "changed to off" really comes from the unit.
+val java.util.Map<String, Long> autoCleanPending = newHashMap
+
+rule "Samsung Auto-Reinigung: openHAB-Aus vormerken"
 when
     Member of gSamsungSplitMode received command
 then
@@ -51,6 +55,20 @@ then
         logInfo("samsung_split", "{}: off command while already {}, no auto-clean", triggeringItem.name, prev)
         return;
     }
+    autoCleanPending.put(triggeringItem.name, now.toInstant.toEpochMilli)
+    logInfo("samsung_split", "{}: off by openHAB (was {}), auto-clean once the unit confirms off", triggeringItem.name, prev)
+end
+
+rule "Samsung Auto-Reinigung: nach bestätigtem Aus starten"
+when
+    Member of gSamsungSplitMode changed to "off"
+then
+    val Long marked = autoCleanPending.remove(triggeringItem.name)
+    if (marked === null) return;                                  // not switched off by openHAB
+    if (now.toInstant.toEpochMilli - marked > 30000) {
+        logInfo("samsung_split", "{}: off confirmation too late, no auto-clean", triggeringItem.name)
+        return;
+    }
     val String acName = triggeringItem.name.replace("_Mode", "_AutoClean")
     val String espOnline = if (acName.startsWith("Split_Wohnzimmer_") || acName.startsWith("Split_Wintergarten_")) "Split_Odu1_Esp_Online" else "Split_Odu2_Esp_Online"
     val esp = org.openhab.core.model.script.ScriptServiceUtil.getItemRegistry.getItem(espOnline)
@@ -58,6 +76,6 @@ then
         logWarn("samsung_split", "{}: ESP offline, auto-clean not sent", acName)
         return;
     }
-    logInfo("samsung_split", "{}: unit switched off by openHAB (was {}), sending auto-clean", acName, prev)
+    logInfo("samsung_split", "{}: unit confirmed off, starting auto-clean", acName)
     sendCommand(acName, "ON")
 end
