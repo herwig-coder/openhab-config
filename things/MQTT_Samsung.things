@@ -16,6 +16,8 @@
 //   for ~20 s until the indoor unit's next status broadcast. Rules must not react to that window
 //   (check Split_Odu2_Esp_Uptime > 60 s).
 // - WindFree only works in cool/dry/fan_only, the unit ignores it in heat mode.
+// - autoclean (0x4111): ON while the unit is off starts the coil drying (10-30 min, display 1-99 %).
+//   The IR remote does this on every OFF; a NASA OFF does not -> rules/samsung_split.rules starts it.
 
 // ---------------------------------------------------------------------------------------------
 // Büro Herwig — NASA 20.00.01
@@ -27,6 +29,7 @@ Thing mqtt:topic:samsung_buero "Klimagerät Büro Herwig" (mqtt:broker:mqttbroke
     Type string : fan_mode    "Lüfterstufe"     [ stateTopic="samsung-odu2/climate/buero_split/fan_mode/state",           commandTopic="samsung-odu2/climate/buero_split/fan_mode/command",           retained=false, allowedStates="auto,low,medium,high,Turbo" ]
     Type string : swing       "Swing"           [ stateTopic="samsung-odu2/climate/buero_split/swing_mode/state",         commandTopic="samsung-odu2/climate/buero_split/swing_mode/command",         retained=false, allowedStates="off,vertical,horizontal,both" ]
     Type string : preset      "Preset"          [ stateTopic="samsung-odu2/climate/buero_split/preset/state",             commandTopic="samsung-odu2/climate/buero_split/preset/command",             retained=false, allowedStates="none,WindFree" ]
+    Type switch : autoclean   "Auto-Reinigung"  [ stateTopic="samsung-odu2/switch/buero_split_autoclean/state",               commandTopic="samsung-odu2/switch/buero_split_autoclean/command",               retained=false, on="ON", off="OFF" ]
     Type number : temperature "Raumtemperatur"  [ stateTopic="samsung-odu2/sensor/buero_split_raumtemperatur/state", unit="°C" ]
     Type number : humidity    "Luftfeuchte"     [ stateTopic="samsung-odu2/sensor/buero_split_luftfeuchte/state", unit="%" ]
 }
@@ -41,6 +44,7 @@ Thing mqtt:topic:samsung_hobbyraum "Klimagerät Hobbyraum" (mqtt:broker:mqttbrok
     Type string : fan_mode    "Lüfterstufe"     [ stateTopic="samsung-odu2/climate/hobbyraum_split/fan_mode/state",           commandTopic="samsung-odu2/climate/hobbyraum_split/fan_mode/command",           retained=false, allowedStates="auto,low,medium,high,Turbo" ]
     Type string : swing       "Swing"           [ stateTopic="samsung-odu2/climate/hobbyraum_split/swing_mode/state",         commandTopic="samsung-odu2/climate/hobbyraum_split/swing_mode/command",         retained=false, allowedStates="off,vertical,horizontal,both" ]
     Type string : preset      "Preset"          [ stateTopic="samsung-odu2/climate/hobbyraum_split/preset/state",             commandTopic="samsung-odu2/climate/hobbyraum_split/preset/command",             retained=false, allowedStates="none,WindFree" ]
+    Type switch : autoclean   "Auto-Reinigung"  [ stateTopic="samsung-odu2/switch/hobbyraum_split_autoclean/state",               commandTopic="samsung-odu2/switch/hobbyraum_split_autoclean/command",               retained=false, on="ON", off="OFF" ]
     Type number : temperature "Raumtemperatur"  [ stateTopic="samsung-odu2/sensor/hobbyraum_split_raumtemperatur/state", unit="°C" ]
     Type number : humidity    "Luftfeuchte"     [ stateTopic="samsung-odu2/sensor/hobbyraum_split_luftfeuchte/state", unit="%" ]
 }
@@ -79,6 +83,7 @@ Thing mqtt:topic:samsung_wohnzimmer "Klimagerät Wohnzimmer" (mqtt:broker:mqttbr
     Type string : fan_mode    "Lüfterstufe"     [ stateTopic="samsung-odu1/climate/wohnzimmer_split/fan_mode/state",           commandTopic="samsung-odu1/climate/wohnzimmer_split/fan_mode/command",           retained=false, allowedStates="auto,low,medium,high,Turbo" ]
     Type string : swing       "Swing"           [ stateTopic="samsung-odu1/climate/wohnzimmer_split/swing_mode/state",         commandTopic="samsung-odu1/climate/wohnzimmer_split/swing_mode/command",         retained=false, allowedStates="off,vertical,horizontal,both" ]
     Type string : preset      "Preset"          [ stateTopic="samsung-odu1/climate/wohnzimmer_split/preset/state",             commandTopic="samsung-odu1/climate/wohnzimmer_split/preset/command",             retained=false, allowedStates="none,WindFree" ]
+    Type switch : autoclean   "Auto-Reinigung"  [ stateTopic="samsung-odu1/switch/wohnzimmer_split_autoclean/state",               commandTopic="samsung-odu1/switch/wohnzimmer_split_autoclean/command",               retained=false, on="ON", off="OFF" ]
     Type number : temperature "Raumtemperatur"  [ stateTopic="samsung-odu1/sensor/wohnzimmer_split_raumtemperatur/state", unit="°C" ]
     Type number : humidity    "Luftfeuchte"     [ stateTopic="samsung-odu1/sensor/wohnzimmer_split_luftfeuchte/state", unit="%" ]
 }
@@ -93,6 +98,7 @@ Thing mqtt:topic:samsung_wintergarten "Klimagerät Wintergarten" (mqtt:broker:mq
     Type string : fan_mode    "Lüfterstufe"     [ stateTopic="samsung-odu1/climate/wintergarten_split/fan_mode/state",           commandTopic="samsung-odu1/climate/wintergarten_split/fan_mode/command",           retained=false, allowedStates="auto,low,medium,high,Turbo" ]
     Type string : swing       "Swing"           [ stateTopic="samsung-odu1/climate/wintergarten_split/swing_mode/state",         commandTopic="samsung-odu1/climate/wintergarten_split/swing_mode/command",         retained=false, allowedStates="off,vertical,horizontal,both" ]
     Type string : preset      "Preset"          [ stateTopic="samsung-odu1/climate/wintergarten_split/preset/state",             commandTopic="samsung-odu1/climate/wintergarten_split/preset/command",             retained=false, allowedStates="none,WindFree" ]
+    Type switch : autoclean   "Auto-Reinigung"  [ stateTopic="samsung-odu1/switch/wintergarten_split_autoclean/state",               commandTopic="samsung-odu1/switch/wintergarten_split_autoclean/command",               retained=false, on="ON", off="OFF" ]
     Type number : temperature "Raumtemperatur"  [ stateTopic="samsung-odu1/sensor/wintergarten_split_raumtemperatur/state", unit="°C" ]
     Type number : humidity    "Luftfeuchte"     [ stateTopic="samsung-odu1/sensor/wintergarten_split_luftfeuchte/state", unit="%" ]
 }

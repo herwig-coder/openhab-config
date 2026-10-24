@@ -30,3 +30,39 @@ then
         telegramAction.sendTelegram("✅ Klimaanlage " + unit + ": Fehlercode " + prev + " behoben.")
     }
 end
+
+
+// ─── Auto-Reinigung nach Ausschalten durch openHAB ─────────────────────────
+// The IR remote sends the stored auto-clean setting with every OFF -> the unit dries its coil
+// (10-30 min, display 1-99 %). A NASA "off" from openHAB does not, so the unit stops immediately.
+// Tested 2026-10-24 (Büro): OFF via openHAB, then AutoClean ON -> unit starts the drying cycle.
+// Only when openHAB switches a RUNNING unit off. The mode items have autoupdate="false", so at
+// command time triggeringItem.state is still the previous mode (state follows device feedback < 1.5 s).
+val java.util.Map<String, Timer> autoCleanTimers = newHashMap
+
+rule "Samsung Auto-Reinigung nach Ausschalten"
+when
+    Member of gSamsungSplitMode received command
+then
+    if (receivedCommand.toString != "off") return;
+    val String prev = triggeringItem.state.toString
+    if (prev == "off" || prev == "NULL" || prev == "UNDEF") {
+        logInfo("samsung_split", "{}: off command while already {}, no auto-clean", triggeringItem.name, prev)
+        return;
+    }
+    val String acName = triggeringItem.name.replace("_Mode", "_AutoClean")
+    val String espOnline = if (acName.startsWith("Split_Wohnzimmer_") || acName.startsWith("Split_Wintergarten_")) "Split_Odu1_Esp_Online" else "Split_Odu2_Esp_Online"
+
+    val Timer old = autoCleanTimers.get(acName)
+    if (old !== null) old.cancel()
+    autoCleanTimers.put(acName, createTimer(now.plusSeconds(5)) [ |
+        val esp = org.openhab.core.model.script.ScriptServiceUtil.getItemRegistry.getItem(espOnline)
+        if (esp.state != ON) {
+            logWarn("samsung_split", "{}: ESP offline, auto-clean not started", acName)
+        } else {
+            logInfo("samsung_split", "{}: unit switched off by openHAB (was {}), starting auto-clean", acName, prev)
+            sendCommand(acName, "ON")
+        }
+        autoCleanTimers.remove(acName)
+    ])
+end
