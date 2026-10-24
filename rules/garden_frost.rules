@@ -1,0 +1,112 @@
+// Garden water frost warning: Telegram when the terrace water pipe could freeze.
+//
+// 1) Forecast check daily at 17:00 (OpenWeatherMap OneCall):
+//    - tonight: min of the 6 hourly forecasts and tomorrow's daily minimum (covers the night
+//      into tomorrow morning) <= FROST_FORECAST_LIMIT -> warning "drain the water now".
+//    - otherwise Day2/Day3 daily minimum <= limit -> heads-up so the draining can be planned.
+//    Forecast lows are often 1-3 °C too warm on clear nights, hence the 2 °C margin.
+// 2) Live safety net: Weatherstation_Temperature_1 <= FROST_LIVE_LIMIT -> alarm (once per day).
+//
+// Garden_WaterDrained ON silences everything until spring; reset to OFF on 1 April 00:00.
+//
+// Test: set FROST_FORECAST_LIMIT to e.g. 30 and run the "Garden frost forecast check" rule
+// manually in Main UI (Settings -> Rules -> Run Now), then restore the value.
+
+val Number FROST_FORECAST_LIMIT = 2.0   // °C forecast low at or below which we warn
+val Number FROST_LIVE_LIMIT     = 1.0   // °C measured outdoor temperature at or below which we alarm
+
+// One message per kind per day (file-level, reset on rule reload -> worst case one duplicate)
+var String frostLastForecastDay = ""
+var String frostLastLiveDay     = ""
+
+val Procedures$Procedure1<String> frostTelegram = [ String msg |
+    val telegram = getActions("telegram", "telegram:telegramBot:Telegram_Bot")
+    if (telegram === null) {
+        logError("garden_frost", "Telegram bot thing telegram:telegramBot:Telegram_Bot not available, dropped: {}", msg)
+    } else {
+        telegram.sendTelegram(msg)
+        logInfo("garden_frost", "Telegram sent: {}", msg)
+    }
+]
+
+// Returns the temperature in °C or 999 when the item has no usable value.
+val Functions$Function1<GenericItem, Double> frostTemp = [ GenericItem item |
+    if (item.state instanceof QuantityType) (item.state as QuantityType<Number>).toUnit("°C").doubleValue
+    else 999.0
+]
+
+// ─── Forecast check ──────────────────────────────────────────────────────────
+rule "Garden frost forecast check"
+when
+    Time cron "0 0 17 * * ?"
+then
+    if (Garden_WaterDrained.state == ON) {
+        logInfo("garden_frost", "Water already drained, skipping forecast check")
+        return;
+    }
+    val String today = now.toLocalDate.toString
+    if (frostLastForecastDay == today) return;
+
+    val limit = FROST_FORECAST_LIMIT.doubleValue
+
+    // Tonight: hourly 1-6 (until ~23:00) + tomorrow's daily minimum (early-morning low)
+    var double tonight = frostTemp.apply(OneCallAPIweatherandforecast_ForecastTomorrow_Mintemperature)
+    for (h : newArrayList(
+            OneCallAPIweatherandforecast_ForecastHours01_Temperature, OneCallAPIweatherandforecast_ForecastHours02_Temperature,
+            OneCallAPIweatherandforecast_ForecastHours03_Temperature, OneCallAPIweatherandforecast_ForecastHours04_Temperature,
+            OneCallAPIweatherandforecast_ForecastHours05_Temperature, OneCallAPIweatherandforecast_ForecastHours06_Temperature)) {
+        val t = frostTemp.apply(h as GenericItem)
+        if (t < tonight) tonight = t
+    }
+    val day2 = frostTemp.apply(OneCallAPIweatherandforecast_ForecastDay2_Mintemperature)
+    val day3 = frostTemp.apply(OneCallAPIweatherandforecast_ForecastDay3_Mintemperature)
+
+    if (tonight == 999.0) {
+        logWarn("garden_frost", "No usable forecast (OWM items NULL/UNDEF), skipping")
+        return;
+    }
+    logInfo("garden_frost", "Forecast low: tonight {} °C, day2 {} °C, day3 {} °C (limit {} °C)",
+        String.format("%.1f", tonight), String.format("%.1f", day2), String.format("%.1f", day3), String.format("%.1f", limit))
+
+    if (tonight <= limit) {
+        frostTelegram.apply("❄️ Frostwarnung: heute Nacht bis " + String.format("%.0f", tonight) +
+            " °C vorhergesagt. Wasserleitung auf der Terrasse heute noch absperren und entleeren! " +
+            "Danach 'Gartenwasser abgelassen' einschalten.")
+        frostLastForecastDay = today
+    } else if (day2 <= limit || day3 <= limit) {
+        val coldest = if (day2 <= day3) day2 else day3
+        val dayName = if (day2 <= limit) "übermorgen" else "in 3 Tagen"
+        frostTelegram.apply("ℹ️ Frost-Vorwarnung: " + dayName + " bis " + String.format("%.0f", coldest) +
+            " °C vorhergesagt. Entleeren der Terrassenleitung einplanen.")
+        frostLastForecastDay = today
+    }
+end
+
+// ─── Live safety net ─────────────────────────────────────────────────────────
+rule "Garden frost live alarm"
+when
+    Item Weatherstation_Temperature_1 changed
+then
+    if (Garden_WaterDrained.state == ON) return;
+    if (!(Weatherstation_Temperature_1.state instanceof QuantityType)) return;
+    val t = (Weatherstation_Temperature_1.state as QuantityType<Number>).toUnit("°C").doubleValue
+    if (t > FROST_LIVE_LIMIT.doubleValue || t < -40.0) return;   // < -40 = implausible sensor glitch
+
+    val String today = now.toLocalDate.toString
+    if (frostLastLiveDay == today) return;
+    frostLastLiveDay = today
+
+    frostTelegram.apply("🥶 Frostalarm: Wetterstation misst " + String.format("%.1f", t) +
+        " °C. Terrassenleitung sofort entleeren! Danach 'Gartenwasser abgelassen' einschalten.")
+end
+
+// ─── Spring reset ────────────────────────────────────────────────────────────
+rule "Garden frost spring reset"
+when
+    Time cron "0 0 0 1 4 ?"
+then
+    if (Garden_WaterDrained.state == ON) {
+        Garden_WaterDrained.postUpdate(OFF)
+        logInfo("garden_frost", "1 April: Garden_WaterDrained reset to OFF, frost warnings active again next autumn")
+    }
+end

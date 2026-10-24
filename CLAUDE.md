@@ -141,5 +141,6 @@ cd /etc/openhab/Scripts/battery-monitor && bash setup.sh
 - Several rules have `_FIXED` versions (`ulanzimessages_FIXED.rules`, `senddewpointalert_FIXED.rules`) — these are the active versions; the originals without the suffix are kept for reference. See `rules/FIXES_APPLIED.md`.
 - Dew point calculation: `rules/dewpoint.rules`
 - Bathroom window airing: v2 controller `rules/bathroomAiringController.rules` (shadow mode while `Bathroom_Airing_Shadow` != OFF), motor layer + v1 in `rules/bathroomAiring.rules`. Rollout/validation: `docs/bathroom-airing.md`
+- Garden water frost warning: `rules/garden_frost.rules` (OWM forecast at 17:00 + live Wetterstation ≤ 1 °C → Telegram; silenced by `Garden_WaterDrained` ON, reset 1 April)
 - Train tracker: `rules/trains.rules` → `/etc/openhab/Scripts/train-tracker/train_tracker.py`
 - Ulanzi LED display: `rules/ulanzimessages_FIXED.rules` + `Scripts/StrompreisUlanzi.py`
