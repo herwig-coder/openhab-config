@@ -54,11 +54,12 @@ Number:Dimensionless tomorrow21 "Electricity Tomorrow 21-22 [%2.2f ct/kWh]"  <if
 Number:Dimensionless tomorrow22 "Electricity Tomorrow 22-23 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow22#total-gross" }
 Number:Dimensionless tomorrow23 "Electricity Tomorrow 23-00 [%2.2f ct/kWh]"  <if:f7:money-euro-circle> { channel="awattar:prices:bridge1:price1:tomorrow23#total-gross" }
 
-DateTime Awattar_Car_LoadStart  "Auto laden Start [%1$ta %1$tH:%1$tM]" <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:start" }
-DateTime Awattar_Car_LoadEnd    "Auto laden Ende [%1$ta %1$tH:%1$tM]"  <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:end" }
-String   Awattar_Car_Countdown  "Auto laden Countdown [%s]"          <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:countdown" }
-String   Awattar_Car_Hours      "Auto laden Stunden [%s]"            <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:hours" }
-Switch   Awattar_Car_Active                                          <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:active" }
+// Awattar car loader disabled 2026-10-25: car charging is managed by ergant (rules/ergant_car.rules, Garage_SmartPlug)
+//DateTime Awattar_Car_LoadStart  "Auto laden Start [%1$ta %1$tH:%1$tM]" <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:start" }
+//DateTime Awattar_Car_LoadEnd    "Auto laden Ende [%1$ta %1$tH:%1$tM]"  <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:end" }
+//String   Awattar_Car_Countdown  "Auto laden Countdown [%s]"          <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:countdown" }
+//String   Awattar_Car_Hours      "Auto laden Stunden [%s]"            <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:hours" }
+//Switch   Awattar_Car_Active                                          <if:material-symbols:electric-car-outline> { channel="awattar:bestprice:bridge1:carloader:active" }
 
 //Switch WaterActive { channel="awattar:bestprice:bridge1:water:active" }
 //Switch HeatpumpActive { channel="awattar:bestprice:bridge1:heatpump:active" }

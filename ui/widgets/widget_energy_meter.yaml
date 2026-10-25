@@ -244,88 +244,89 @@ slots:
                             color: "#5A4A3A"
                             display: block
 
-          # ── DIVIDER ──────────────────────────────────────────────────────────
-          - component: f7-block
-            config:
-              style:
-                border-top: "1px solid #E8E0D5"
-                margin: "0 0 10px 0"
-                padding: "0"
-                height: "0"
-                min-height: "0"
-
-          # ── AUTO LADEN ───────────────────────────────────────────────────────
-          - component: f7-row
-            slots:
-              default:
-                - component: f7-col
-                  slots:
-                    default:
-                      - component: Label
-                        config:
-                          text: "⚡ Auto laden"
-                          style:
-                            font-size: "10px"
-                            color: "#A89880"
-                            display: block
-                      - component: Label
-                        config:
-                          text: "=items['Awattar_Car_Active'].state == 'ON' ? 'aktiv' : 'inaktiv'"
-                          style:
-                            font-size: "15px"
-                            font-weight: "600"
-                            color: "=items['Awattar_Car_Active'].state == 'ON' ? '#43A047' : '#A89880'"
-
-                - component: f7-col
-                  slots:
-                    default:
-                      - component: Label
-                        config:
-                          text: "Start"
-                          style:
-                            font-size: "10px"
-                            color: "#A89880"
-                            display: block
-                      - component: Label
-                        config:
-                          text: "=items['Awattar_Car_LoadStart'].displayState || '—'"
-                          style:
-                            font-size: "15px"
-                            font-weight: "600"
-                            color: "#3D2B1F"
-
-                - component: f7-col
-                  slots:
-                    default:
-                      - component: Label
-                        config:
-                          text: "Ende"
-                          style:
-                            font-size: "10px"
-                            color: "#A89880"
-                            display: block
-                      - component: Label
-                        config:
-                          text: "=items['Awattar_Car_LoadEnd'].displayState || '—'"
-                          style:
-                            font-size: "15px"
-                            font-weight: "600"
-                            color: "#3D2B1F"
-
-                - component: f7-col
-                  slots:
-                    default:
-                      - component: Label
-                        config:
-                          text: "Countdown"
-                          style:
-                            font-size: "10px"
-                            color: "#A89880"
-                            display: block
-                      - component: Label
-                        config:
-                          text: "=items['Awattar_Car_Countdown'].state == 'NULL' ? 'fertig' : (items['Awattar_Car_Countdown'].state || '—')"
-                          style:
-                            font-size: "15px"
-                            font-weight: "600"
-                            color: "=items['Awattar_Car_Countdown'].state == 'NULL' ? '#43A047' : '#3D2B1F'"
+# Awattar car loader block disabled 2026-10-25: car charging is managed by ergant (rules/ergant_car.rules, Garage_SmartPlug)
+#          # ── DIVIDER ──────────────────────────────────────────────────────────
+#          - component: f7-block
+#            config:
+#              style:
+#                border-top: "1px solid #E8E0D5"
+#                margin: "0 0 10px 0"
+#                padding: "0"
+#                height: "0"
+#                min-height: "0"
+#
+#          # ── AUTO LADEN ───────────────────────────────────────────────────────
+#          - component: f7-row
+#            slots:
+#              default:
+#                - component: f7-col
+#                  slots:
+#                    default:
+#                      - component: Label
+#                        config:
+#                          text: "⚡ Auto laden"
+#                          style:
+#                            font-size: "10px"
+#                            color: "#A89880"
+#                            display: block
+#                      - component: Label
+#                        config:
+#                          text: "=items['Awattar_Car_Active'].state == 'ON' ? 'aktiv' : 'inaktiv'"
+#                          style:
+#                            font-size: "15px"
+#                            font-weight: "600"
+#                            color: "=items['Awattar_Car_Active'].state == 'ON' ? '#43A047' : '#A89880'"
+#
+#                - component: f7-col
+#                  slots:
+#                    default:
+#                      - component: Label
+#                        config:
+#                          text: "Start"
+#                          style:
+#                            font-size: "10px"
+#                            color: "#A89880"
+#                            display: block
+#                      - component: Label
+#                        config:
+#                          text: "=items['Awattar_Car_LoadStart'].displayState || '—'"
+#                          style:
+#                            font-size: "15px"
+#                            font-weight: "600"
+#                            color: "#3D2B1F"
+#
+#                - component: f7-col
+#                  slots:
+#                    default:
+#                      - component: Label
+#                        config:
+#                          text: "Ende"
+#                          style:
+#                            font-size: "10px"
+#                            color: "#A89880"
+#                            display: block
+#                      - component: Label
+#                        config:
+#                          text: "=items['Awattar_Car_LoadEnd'].displayState || '—'"
+#                          style:
+#                            font-size: "15px"
+#                            font-weight: "600"
+#                            color: "#3D2B1F"
+#
+#                - component: f7-col
+#                  slots:
+#                    default:
+#                      - component: Label
+#                        config:
+#                          text: "Countdown"
+#                          style:
+#                            font-size: "10px"
+#                            color: "#A89880"
+#                            display: block
+#                      - component: Label
+#                        config:
+#                          text: "=items['Awattar_Car_Countdown'].state == 'NULL' ? 'fertig' : (items['Awattar_Car_Countdown'].state || '—')"
+#                          style:
+#                            font-size: "15px"
+#                            font-weight: "600"
+#                            color: "=items['Awattar_Car_Countdown'].state == 'NULL' ? '#43A047' : '#3D2B1F'"
