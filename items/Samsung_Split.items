@@ -8,8 +8,8 @@
 //
 // Rules: ignore climate states for ~60 s after an ESP reboot (boot default mode "off"/setpoint "nan"),
 //        see Split_Odu2_Esp_Uptime. Commands are never retained (things file).
-//        Swing: change ONE axis with Split_*_SwingVertical / _SwingHorizontal (autoupdate off: the state is the
-//        unit's confirmation); Split_*_Swing (climate swing_mode) always writes both axes. Firmware ba65b6c (2026-10-26).
+//        Swing: change ONE axis with Split_*_SwingVertical / _SwingHorizontal (autoupdate off, but the state is the
+//        ESP's echo — the unit's confirmation is Split_*_Swing); Split_*_Swing (climate swing_mode) always writes both axes. Firmware ba65b6c (2026-10-26).
 
 // ---------------------------------------------------------------------------------------------
 // Groups

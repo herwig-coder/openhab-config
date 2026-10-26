@@ -13,8 +13,10 @@
 //      ergant/heat/<room>/state. Verified every HEAT_VERIFY_S, re-sent up to HEAT_ON_TRIES times, then
 //      Telegram. No swing command, except the office door sequence (D).
 //   D  Office: heat confirmed → OFFICE_DOOR_WAIT_S (pre-warm, the unit refuses swing until the fan runs)
-//      → Split_BueroHerwig_SwingHorizontal ON → OFF OFFICE_DOOR_SWEEP_MS after the unit confirms ON →
-//      left/right louvers at the door stop. Per-axis switch only; up/down stays at the unit default
+//      → Split_BueroHerwig_SwingHorizontal ON → OFF OFFICE_DOOR_SWEEP_MS after the unit confirms the
+//      left/right swing → left/right louvers at the door stop. Confirmation = the unit's climate report
+//      Split_BueroHerwig_Swing → horizontal/both (0.3–1.9 s after the command): the per-axis switch
+//      state is the ESP's own echo (Samsung_AC_Switch::write_state publishes before the bus write). Per-axis switch only; up/down stays at the unit default
 //      (never commanded), never the climate swing_mode (it writes both axes). Measured 2026-10-26,
 //      home-IT docs projects/samsung-split-nasa.md "Ergebnis Türausrichtung Büro": switch-on centres
 //      L/R, the unit remembers the sweep direction, one sweep ~15.5 s, OFF freezes the louver. Ending at
@@ -39,8 +41,8 @@
 //   1  mosquitto_pub ... -r -t ergant/heat/buero/state -m '{"state":"on","reason":"heating","setpoint_c":25}'
 //      mosquitto_pub ... -r -t ergant/heat/buero -m off   then   ... -m on
 //        → Split_BueroHerwig_Mode heat, setpoint 25 °C; log "heat buero: confirmed"; Wohnzimmer: swing untouched
-//   D  ~3 min after "confirmed": Split_BueroHerwig_SwingHorizontal ON (confirmed by the unit), 23.5 s later
-//      OFF → louvers at the door stop; Split_BueroHerwig_SwingVertical unchanged. Three cycles in a row
+//   D  ~3 min after "confirmed": Split_BueroHerwig_SwingHorizontal ON, Split_BueroHerwig_Swing → horizontal
+//      (or both), 23.5 s after that OFF → louvers at the door stop; Split_BueroHerwig_SwingVertical unchanged. Three cycles in a row
 //      (command off/on) must each end at the door. Command off during the 3 min wait → no swing
 //   NULL → on: leave ergant/heat/buero retained "on", restart openHAB → no command to the split
 //   2  mosquitto_pub ... -r -t ergant/heat/buero -m off → split off (and auto-clean, samsung_split.rules);
@@ -80,7 +82,7 @@ val int    HEAT_ON_TRIES     = 4
 // a cold start is likely longer). TODO: replace the fixed wait once the fan start is visible on the bus,
 // and check whether the unit accepts a swing during pre-warm (untested, the remote refuses it).
 val int    OFFICE_DOOR_WAIT_S    = 180
-val long   OFFICE_DOOR_SWEEP_MS  = 23500       // after the unit confirms ON: centre → door stop
+val long   OFFICE_DOOR_SWEEP_MS  = 23500       // after the unit's swing report: centre → door stop
 val int    OFFICE_DOOR_CONFIRM_S = 10          // no ON confirmation within this → OFF, door skipped
 var Timer  doorTimer = null
 var String doorPhase = "idle"                  // idle | wait | confirm | sweep
@@ -338,8 +340,8 @@ then
                     if (Ergant_HeatBuero_Cmd.state.toString != "on" || Split_BueroHerwig_Mode.state.toString != "heat" || !espReady.apply("Split_Odu2")) {
                         doorPhase = "idle"
                         logInfo("ergant_heat", "heat buero: door swing skipped (command {}, mode {})", Ergant_HeatBuero_Cmd.state, Split_BueroHerwig_Mode.state)
-                    } else if (Split_BueroHerwig_SwingHorizontal.state == ON) {
-                        // Already sweeping (remote): stop one sweep window from now, direction unknown
+                    } else if (Split_BueroHerwig_Swing.state.toString == "horizontal" || Split_BueroHerwig_Swing.state.toString == "both") {
+                        // Already sweeping left/right (remote): stop one sweep window from now, direction unknown
                         doorPhase = "sweep"
                         logInfo("ergant_heat", "heat buero: left/right swing already on, OFF in {} ms", OFFICE_DOOR_SWEEP_MS)
                         doorTimer = createTimer(now.plusNanos(OFFICE_DOOR_SWEEP_MS * 1000000L), [ |
@@ -355,7 +357,7 @@ then
                             doorTimer = null
                             if (doorPhase == "confirm") {
                                 doorPhase = "idle"
-                                logWarn("ergant_heat", "heat buero: left/right swing ON not confirmed within {} s, OFF, door skipped", OFFICE_DOOR_CONFIRM_S)
+                                logWarn("ergant_heat", "heat buero: unit did not report left/right swing within {} s (swing {}), OFF, door skipped", OFFICE_DOOR_CONFIRM_S, Split_BueroHerwig_Swing.state)
                                 Split_BueroHerwig_SwingHorizontal.sendCommand(OFF)
                             }
                         ])
@@ -491,16 +493,20 @@ then
 end
 
 
-// ─── D: office door sequence — ON confirmed → OFF after one measured sweep ─
-// The item has autoupdate="false", so this change is the unit's own confirmation.
+// ─── D: office door sequence — swing confirmed → OFF after one measured sweep ─
+// Timed from the unit's own climate report (left/right running = horizontal, or both while the
+// up/down default swing runs), not from Split_BueroHerwig_SwingHorizontal: that switch state is
+// the ESP's echo ~0.1 s after the command, up to ~2 s before the unit — ~12 % of a sweep short.
 rule "ergant heat office door swing confirmed"
 when
-    Item Split_BueroHerwig_SwingHorizontal changed to ON
+    Item Split_BueroHerwig_Swing changed
 then
     if (doorPhase != "confirm") return;
+    val String swing = Split_BueroHerwig_Swing.state.toString
+    if (swing != "horizontal" && swing != "both") return;
     if (doorTimer !== null) doorTimer.cancel()
     doorPhase = "sweep"
-    logInfo("ergant_heat", "heat buero: left/right swing confirmed, OFF in {} ms", OFFICE_DOOR_SWEEP_MS)
+    logInfo("ergant_heat", "heat buero: unit reports swing {}, OFF in {} ms", swing, OFFICE_DOOR_SWEEP_MS)
     doorTimer = createTimer(now.plusNanos(OFFICE_DOOR_SWEEP_MS * 1000000L), [ |
         doorTimer = null
         doorPhase = "idle"
