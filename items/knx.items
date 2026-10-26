@@ -34,7 +34,7 @@ Switch              ParentsBedroom_Light                "Eltern Schlafzimmer Lic
 Switch              ChildrenBedroom_Light               "Tommy Schlafzimmer Licht"                      <switch>                            (gChildrenBedroom)                                   ["Light"]                       {channel="knx:device:bridge:knx_main:Tommy_Bedroom_Main_Light"}
 
 //Temperatures
-Number:Temperature  BasementBathroom_Temperature        "Keller Bad Temperatur"                         <if:mdi:temperature>   	            (gBasementBathroom, gErgantRoomTemp)                                  ["Measurement", "Temperature"]  { unit="°C", channel="knx:device:bridge:knx_main:Basement_Bathroom_Temperature"}
+Number:Temperature  BasementBathroom_Temperature        "Keller Bad Temperatur"                         <if:mdi:temperature>   	            (gBasementBathroom)                                  ["Measurement", "Temperature"]  { unit="°C", channel="knx:device:bridge:knx_main:Basement_Bathroom_Temperature"}
 Number:Temperature  ParentsBedroom_Temperature_Thermostat "Eltern Schlafzimmer Temperatur"              <if:mdi:temperature>   	            (gParentsBedroom)                                    ["Measurement", "Temperature"]  { unit="°C", channel="knx:device:bridge:knx_main:Parents_Bedroom_Temperature"}
 Number:Temperature  Kitchen_Temperature                 "Küche Temperatur"                              <if:mdi:temperature>   	            (gKitchen, gErgantRoomTemp)                                           ["Measurement", "Temperature"]  { unit="°C", channel="knx:device:bridge:knx_main:Kitchen_Temperature"}
 
