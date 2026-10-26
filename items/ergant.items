@@ -49,3 +49,32 @@ String                  Ergant_CarCharge                "Laden Soll [%s]"       
 String                  Ergant_CarStateJson             "Ladezustand JSON [%s]"             <if:mdi:code-json>              (gErgantCarDiag)    {channel="mqtt:topic:mqtt_ergant:car_state"}
 String                  Ergant_CarPlan                  "Ladeplan JSON [%s]"                <if:mdi:code-json>              (gErgantCarDiag)    {channel="mqtt:topic:mqtt_ergant:car_plan"}
 String                  Ergant_CarSocAskedSince         "Ladestand gefragt für [%s]"        <if:mdi:help-circle-outline>    (gErgantCarDiag)
+
+
+// ---------------------------------------------------------------------------------------------
+// PV heating (rules/ergant_heat.rules switches Split_Wohnzimmer_* and Split_BueroHerwig_*,
+// items/Samsung_Split.items). Item names carry the ergant room: Ergant_Heat<Room>_* with
+// <Room> = Wohnzimmer → ergant/heat/wohnzimmer, Buero → ergant/heat/buero (the rules derive it).
+// Not in the energy groups on purpose (same as gErgantCarDiag): the *_AskedTs items must be
+// persisted on every change with restoreOnStartup, or a restart could ask the same offer twice.
+// gErgantHeatCmd is excluded from restoreOnStartup (mapdb, influxdb): a restored "off" followed
+// by the retained "on" would look like an off → on change at startup.
+// ---------------------------------------------------------------------------------------------
+Group                   gErgantHeatDiag                 "ergant Heizen Diagnose"            <if:mdi:radiator>
+Group                   gErgantHeatCmd                  "ergant Heizen Soll (Regel-Trigger)" <if:mdi:radiator>
+Group                   gErgantHeatOffer                "ergant Heizen Angebote (Regel-Trigger)" <if:mdi:radiator>
+
+String                  Ergant_HeatWohnzimmer_Cmd       "Heizen Wohnzimmer Soll [%s]"       <if:mdi:radiator>               (gErgantHeatDiag, gErgantHeatCmd)       {channel="mqtt:topic:mqtt_ergant:heat_wohnzimmer", stateDescription=""[options="on=Ein,off=Aus"]}
+String                  Ergant_HeatWohnzimmer_Offer     "Heizen Wohnzimmer Angebot [%s]"    <if:mdi:code-json>              (gErgantHeatDiag, gErgantHeatOffer)     {channel="mqtt:topic:mqtt_ergant:heat_wohnzimmer_offer"}
+String                  Ergant_HeatWohnzimmer_StateJson "Heizen Wohnzimmer Zustand [%s]"    <if:mdi:code-json>              (gErgantHeatDiag)                       {channel="mqtt:topic:mqtt_ergant:heat_wohnzimmer_state"}
+String                  Ergant_HeatWohnzimmer_AskedTs   "Heizen Wohnzimmer gefragt für [%s]" <if:mdi:help-circle-outline>   (gErgantHeatDiag)
+
+String                  Ergant_HeatBuero_Cmd            "Heizen Büro Soll [%s]"             <if:mdi:radiator>               (gErgantHeatDiag, gErgantHeatCmd)       {channel="mqtt:topic:mqtt_ergant:heat_buero", stateDescription=""[options="on=Ein,off=Aus"]}
+String                  Ergant_HeatBuero_Offer          "Heizen Büro Angebot [%s]"          <if:mdi:code-json>              (gErgantHeatDiag, gErgantHeatOffer)     {channel="mqtt:topic:mqtt_ergant:heat_buero_offer"}
+String                  Ergant_HeatBuero_StateJson      "Heizen Büro Zustand [%s]"          <if:mdi:code-json>              (gErgantHeatDiag)                       {channel="mqtt:topic:mqtt_ergant:heat_buero_state"}
+String                  Ergant_HeatBuero_AskedTs        "Heizen Büro gefragt für [%s]"      <if:mdi:help-circle-outline>    (gErgantHeatDiag)
+
+// Room temperatures → ergant/input/room_temp/<ItemName> (rules/ergant_heat.rules). Membership is set
+// on the sensor items (items/BLE_Sensors.items, items/knx.items); adding a room = adding this group.
+// Not the Split_*_Temperature items: they measure at the indoor unit.
+Group                   gErgantRoomTemp                 "ergant Raumtemperaturen"           <if:mdi:home-thermometer>

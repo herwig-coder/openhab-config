@@ -13,7 +13,10 @@ Filters {
 
 Items {
     // Everything except energy: unchanged
-    *, !gEnergySystem*, !gEnergyDiag* : strategy = everyChange, restoreOnStartup
+    *, !gEnergySystem*, !gEnergyDiag*, !gErgantHeatCmd* : strategy = everyChange, restoreOnStartup
+
+    // ergant heat commands: history only, never restored (see mapdb.persist)
+    gErgantHeatCmd* : strategy = everyChange
 
     // Energy dashboard: on change, max. one value per 10 s per item. The time filter drops
     // values but never writes them later — everyMinute bounds a stale last value to ~1 min.

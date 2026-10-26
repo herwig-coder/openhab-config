@@ -5,6 +5,7 @@
 // Peak guard topics are retained and read-only here: openHAB only notifies, it sheds nothing
 // (capacity tariff not billed yet). Items: items/ergant.items.
 // C-Zero charging: ergant decides (ergant/car/*), rules/ergant_car.rules switches Garage_SmartPlug.
+// PV heating: ergant decides (ergant/heat/*), rules/ergant_heat.rules switches the Wohnzimmer and Büro splits.
 // The inputs ergant/car/soc_hint and ergant/car/override are published by the rules via the MQTT
 // action (one-shot, never retained) — no command channels for them.
 // No availabilityTopic on purpose: ergant/status is a normal channel so the offline rules can
@@ -23,4 +24,14 @@ Thing mqtt:topic:mqtt_ergant "MQTT ergant" (mqtt:broker:9a73e5895e) {
     Type string        : car_charge            "Auto laden (Soll)"  [ stateTopic="ergant/car/charge"]
     Type string        : car_state             "Auto Ladezustand"   [ stateTopic="ergant/car/state"]
     Type string        : car_plan              "Auto Ladeplan"      [ stateTopic="ergant/car/plan"]
+    // PV heating (rules/ergant_heat.rules). <room> = ergant room name: wohnzimmer (ODU 1), buero (ODU 2).
+    // ergant/heat/<room>/answer and ergant/input/room_temp/* are published by the rules via the MQTT action.
+    Type string        : heat_wohnzimmer       "Heizen Wohnzimmer (Soll)"   [ stateTopic="ergant/heat/wohnzimmer"]
+    Type string        : heat_wohnzimmer_offer "Heizen Wohnzimmer Angebot"  [ stateTopic="ergant/heat/wohnzimmer/offer"]
+    Type string        : heat_wohnzimmer_state "Heizen Wohnzimmer Zustand"  [ stateTopic="ergant/heat/wohnzimmer/state"]
+    Type trigger       : heat_wohnzimmer_event "Heizen Wohnzimmer Ereignis" [ stateTopic="ergant/heat/wohnzimmer/event"]
+    Type string        : heat_buero            "Heizen Büro (Soll)"         [ stateTopic="ergant/heat/buero"]
+    Type string        : heat_buero_offer      "Heizen Büro Angebot"        [ stateTopic="ergant/heat/buero/offer"]
+    Type string        : heat_buero_state      "Heizen Büro Zustand"        [ stateTopic="ergant/heat/buero/state"]
+    Type trigger       : heat_buero_event      "Heizen Büro Ereignis"       [ stateTopic="ergant/heat/buero/event"]
 }

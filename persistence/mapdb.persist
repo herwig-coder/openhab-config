@@ -8,8 +8,9 @@ Strategies {
 }
 
 Items {
-    // Everything except energy: unchanged
-    *, !gEnergySystem*, !gEnergyDiag* : strategy = everyChange, restoreOnStartup
+    // Everything except energy: unchanged. ergant heat commands (gErgantHeatCmd) are never restored:
+    // a restored "off" followed by the retained "on" would fire the off → on rule at startup.
+    *, !gEnergySystem*, !gEnergyDiag*, !gErgantHeatCmd* : strategy = everyChange, restoreOnStartup
 
     // Energy: one sample per minute
     gEnergySystem*, gEnergyDiag* : strategy = everyMinute, restoreOnStartup

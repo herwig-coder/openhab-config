@@ -1,0 +1,445 @@
+// ergant PV heating ("Heizen mit PV"): ergant decides, openHAB asks and switches the splits.
+// Contract: ergant repo docs/planner.md, "PV heating" → "MQTT contract" + "openHAB part".
+// Things: things/MQTT_ergant.things (heat_*), items: items/ergant.items (Ergant_Heat*, gErgantRoomTemp),
+// splits: items/Samsung_Split.items + docs/samsung-split.md (checklist: ESP guard, mode before setpoint,
+// verify instead of assume). Like rules/ergant_car.rules this file DOES switch devices — only
+// Split_Wohnzimmer_* (room "wohnzimmer", ODU 1) and Split_BueroHerwig_* (room "buero", ODU 2).
+//
+//   T  Room temperatures: every member of gErgantRoomTemp on change and every 15 min (all members)
+//      → ergant/input/room_temp/<ItemName>, plain °C, retained.
+//   Q  Offer ergant/heat/<room>/offer non-empty with a new ts → Telegram "Ja" / "Nein (heute nicht)";
+//      answer → ergant/heat/<room>/answer yes/no (not retained). Ergant_Heat<Room>_AskedTs is persisted.
+//   1  ergant/heat/<room> off → on while ergant/status is online → mode heat, then setpoint_c from
+//      ergant/heat/<room>/state, swing off (office: horizontal for OFFICE_HSWING_S, then off).
+//      Verified every HEAT_VERIFY_S, re-sent up to HEAT_ON_TRIES times, then Telegram.
+//   2  ergant/heat/<room> on → off → off, only if the split is in heat.
+//   3  ergant/heat/<room>/event {"event":"manual_off"} → off, only if the split is in heat.
+//   O  ergant/status offline (change, any command update while offline, 60 s after start) → off for
+//      every split whose command is on and which is in heat.
+//   Never: NULL → on / NULL → off (gErgantHeatCmd is not restored on startup, see mapdb.persist), off
+//   for a split in another mode, a decision on a mode the ESP may not have confirmed (offline or
+//   uptime < 60 s: the off waits for the ESP, at most 10 min).
+//
+// Test — best before ergant's heating: section is active (ergant then owns the topics). Afterwards
+// clear every retained test topic: mosquitto_pub ... -r -n -t <topic>. Watch openHAB:
+//   tail -f /var/log/openhab/openhab.log | grep ergant_heat     and the answers:
+//   mosquitto_sub -h 10.1.0.10 -u <user> -P <pw> -v -t 'ergant/heat/#' -t 'ergant/input/room_temp/#'
+//   T  within 15 min: ergant/input/room_temp/Livingroom_Temperature 21.70 (and the other 8 items)
+//   Q  mosquitto_pub -h 10.1.0.10 -u <user> -P <pw> -r -t ergant/heat/buero/offer -m '{"free_from":0,"free_until":0,"kwh":1.5,"setpoint_c":25,"text":"Test: Büro mit PV heizen?","ts":1000}'
+//        → one Telegram "Test: Büro mit PV heizen?" [Ja] [Nein (heute nicht)]; Ja → ergant/heat/buero/answer yes
+//      same message again, or restart openHAB → no second question; "ts":1001 → asked again
+//   1  mosquitto_pub ... -r -t ergant/heat/buero/state -m '{"state":"on","reason":"heating","setpoint_c":25}'
+//      mosquitto_pub ... -r -t ergant/heat/buero -m off   then   ... -m on
+//        → Split_BueroHerwig_Mode heat, setpoint 25 °C, swing off; log "heat buero: confirmed"
+//   NULL → on: leave ergant/heat/buero retained "on", restart openHAB → no command to the split
+//   2  mosquitto_pub ... -r -t ergant/heat/buero -m off → split off (and auto-clean, samsung_split.rules);
+//      put the split in cool by hand, publish on/off again → on switches it to heat (ergant decides);
+//      with the split in cool and the command going on → off: split stays in cool
+//   3  split in heat: mosquitto_pub ... -t ergant/heat/buero/event -m '{"event":"manual_off","ts":0}' → off;
+//      split in cool: same message → nothing
+//   O  command on, split in heat: mosquitto_pub ... -r -t ergant/status -m offline → split off;
+//      then mosquitto_pub ... -r -t ergant/status -m online (ergant's watchdog republishes it on reconnect)
+
+import org.openhab.core.model.script.ScriptServiceUtil
+import javax.measure.quantity.Temperature
+
+// File-level state
+val java.util.Map<String, Timer>   heatOnTimers = newHashMap   // room → on-verify timer
+val java.util.Map<String, Integer> heatOnTries  = newHashMap   // room → on sequences sent
+val java.util.Map<String, Long>    heatOffSince = newHashMap   // room → pending off since (epoch ms)
+val java.util.Map<String, Integer> heatOffTries = newHashMap   // room → off commands sent
+val java.util.Map<String, String>  heatAsked    = newHashMap   // room → offer ts asked (before the item update lands)
+
+val String ERGANT_BROKER     = "mqtt:broker:9a73e5895e"
+val String TELEGRAM_BOT      = "telegram:telegramBot:Telegram_Bot"
+val String HEAT_REPLY_PREFIX = "ergant_heat_"
+val double HEAT_SETPOINT_DEFAULT = 25.0   // only if ergant/heat/<room>/state has no setpoint_c (contract: always present)
+// ESP outages of ODU 1 last ~70 s, so 4 tries cover ~2 min (Telegram at 120 s, 150 s if the ESP was
+// not ready at the start). Keep VERIFY_S × (TRIES + 1) ≤ ~150 s: ergant marks a room "manual" when the
+// mode differs from its command for > 180 s after its own switch (120 s grace + 60 s mode_settle_s).
+// A pending off may wait up to 10 min for the ESP; past 180 s ergant then leaves the room manual
+// for the day — accepted (safe side), the Telegram on failure covers it.
+val int    HEAT_VERIFY_S     = 30
+val int    HEAT_ON_TRIES     = 4
+// TODO: measure T (s) — horizontal swing from power-on until the louvers point to the door. 0 = no swing.
+val int    OFFICE_HSWING_S   = 0
+
+// ergant room → split item prefix / ESP item prefix (items/Samsung_Split.items)
+val java.util.Map<String, String> HEAT_SPLIT = newHashMap("wohnzimmer" -> "Split_Wohnzimmer", "buero" -> "Split_BueroHerwig")
+val java.util.Map<String, String> HEAT_ESP   = newHashMap("wohnzimmer" -> "Split_Odu1",       "buero" -> "Split_Odu2")
+
+// JSON field or null (missing path, JSON null, bad JSON)
+val Functions$Function2<String, String, String> jsonField = [ String json, String path |
+    try {
+        val String v = transformRaw("JSONPATH", path, json)
+        if (v === null || v == "null" || v == "") null else v
+    } catch (Exception e) {
+        null
+    }
+]
+
+// Mode/setpoint of a split are trustworthy only with its ESP online for > 60 s (boot default "off")
+val Functions$Function1<String, Boolean> espReady = [ String esp |
+    val reg = ScriptServiceUtil.getItemRegistry
+    val up = reg.getItem(esp + "_Esp_Uptime").state
+    reg.getItem(esp + "_Esp_Online").state == ON && up instanceof Number && (up as Number).intValue >= 60
+]
+
+// "Ergant_HeatBuero_Cmd" → "Buero" (item part) — the ergant room is its lower case
+val Functions$Function1<String, String> roomPart = [ String itemName |
+    itemName.replace("Ergant_Heat", "").replace("_Cmd", "").replace("_Offer", "")
+]
+
+// Mode heat, then (3 s later, the unit ignores a setpoint while off) setpoint + swing.
+// withMode false: the split is already in heat, only the setpoint is re-sent (the swing timing
+// counts from power-on, so it is not repeated).
+val Procedures$Procedure4<String, Double, Integer, Boolean> sendHeat = [ String split, Double setpoint, Integer hswingS, Boolean withMode |
+    val String sp = String.format(java.util.Locale.ROOT, "%.1f °C", setpoint)
+    if (withMode) {
+        sendCommand(split + "_Mode", "heat")
+        createTimer(now.plusSeconds(3), [ |
+            sendCommand(split + "_Setpoint", sp)
+            if (hswingS > 0) {
+                sendCommand(split + "_Swing", "horizontal")
+                createTimer(now.plusSeconds(hswingS), [ | sendCommand(split + "_Swing", "off") ])
+            } else {
+                sendCommand(split + "_Swing", "off")
+            }
+        ])
+    } else {
+        sendCommand(split + "_Setpoint", sp)
+    }
+]
+
+// One step of a pending off: done when the split is not in heat, waits while the ESP is not ready,
+// sends "off" otherwise (at most 3 times). Re-run on every mode change and ESP uptime tick (~60 s).
+val Procedures$Procedure5<String, String, Boolean, java.util.Map<String, Long>, java.util.Map<String, Integer>> processOff = [
+        String room, String split, Boolean ready, java.util.Map<String, Long> offSince, java.util.Map<String, Integer> offTries |
+    val Long since = offSince.get(room)
+    if (since !== null) {
+        val String mode = ScriptServiceUtil.getItemRegistry.getItem(split + "_Mode").state.toString
+        val Integer sent = offTries.get(room)
+        val int tries = if (sent === null) 0 else sent.intValue
+        val telegram = getActions("telegram", "telegram:telegramBot:Telegram_Bot")
+        if (ready && mode != "heat") {
+            offSince.remove(room)
+            offTries.remove(room)
+            if (tries > 0) logInfo("ergant_heat", "heat {}: {} confirmed {}", room, split, mode)
+            else logInfo("ergant_heat", "heat {}: {} is {}, not in heat — left alone", room, split, mode)
+        } else if (now.toInstant.toEpochMilli - since > 10 * 60 * 1000 || tries >= 3) {
+            offSince.remove(room)
+            offTries.remove(room)
+            logWarn("ergant_heat", "heat {}: {} could not be switched off (mode {}, ESP ready {}, {} tries)", room, split, mode, ready, tries)
+            if (telegram !== null) telegram.sendTelegram("⚠️ [ergant] Heizen " + room + ": Split ließ sich nicht ausschalten (Modus " + mode + "). Bitte prüfen.")
+        } else if (!ready) {
+            logInfo("ergant_heat", "heat {}: ESP of {} not ready, off waits", room, split)
+        } else {
+            offTries.put(room, tries + 1)
+            logInfo("ergant_heat", "heat {}: {} heat -> off (try {})", room, split, tries + 1)
+            sendCommand(split + "_Mode", "off")
+        }
+    }
+]
+
+
+// ─── T: room temperatures → ergant ─────────────────────────────────────────
+// Cron: a steady room changes nothing for longer than ergant's room_temp_max_age_min (30 min),
+// and an old value counts as missing, never as cold. triggeringItem is null on the cron trigger.
+rule "ergant heat room temp -> ergant"
+when
+    Member of gErgantRoomTemp changed or
+    Time cron "0 0/15 * * * ?"
+then
+    val mqtt = getActions("mqtt", ERGANT_BROKER)
+    if (mqtt === null) {
+        logError("ergant_heat", "room temp: MQTT broker {} not available", ERGANT_BROKER)
+        return;
+    }
+    val java.util.List<Item> temps = newArrayList
+    if (triggeringItem !== null) temps.add(triggeringItem) else temps.addAll(gErgantRoomTemp.members)
+    for (Item i : temps) {
+        var Number c = null
+        if (i.state instanceof QuantityType) {
+            c = (i.state as QuantityType<Temperature>).toUnit("°C")
+        } else if (i.state instanceof DecimalType) {
+            c = i.state as DecimalType
+        }
+        if (c === null) {
+            logDebug("ergant_heat", "room temp {}: state {} not sent", i.name, i.state)
+        } else {
+            mqtt.publishMQTT("ergant/input/room_temp/" + i.name, String.format(java.util.Locale.ROOT, "%.2f", c.doubleValue), true)
+        }
+    }
+end
+
+
+// ─── Q: offer → Telegram question ──────────────────────────────────────────
+// System started: the retained offer may arrive before the rules are loaded; no double question,
+// Ergant_Heat<Room>_AskedTs is restored from mapdb.
+rule "ergant heat offer -> Telegram"
+when
+    Member of gErgantHeatOffer changed or
+    System started
+then
+    val java.util.List<Item> offers = newArrayList
+    if (triggeringItem !== null) offers.add(triggeringItem) else offers.addAll(gErgantHeatOffer.members)
+    for (Item i : offers) {
+        val String part = roomPart.apply(i.name)
+        val String room = part.toLowerCase
+        if (i.state != NULL && i.state != UNDEF && i.state.toString.trim != "") {
+            val String json  = i.state.toString
+            val String ts    = jsonField.apply(json, "$.ts")
+            val String text  = jsonField.apply(json, "$.text")
+            val asked = ScriptServiceUtil.getItemRegistry.getItem("Ergant_Heat" + part + "_AskedTs")
+            if (ts === null || text === null) {
+                logWarn("ergant_heat", "heat {}: offer without ts/text: {}", room, json)
+            } else if (ts == heatAsked.get(room) || ts == asked.state.toString) {
+                logDebug("ergant_heat", "heat {}: offer ts {} already asked", room, ts)
+            } else {
+                // Remember first: a restart right after the question must not ask again
+                heatAsked.put(room, ts)
+                asked.postUpdate(ts)
+                val telegram = getActions("telegram", TELEGRAM_BOT)
+                if (telegram === null) {
+                    logError("ergant_heat", "heat {}: Telegram bot thing {} not available, offer ts {} not asked", room, TELEGRAM_BOT, ts)
+                } else {
+                    logInfo("ergant_heat", "heat {}: asking offer ts {}", room, ts)
+                    telegram.sendTelegramQuery(text, HEAT_REPLY_PREFIX + room, "Ja", "Nein (heute nicht)")
+                }
+            }
+        }
+    }
+end
+
+
+// ─── Q: answer → ergant/heat/<room>/answer ─────────────────────────────────
+rule "ergant heat answer"
+when
+    Channel "telegram:telegramBot:Telegram_Bot:callbackEvent" triggered
+then
+    // Same defensive cut as the notify relay: payload may come with a "<channel> triggered " prefix
+    var json = receivedEvent.toString
+    if (!json.startsWith("{") && json.indexOf("{") >= 0) {
+        json = json.substring(json.indexOf("{"))
+    }
+    val String replyId = jsonField.apply(json, "$.reply_id")
+    if (replyId === null || !replyId.startsWith(HEAT_REPLY_PREFIX)) return;
+    val String room   = replyId.substring(HEAT_REPLY_PREFIX.length)
+    val String text   = jsonField.apply(json, "$.text")
+    val String chatId = jsonField.apply(json, "$.chat_id")
+    if (!HEAT_SPLIT.containsKey(room)) {
+        logWarn("ergant_heat", "heat answer for unknown room: {}", json)
+        return;
+    }
+    val String answer = if (text == "Ja") "yes" else if (text == "Nein (heute nicht)") "no" else null
+    if (answer === null) {
+        logWarn("ergant_heat", "heat {}: answer not understood: {}", room, json)
+        return;
+    }
+    val mqtt = getActions("mqtt", ERGANT_BROKER)
+    if (mqtt === null) {
+        logError("ergant_heat", "heat {}: MQTT broker {} not available, answer {} lost", room, ERGANT_BROKER, answer)
+        return;
+    }
+    logInfo("ergant_heat", "heat {}: answer '{}' -> {}", room, text, answer)
+    mqtt.publishMQTT("ergant/heat/" + room + "/answer", answer, false)
+
+    // Removes the buttons and stops the spinner in the Telegram client
+    val telegram = getActions("telegram", TELEGRAM_BOT)
+    if (telegram !== null && chatId !== null) {
+        telegram.sendTelegramAnswer(Long.parseLong(chatId), replyId, "Danke – „" + text + "“ an ergant gemeldet.")
+    }
+end
+
+
+// ─── 1: off → on → heat ────────────────────────────────────────────────────
+// "from off": NULL → on (retained re-delivery at startup) is no command.
+rule "ergant heat on"
+when
+    Member of gErgantHeatCmd changed from "off" to "on"
+then
+    val cmdItem = triggeringItem
+    val String part  = roomPart.apply(cmdItem.name)
+    val String room  = part.toLowerCase
+    val String split = HEAT_SPLIT.get(room)
+    if (split === null) {
+        logWarn("ergant_heat", "heat on: no split for {}", cmdItem.name)
+        return;
+    }
+    if (Ergant_Status.state.toString != "online") {
+        logInfo("ergant_heat", "heat {}: on ignored, ergant/status is {}", room, Ergant_Status.state)
+        return;
+    }
+
+    // The offer is cleared once answered; setpoint_c lives in the retained state
+    var double setpoint = HEAT_SETPOINT_DEFAULT
+    val stateItem = ScriptServiceUtil.getItemRegistry.getItem("Ergant_Heat" + part + "_StateJson")
+    val String spJson = if (stateItem.state == NULL || stateItem.state == UNDEF) null else jsonField.apply(stateItem.state.toString, "$.setpoint_c")
+    try {
+        if (spJson !== null) setpoint = Double.parseDouble(spJson)
+        else logWarn("ergant_heat", "heat {}: no setpoint_c in ergant/heat/{}/state, using {}", room, room, setpoint)
+    } catch (Exception e) {
+        logWarn("ergant_heat", "heat {}: setpoint_c '{}' not a number, using {}", room, spJson, HEAT_SETPOINT_DEFAULT)
+        setpoint = HEAT_SETPOINT_DEFAULT
+    }
+    if (setpoint < 16.0) setpoint = 16.0
+    if (setpoint > 30.0) setpoint = 30.0
+    val double sp = setpoint
+    val int hswing = if (room == "buero") OFFICE_HSWING_S else 0
+
+    // An on supersedes a pending off
+    heatOffSince.remove(room)
+    heatOffTries.remove(room)
+    val Timer old = heatOnTimers.remove(room)
+    if (old !== null) old.cancel()
+
+    if (espReady.apply(HEAT_ESP.get(room))) {
+        logInfo("ergant_heat", "heat {}: {} -> heat {} °C (was {})", room, split, sp, ScriptServiceUtil.getItemRegistry.getItem(split + "_Mode").state)
+        sendHeat.apply(split, sp, hswing, true)
+        heatOnTries.put(room, 1)
+    } else {
+        logInfo("ergant_heat", "heat {}: ESP of {} not ready, heat waits for the verify step", room, split)
+        heatOnTries.put(room, 0)
+    }
+
+    // Verify instead of assume: a command sent into an ESP restart is lost
+    heatOnTimers.put(room, createTimer(now.plusSeconds(HEAT_VERIFY_S), [ |
+        val reg = ScriptServiceUtil.getItemRegistry
+        val String mode = reg.getItem(split + "_Mode").state.toString
+        val spState = reg.getItem(split + "_Setpoint").state
+        val boolean spOk = spState instanceof Number && Math.abs((spState as Number).doubleValue - sp) < 0.5
+        val boolean ready = espReady.apply(HEAT_ESP.get(room))
+        val int tries = heatOnTries.get(room).intValue
+        if (cmdItem.state.toString != "on" || Ergant_Status.state.toString != "online" || heatOffSince.containsKey(room)) {
+            heatOnTimers.remove(room)
+            logInfo("ergant_heat", "heat {}: on no longer wanted, verify stopped", room)
+        } else if (ready && mode == "heat" && spOk) {
+            heatOnTimers.remove(room)
+            logInfo("ergant_heat", "heat {}: confirmed heat {} °C", room, sp)
+        } else if (tries >= HEAT_ON_TRIES) {
+            heatOnTimers.remove(room)
+            logWarn("ergant_heat", "heat {}: {} not in heat {} °C after {} tries (mode {}, setpoint {}, ESP ready {})", room, split, sp, tries, mode, spState, ready)
+            val telegram = getActions("telegram", TELEGRAM_BOT)
+            if (telegram !== null) telegram.sendTelegram("⚠️ [ergant] Heizen " + room + ": Split meldet nicht Heizen " + sp + " °C (Modus " + mode + "). Bitte prüfen.")
+        } else {
+            if (ready) {
+                logInfo("ergant_heat", "heat {}: not confirmed (mode {}, setpoint {}), re-sending (try {})", room, mode, spState, tries + 1)
+                sendHeat.apply(split, sp, hswing, mode != "heat")
+                heatOnTries.put(room, tries + 1)
+            } else {
+                logInfo("ergant_heat", "heat {}: ESP of {} not ready, waiting", room, split)
+                heatOnTries.put(room, tries + 1)
+            }
+            heatOnTimers.get(room).reschedule(now.plusSeconds(HEAT_VERIFY_S))
+        }
+    ]))
+end
+
+
+// ─── 2: on → off → off (only in heat) ──────────────────────────────────────
+// "from on": NULL → off (startup) is no command. processOff leaves a split in another mode alone.
+rule "ergant heat off"
+when
+    Member of gErgantHeatCmd changed from "on" to "off"
+then
+    val String room = roomPart.apply(triggeringItem.name).toLowerCase
+    val String split = HEAT_SPLIT.get(room)
+    if (split === null) return;
+    val Timer t = heatOnTimers.remove(room)
+    if (t !== null) t.cancel()
+    logInfo("ergant_heat", "heat {}: ergant/heat/{} off", room, room)
+    if (!heatOffSince.containsKey(room)) heatOffSince.put(room, now.toInstant.toEpochMilli)
+    processOff.apply(room, split, espReady.apply(HEAT_ESP.get(room)), heatOffSince, heatOffTries)
+end
+
+
+// ─── 3: manual_off event (not retained) ────────────────────────────────────
+// Two rules instead of one: the room comes from the channel, the payload carries none.
+rule "ergant heat event wohnzimmer"
+when
+    Channel "mqtt:topic:mqtt_ergant:heat_wohnzimmer_event" triggered
+then
+    var json = receivedEvent.toString
+    if (!json.startsWith("{") && json.indexOf("{") >= 0) json = json.substring(json.indexOf("{"))
+    if (jsonField.apply(json, "$.event") != "manual_off") {
+        logWarn("ergant_heat", "heat wohnzimmer: event ignored: {}", json)
+        return;
+    }
+    logInfo("ergant_heat", "heat wohnzimmer: manual_off")
+    if (!heatOffSince.containsKey("wohnzimmer")) heatOffSince.put("wohnzimmer", now.toInstant.toEpochMilli)
+    processOff.apply("wohnzimmer", HEAT_SPLIT.get("wohnzimmer"), espReady.apply(HEAT_ESP.get("wohnzimmer")), heatOffSince, heatOffTries)
+end
+
+rule "ergant heat event buero"
+when
+    Channel "mqtt:topic:mqtt_ergant:heat_buero_event" triggered
+then
+    var json = receivedEvent.toString
+    if (!json.startsWith("{") && json.indexOf("{") >= 0) json = json.substring(json.indexOf("{"))
+    if (jsonField.apply(json, "$.event") != "manual_off") {
+        logWarn("ergant_heat", "heat buero: event ignored: {}", json)
+        return;
+    }
+    logInfo("ergant_heat", "heat buero: manual_off")
+    if (!heatOffSince.containsKey("buero")) heatOffSince.put("buero", now.toInstant.toEpochMilli)
+    processOff.apply("buero", HEAT_SPLIT.get("buero"), espReady.apply(HEAT_ESP.get("buero")), heatOffSince, heatOffTries)
+end
+
+
+// ─── O: ergant offline → off for heating ergant started ────────────────────
+// Command update: the retained "on" can arrive after ergant/status (startup, broker reconnect).
+rule "ergant heat offline -> off"
+when
+    Item Ergant_Status changed or
+    Member of gErgantHeatCmd received update
+then
+    if (Ergant_Status.state.toString != "offline") return;
+    gErgantHeatCmd.members.filter[ c | c.state.toString == "on" ].forEach[ c |
+        val String room = roomPart.apply(c.name).toLowerCase
+        val String split = HEAT_SPLIT.get(room)
+        if (split !== null) {
+            val Timer t = heatOnTimers.remove(room)
+            if (t !== null) t.cancel()
+            if (!heatOffSince.containsKey(room)) {
+                logInfo("ergant_heat", "heat {}: ergant offline, command on -> off if in heat", room)
+                heatOffSince.put(room, now.toInstant.toEpochMilli)
+            }
+            processOff.apply(room, split, espReady.apply(HEAT_ESP.get(room)), heatOffSince, heatOffTries)
+        }
+    ]
+end
+
+// Startup: the retained "offline" produces no change event (Ergant_Status is restored), and the
+// MQTT items need a moment. Also fires when this file is (re)loaded.
+rule "ergant heat offline at startup"
+when
+    System started
+then
+    createTimer(now.plusSeconds(60), [ |
+        if (Ergant_Status.state.toString == "offline") {
+            gErgantHeatCmd.members.filter[ c | c.state.toString == "on" ].forEach[ c |
+                val String room = roomPart.apply(c.name).toLowerCase
+                val String split = HEAT_SPLIT.get(room)
+                if (split !== null && !heatOffSince.containsKey(room)) {
+                    logInfo("ergant_heat", "heat {}: ergant offline at startup, command on -> off if in heat", room)
+                    heatOffSince.put(room, now.toInstant.toEpochMilli)
+                    processOff.apply(room, split, espReady.apply(HEAT_ESP.get(room)), heatOffSince, heatOffTries)
+                }
+            ]
+        }
+    ])
+end
+
+
+// ─── Pending off: retry on mode change and ESP uptime tick (~60 s) ─────────
+rule "ergant heat off retry"
+when
+    Member of gSamsungSplitMode changed or
+    Item Split_Odu1_Esp_Uptime changed or
+    Item Split_Odu2_Esp_Uptime changed
+then
+    if (heatOffSince.isEmpty) return;
+    for (String room : new java.util.ArrayList<String>(heatOffSince.keySet)) {
+        processOff.apply(room, HEAT_SPLIT.get(room), espReady.apply(HEAT_ESP.get(room)), heatOffSince, heatOffTries)
+    }
+end
