@@ -40,15 +40,20 @@
 //   O  command on, split in heat: mosquitto_pub ... -r -t ergant/status -m offline → split off;
 //      then mosquitto_pub ... -r -t ergant/status -m online (ergant's watchdog republishes it on reconnect)
 
+import org.openhab.core.items.Item
 import org.openhab.core.model.script.ScriptServiceUtil
 import javax.measure.quantity.Temperature
+import java.util.ArrayList
+import java.util.List
+import java.util.Locale
+import java.util.Map
 
 // File-level state
-val java.util.Map<String, Timer>   heatOnTimers = newHashMap   // room → on-verify timer
-val java.util.Map<String, Integer> heatOnTries  = newHashMap   // room → on sequences sent
-val java.util.Map<String, Long>    heatOffSince = newHashMap   // room → pending off since (epoch ms)
-val java.util.Map<String, Integer> heatOffTries = newHashMap   // room → off commands sent
-val java.util.Map<String, String>  heatAsked    = newHashMap   // room → offer ts asked (before the item update lands)
+val Map<String, Timer>   heatOnTimers = newHashMap   // room → on-verify timer
+val Map<String, Integer> heatOnTries  = newHashMap   // room → on sequences sent
+val Map<String, Long>    heatOffSince = newHashMap   // room → pending off since (epoch ms)
+val Map<String, Integer> heatOffTries = newHashMap   // room → off commands sent
+val Map<String, String>  heatAsked    = newHashMap   // room → offer ts asked (before the item update lands)
 
 val String ERGANT_BROKER     = "mqtt:broker:9a73e5895e"
 val String TELEGRAM_BOT      = "telegram:telegramBot:Telegram_Bot"
@@ -65,8 +70,8 @@ val int    HEAT_ON_TRIES     = 4
 val int    OFFICE_HSWING_S   = 0
 
 // ergant room → split item prefix / ESP item prefix (items/Samsung_Split.items)
-val java.util.Map<String, String> HEAT_SPLIT = newHashMap("wohnzimmer" -> "Split_Wohnzimmer", "buero" -> "Split_BueroHerwig")
-val java.util.Map<String, String> HEAT_ESP   = newHashMap("wohnzimmer" -> "Split_Odu1",       "buero" -> "Split_Odu2")
+val Map<String, String> HEAT_SPLIT = newHashMap("wohnzimmer" -> "Split_Wohnzimmer", "buero" -> "Split_BueroHerwig")
+val Map<String, String> HEAT_ESP   = newHashMap("wohnzimmer" -> "Split_Odu1",       "buero" -> "Split_Odu2")
 
 // JSON field or null (missing path, JSON null, bad JSON)
 val Functions$Function2<String, String, String> jsonField = [ String json, String path |
@@ -94,7 +99,7 @@ val Functions$Function1<String, String> roomPart = [ String itemName |
 // withMode false: the split is already in heat, only the setpoint is re-sent (the swing timing
 // counts from power-on, so it is not repeated).
 val Procedures$Procedure4<String, Double, Integer, Boolean> sendHeat = [ String split, Double setpoint, Integer hswingS, Boolean withMode |
-    val String sp = String.format(java.util.Locale.ROOT, "%.1f °C", setpoint)
+    val String sp = String.format(Locale.ROOT, "%.1f °C", setpoint)
     if (withMode) {
         sendCommand(split + "_Mode", "heat")
         createTimer(now.plusSeconds(3), [ |
@@ -113,8 +118,8 @@ val Procedures$Procedure4<String, Double, Integer, Boolean> sendHeat = [ String 
 
 // One step of a pending off: done when the split is not in heat, waits while the ESP is not ready,
 // sends "off" otherwise (at most 3 times). Re-run on every mode change and ESP uptime tick (~60 s).
-val Procedures$Procedure5<String, String, Boolean, java.util.Map<String, Long>, java.util.Map<String, Integer>> processOff = [
-        String room, String split, Boolean ready, java.util.Map<String, Long> offSince, java.util.Map<String, Integer> offTries |
+val Procedures$Procedure5<String, String, Boolean, Map<String, Long>, Map<String, Integer>> processOff = [
+        String room, String split, Boolean ready, Map<String, Long> offSince, Map<String, Integer> offTries |
     val Long since = offSince.get(room)
     if (since !== null) {
         val String mode = ScriptServiceUtil.getItemRegistry.getItem(split + "_Mode").state.toString
@@ -155,7 +160,7 @@ then
         logError("ergant_heat", "room temp: MQTT broker {} not available", ERGANT_BROKER)
         return;
     }
-    val java.util.List<Item> temps = newArrayList
+    val List<Item> temps = newArrayList
     if (triggeringItem !== null) temps.add(triggeringItem) else temps.addAll(gErgantRoomTemp.members)
     for (Item i : temps) {
         var Number c = null
@@ -167,7 +172,7 @@ then
         if (c === null) {
             logDebug("ergant_heat", "room temp {}: state {} not sent", i.name, i.state)
         } else {
-            mqtt.publishMQTT("ergant/input/room_temp/" + i.name, String.format(java.util.Locale.ROOT, "%.2f", c.doubleValue), true)
+            mqtt.publishMQTT("ergant/input/room_temp/" + i.name, String.format(Locale.ROOT, "%.2f", c.doubleValue), true)
         }
     }
 end
@@ -181,7 +186,7 @@ when
     Member of gErgantHeatOffer changed or
     System started
 then
-    val java.util.List<Item> offers = newArrayList
+    val List<Item> offers = newArrayList
     if (triggeringItem !== null) offers.add(triggeringItem) else offers.addAll(gErgantHeatOffer.members)
     for (Item i : offers) {
         val String part = roomPart.apply(i.name)
@@ -439,7 +444,7 @@ when
     Item Split_Odu2_Esp_Uptime changed
 then
     if (heatOffSince.isEmpty) return;
-    for (String room : new java.util.ArrayList<String>(heatOffSince.keySet)) {
+    for (String room : new ArrayList<String>(heatOffSince.keySet)) {
         processOff.apply(room, HEAT_SPLIT.get(room), espReady.apply(HEAT_ESP.get(room)), heatOffSince, heatOffTries)
     }
 end
