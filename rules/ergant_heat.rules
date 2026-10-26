@@ -40,7 +40,6 @@
 //   O  command on, split in heat: mosquitto_pub ... -r -t ergant/status -m offline → split off;
 //      then mosquitto_pub ... -r -t ergant/status -m online (ergant's watchdog republishes it on reconnect)
 
-import org.openhab.core.items.Item
 import org.openhab.core.model.script.ScriptServiceUtil
 import javax.measure.quantity.Temperature
 import java.util.ArrayList
@@ -160,9 +159,9 @@ then
         logError("ergant_heat", "room temp: MQTT broker {} not available", ERGANT_BROKER)
         return;
     }
-    val List<Item> temps = newArrayList
-    if (triggeringItem !== null) temps.add(triggeringItem) else temps.addAll(gErgantRoomTemp.members)
-    for (Item i : temps) {
+    val List<GenericItem> temps = newArrayList
+    if (triggeringItem !== null) temps.add(triggeringItem) else gErgantRoomTemp.members.forEach[ m | temps.add(m as GenericItem) ]
+    for (GenericItem i : temps) {
         var Number c = null
         if (i.state instanceof QuantityType) {
             c = (i.state as QuantityType<Temperature>).toUnit("°C")
@@ -186,9 +185,9 @@ when
     Member of gErgantHeatOffer changed or
     System started
 then
-    val List<Item> offers = newArrayList
-    if (triggeringItem !== null) offers.add(triggeringItem) else offers.addAll(gErgantHeatOffer.members)
-    for (Item i : offers) {
+    val List<GenericItem> offers = newArrayList
+    if (triggeringItem !== null) offers.add(triggeringItem) else gErgantHeatOffer.members.forEach[ m | offers.add(m as GenericItem) ]
+    for (GenericItem i : offers) {
         val String part = roomPart.apply(i.name)
         val String room = part.toLowerCase
         if (i.state != NULL && i.state != UNDEF && i.state.toString.trim != "") {
