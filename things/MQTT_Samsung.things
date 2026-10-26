@@ -18,6 +18,10 @@
 // - WindFree only works in cool/dry/fan_only, the unit ignores it in heat mode.
 // - autoclean (0x4111): ON while the unit is off starts the coil drying (10-30 min, display 1-99 %).
 //   The IR remote does this on every OFF; a NASA OFF does not -> rules/samsung_split.rules starts it.
+// - Swing per axis (local component patch 2, firmware ba65b6c, both ESPs flashed 2026-10-26):
+//   swing_vertical (0x4011) / swing_horizontal
+//   (0x407E) change ONE axis. The climate swing_mode always writes both axes ("horizontal" stops a
+//   running up/down swing, "off" stops both) — rules use the per-axis switches.
 
 // ---------------------------------------------------------------------------------------------
 // Büro Herwig — NASA 20.00.01
@@ -30,6 +34,8 @@ Thing mqtt:topic:samsung_buero "Klimagerät Büro Herwig" (mqtt:broker:mqttbroke
     Type string : swing       "Swing"           [ stateTopic="samsung-odu2/climate/buero_split/swing_mode/state",         commandTopic="samsung-odu2/climate/buero_split/swing_mode/command",         retained=false, allowedStates="off,vertical,horizontal,both" ]
     Type string : preset      "Preset"          [ stateTopic="samsung-odu2/climate/buero_split/preset/state",             commandTopic="samsung-odu2/climate/buero_split/preset/command",             retained=false, allowedStates="none,WindFree" ]
     Type switch : autoclean   "Auto-Reinigung"  [ stateTopic="samsung-odu2/switch/buero_split_autoclean/state",               commandTopic="samsung-odu2/switch/buero_split_autoclean/command",               retained=false, on="ON", off="OFF" ]
+    Type switch : swing_vertical   "Swing auf/ab"       [ stateTopic="samsung-odu2/switch/buero_split_swing_vertikal/state",   commandTopic="samsung-odu2/switch/buero_split_swing_vertikal/command",   retained=false, on="ON", off="OFF" ]
+    Type switch : swing_horizontal "Swing links/rechts" [ stateTopic="samsung-odu2/switch/buero_split_swing_horizontal/state", commandTopic="samsung-odu2/switch/buero_split_swing_horizontal/command", retained=false, on="ON", off="OFF" ]
     Type number : temperature "Raumtemperatur"  [ stateTopic="samsung-odu2/sensor/buero_split_raumtemperatur/state", unit="°C" ]
     Type number : humidity    "Luftfeuchte"     [ stateTopic="samsung-odu2/sensor/buero_split_luftfeuchte/state", unit="%" ]
 }
@@ -45,6 +51,8 @@ Thing mqtt:topic:samsung_hobbyraum "Klimagerät Hobbyraum" (mqtt:broker:mqttbrok
     Type string : swing       "Swing"           [ stateTopic="samsung-odu2/climate/hobbyraum_split/swing_mode/state",         commandTopic="samsung-odu2/climate/hobbyraum_split/swing_mode/command",         retained=false, allowedStates="off,vertical,horizontal,both" ]
     Type string : preset      "Preset"          [ stateTopic="samsung-odu2/climate/hobbyraum_split/preset/state",             commandTopic="samsung-odu2/climate/hobbyraum_split/preset/command",             retained=false, allowedStates="none,WindFree" ]
     Type switch : autoclean   "Auto-Reinigung"  [ stateTopic="samsung-odu2/switch/hobbyraum_split_autoclean/state",               commandTopic="samsung-odu2/switch/hobbyraum_split_autoclean/command",               retained=false, on="ON", off="OFF" ]
+    Type switch : swing_vertical   "Swing auf/ab"       [ stateTopic="samsung-odu2/switch/hobbyraum_split_swing_vertikal/state",   commandTopic="samsung-odu2/switch/hobbyraum_split_swing_vertikal/command",   retained=false, on="ON", off="OFF" ]
+    Type switch : swing_horizontal "Swing links/rechts" [ stateTopic="samsung-odu2/switch/hobbyraum_split_swing_horizontal/state", commandTopic="samsung-odu2/switch/hobbyraum_split_swing_horizontal/command", retained=false, on="ON", off="OFF" ]
     Type number : temperature "Raumtemperatur"  [ stateTopic="samsung-odu2/sensor/hobbyraum_split_raumtemperatur/state", unit="°C" ]
     Type number : humidity    "Luftfeuchte"     [ stateTopic="samsung-odu2/sensor/hobbyraum_split_luftfeuchte/state", unit="%" ]
 }
@@ -84,6 +92,8 @@ Thing mqtt:topic:samsung_wohnzimmer "Klimagerät Wohnzimmer" (mqtt:broker:mqttbr
     Type string : swing       "Swing"           [ stateTopic="samsung-odu1/climate/wohnzimmer_split/swing_mode/state",         commandTopic="samsung-odu1/climate/wohnzimmer_split/swing_mode/command",         retained=false, allowedStates="off,vertical,horizontal,both" ]
     Type string : preset      "Preset"          [ stateTopic="samsung-odu1/climate/wohnzimmer_split/preset/state",             commandTopic="samsung-odu1/climate/wohnzimmer_split/preset/command",             retained=false, allowedStates="none,WindFree" ]
     Type switch : autoclean   "Auto-Reinigung"  [ stateTopic="samsung-odu1/switch/wohnzimmer_split_autoclean/state",               commandTopic="samsung-odu1/switch/wohnzimmer_split_autoclean/command",               retained=false, on="ON", off="OFF" ]
+    Type switch : swing_vertical   "Swing auf/ab"       [ stateTopic="samsung-odu1/switch/wohnzimmer_split_swing_vertikal/state",   commandTopic="samsung-odu1/switch/wohnzimmer_split_swing_vertikal/command",   retained=false, on="ON", off="OFF" ]
+    Type switch : swing_horizontal "Swing links/rechts" [ stateTopic="samsung-odu1/switch/wohnzimmer_split_swing_horizontal/state", commandTopic="samsung-odu1/switch/wohnzimmer_split_swing_horizontal/command", retained=false, on="ON", off="OFF" ]
     Type number : temperature "Raumtemperatur"  [ stateTopic="samsung-odu1/sensor/wohnzimmer_split_raumtemperatur/state", unit="°C" ]
     Type number : humidity    "Luftfeuchte"     [ stateTopic="samsung-odu1/sensor/wohnzimmer_split_luftfeuchte/state", unit="%" ]
 }
@@ -99,6 +109,8 @@ Thing mqtt:topic:samsung_wintergarten "Klimagerät Wintergarten" (mqtt:broker:mq
     Type string : swing       "Swing"           [ stateTopic="samsung-odu1/climate/wintergarten_split/swing_mode/state",         commandTopic="samsung-odu1/climate/wintergarten_split/swing_mode/command",         retained=false, allowedStates="off,vertical,horizontal,both" ]
     Type string : preset      "Preset"          [ stateTopic="samsung-odu1/climate/wintergarten_split/preset/state",             commandTopic="samsung-odu1/climate/wintergarten_split/preset/command",             retained=false, allowedStates="none,WindFree" ]
     Type switch : autoclean   "Auto-Reinigung"  [ stateTopic="samsung-odu1/switch/wintergarten_split_autoclean/state",               commandTopic="samsung-odu1/switch/wintergarten_split_autoclean/command",               retained=false, on="ON", off="OFF" ]
+    Type switch : swing_vertical   "Swing auf/ab"       [ stateTopic="samsung-odu1/switch/wintergarten_split_swing_vertikal/state",   commandTopic="samsung-odu1/switch/wintergarten_split_swing_vertikal/command",   retained=false, on="ON", off="OFF" ]
+    Type switch : swing_horizontal "Swing links/rechts" [ stateTopic="samsung-odu1/switch/wintergarten_split_swing_horizontal/state", commandTopic="samsung-odu1/switch/wintergarten_split_swing_horizontal/command", retained=false, on="ON", off="OFF" ]
     Type number : temperature "Raumtemperatur"  [ stateTopic="samsung-odu1/sensor/wintergarten_split_raumtemperatur/state", unit="°C" ]
     Type number : humidity    "Luftfeuchte"     [ stateTopic="samsung-odu1/sensor/wintergarten_split_luftfeuchte/state", unit="%" ]
 }

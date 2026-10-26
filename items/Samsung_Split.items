@@ -8,6 +8,8 @@
 //
 // Rules: ignore climate states for ~60 s after an ESP reboot (boot default mode "off"/setpoint "nan"),
 //        see Split_Odu2_Esp_Uptime. Commands are never retained (things file).
+//        Swing: change ONE axis with Split_*_SwingVertical / _SwingHorizontal (autoupdate off: the state is the
+//        unit's confirmation); Split_*_Swing (climate swing_mode) always writes both axes. Firmware ba65b6c (2026-10-26).
 
 // ---------------------------------------------------------------------------------------------
 // Groups
@@ -34,6 +36,8 @@ String                  Split_BueroHerwig_FanMode       "Lüfterstufe [%s]"     
 String                  Split_BueroHerwig_Swing         "Swing [%s]"                        <if:mdi:arrow-oscillating>      (gSplitBueroHerwig) ["Control"]                 {channel="mqtt:topic:samsung_buero:swing", stateDescription=""[options="off=Aus,vertical=Vertikal,horizontal=Horizontal,both=Beides"], commandDescription=""[options="off=Aus,vertical=Vertikal,horizontal=Horizontal,both=Beides"]}
 String                  Split_BueroHerwig_Preset        "Preset [%s]"                       <if:mdi:weather-windy>          (gSplitBueroHerwig) ["Control","Mode"]          {channel="mqtt:topic:samsung_buero:preset", stateDescription=""[options="none=Kein,WindFree=WindFree"], commandDescription=""[options="none=Kein,WindFree=WindFree (nur Kühlen/Entfeuchten/Lüften)"]}
 Switch                  Split_BueroHerwig_AutoClean     "Auto-Reinigung [%s]"              <if:mdi:air-filter>             (gSplitBueroHerwig)   ["Control"]                 {channel="mqtt:topic:samsung_buero:autoclean"}
+Switch                  Split_BueroHerwig_SwingVertical    "Swing auf/ab [%s]"                <if:mdi:arrow-up-down>          (gSplitBueroHerwig)   ["Control"]                 {channel="mqtt:topic:samsung_buero:swing_vertical", autoupdate="false"}
+Switch                  Split_BueroHerwig_SwingHorizontal  "Swing links/rechts [%s]"          <if:mdi:arrow-left-right>       (gSplitBueroHerwig)   ["Control"]                 {channel="mqtt:topic:samsung_buero:swing_horizontal", autoupdate="false"}
 Number:Temperature      Split_BueroHerwig_Temperature   "Raumtemperatur (Klima) [%.1f °C]"  <if:mdi:thermometer>            (gSplitBueroHerwig) ["Measurement","Temperature"] {unit="°C", channel="mqtt:topic:samsung_buero:temperature"}
 Number:Dimensionless    Split_BueroHerwig_Humidity      "Luftfeuchte (Klima) [%.0f %%]"     <if:mdi:water-percent>          (gSplitBueroHerwig) ["Measurement","Humidity"]  {unit="%", channel="mqtt:topic:samsung_buero:humidity"}
 
@@ -47,6 +51,8 @@ String                  Split_Hobbyraum_FanMode         "Lüfterstufe [%s]"     
 String                  Split_Hobbyraum_Swing           "Swing [%s]"                        <if:mdi:arrow-oscillating>      (gSplitHobbyraum)   ["Control"]                 {channel="mqtt:topic:samsung_hobbyraum:swing", stateDescription=""[options="off=Aus,vertical=Vertikal,horizontal=Horizontal,both=Beides"], commandDescription=""[options="off=Aus,vertical=Vertikal,horizontal=Horizontal,both=Beides"]}
 String                  Split_Hobbyraum_Preset          "Preset [%s]"                       <if:mdi:weather-windy>          (gSplitHobbyraum)   ["Control","Mode"]          {channel="mqtt:topic:samsung_hobbyraum:preset", stateDescription=""[options="none=Kein,WindFree=WindFree"], commandDescription=""[options="none=Kein,WindFree=WindFree (nur Kühlen/Entfeuchten/Lüften)"]}
 Switch                  Split_Hobbyraum_AutoClean       "Auto-Reinigung [%s]"              <if:mdi:air-filter>             (gSplitHobbyraum)     ["Control"]                 {channel="mqtt:topic:samsung_hobbyraum:autoclean"}
+Switch                  Split_Hobbyraum_SwingVertical    "Swing auf/ab [%s]"                <if:mdi:arrow-up-down>          (gSplitHobbyraum)   ["Control"]                 {channel="mqtt:topic:samsung_hobbyraum:swing_vertical", autoupdate="false"}
+Switch                  Split_Hobbyraum_SwingHorizontal  "Swing links/rechts [%s]"          <if:mdi:arrow-left-right>       (gSplitHobbyraum)   ["Control"]                 {channel="mqtt:topic:samsung_hobbyraum:swing_horizontal", autoupdate="false"}
 Number:Temperature      Split_Hobbyraum_Temperature     "Raumtemperatur (Klima) [%.1f °C]"  <if:mdi:thermometer>            (gSplitHobbyraum)   ["Measurement","Temperature"] {unit="°C", channel="mqtt:topic:samsung_hobbyraum:temperature"}
 Number:Dimensionless    Split_Hobbyraum_Humidity        "Luftfeuchte (Klima) [%.0f %%]"     <if:mdi:water-percent>          (gSplitHobbyraum)   ["Measurement","Humidity"]  {unit="%", channel="mqtt:topic:samsung_hobbyraum:humidity"}
 
@@ -79,6 +85,8 @@ String                  Split_Wohnzimmer_FanMode       "Lüfterstufe [%s]"      
 String                  Split_Wohnzimmer_Swing         "Swing [%s]"                        <if:mdi:arrow-oscillating>      (gSplitWohnzimmer)  ["Control"]                 {channel="mqtt:topic:samsung_wohnzimmer:swing", stateDescription=""[options="off=Aus,vertical=Vertikal,horizontal=Horizontal,both=Beides"], commandDescription=""[options="off=Aus,vertical=Vertikal,horizontal=Horizontal,both=Beides"]}
 String                  Split_Wohnzimmer_Preset        "Preset [%s]"                       <if:mdi:weather-windy>          (gSplitWohnzimmer)  ["Control","Mode"]          {channel="mqtt:topic:samsung_wohnzimmer:preset", stateDescription=""[options="none=Kein,WindFree=WindFree"], commandDescription=""[options="none=Kein,WindFree=WindFree (nur Kühlen/Entfeuchten/Lüften)"]}
 Switch                  Split_Wohnzimmer_AutoClean      "Auto-Reinigung [%s]"              <if:mdi:air-filter>             (gSplitWohnzimmer)    ["Control"]                 {channel="mqtt:topic:samsung_wohnzimmer:autoclean"}
+Switch                  Split_Wohnzimmer_SwingVertical    "Swing auf/ab [%s]"                <if:mdi:arrow-up-down>          (gSplitWohnzimmer)   ["Control"]                 {channel="mqtt:topic:samsung_wohnzimmer:swing_vertical", autoupdate="false"}
+Switch                  Split_Wohnzimmer_SwingHorizontal  "Swing links/rechts [%s]"          <if:mdi:arrow-left-right>       (gSplitWohnzimmer)   ["Control"]                 {channel="mqtt:topic:samsung_wohnzimmer:swing_horizontal", autoupdate="false"}
 Number:Temperature      Split_Wohnzimmer_Temperature   "Raumtemperatur (Klima) [%.1f °C]"  <if:mdi:thermometer>            (gSplitWohnzimmer)  ["Measurement","Temperature"] {unit="°C", channel="mqtt:topic:samsung_wohnzimmer:temperature"}
 Number:Dimensionless    Split_Wohnzimmer_Humidity      "Luftfeuchte (Klima) [%.0f %%]"     <if:mdi:water-percent>          (gSplitWohnzimmer)  ["Measurement","Humidity"]  {unit="%", channel="mqtt:topic:samsung_wohnzimmer:humidity"}
 
@@ -92,6 +100,8 @@ String                  Split_Wintergarten_FanMode         "Lüfterstufe [%s]"  
 String                  Split_Wintergarten_Swing           "Swing [%s]"                        <if:mdi:arrow-oscillating>      (gSplitWintergarten) ["Control"]                 {channel="mqtt:topic:samsung_wintergarten:swing", stateDescription=""[options="off=Aus,vertical=Vertikal,horizontal=Horizontal,both=Beides"], commandDescription=""[options="off=Aus,vertical=Vertikal,horizontal=Horizontal,both=Beides"]}
 String                  Split_Wintergarten_Preset          "Preset [%s]"                       <if:mdi:weather-windy>          (gSplitWintergarten) ["Control","Mode"]          {channel="mqtt:topic:samsung_wintergarten:preset", stateDescription=""[options="none=Kein,WindFree=WindFree"], commandDescription=""[options="none=Kein,WindFree=WindFree (nur Kühlen/Entfeuchten/Lüften)"]}
 Switch                  Split_Wintergarten_AutoClean    "Auto-Reinigung [%s]"              <if:mdi:air-filter>             (gSplitWintergarten)  ["Control"]                 {channel="mqtt:topic:samsung_wintergarten:autoclean"}
+Switch                  Split_Wintergarten_SwingVertical    "Swing auf/ab [%s]"                <if:mdi:arrow-up-down>          (gSplitWintergarten)   ["Control"]                 {channel="mqtt:topic:samsung_wintergarten:swing_vertical", autoupdate="false"}
+Switch                  Split_Wintergarten_SwingHorizontal  "Swing links/rechts [%s]"          <if:mdi:arrow-left-right>       (gSplitWintergarten)   ["Control"]                 {channel="mqtt:topic:samsung_wintergarten:swing_horizontal", autoupdate="false"}
 Number:Temperature      Split_Wintergarten_Temperature     "Raumtemperatur (Klima) [%.1f °C]"  <if:mdi:thermometer>            (gSplitWintergarten) ["Measurement","Temperature"] {unit="°C", channel="mqtt:topic:samsung_wintergarten:temperature"}
 Number:Dimensionless    Split_Wintergarten_Humidity        "Luftfeuchte (Klima) [%.0f %%]"     <if:mdi:water-percent>          (gSplitWintergarten) ["Measurement","Humidity"]  {unit="%", channel="mqtt:topic:samsung_wintergarten:humidity"}
 

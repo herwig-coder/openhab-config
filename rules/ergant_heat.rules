@@ -10,9 +10,16 @@
 //   Q  Offer ergant/heat/<room>/offer non-empty with a new ts → Telegram "Ja" / "Nein (heute nicht)";
 //      answer → ergant/heat/<room>/answer yes/no (not retained). Ergant_Heat<Room>_AskedTs is persisted.
 //   1  ergant/heat/<room> off → on while ergant/status is online → mode heat, then setpoint_c from
-//      ergant/heat/<room>/state; no swing command, except office: horizontal swing
-//      OFFICE_HSWING_DELAY_S after the switch-on for OFFICE_HSWING_S (louvers to the door).
-//      Verified every HEAT_VERIFY_S, re-sent up to HEAT_ON_TRIES times, then Telegram.
+//      ergant/heat/<room>/state. Verified every HEAT_VERIFY_S, re-sent up to HEAT_ON_TRIES times, then
+//      Telegram. No swing command, except the office door sequence (D).
+//   D  Office: heat confirmed → OFFICE_DOOR_WAIT_S (pre-warm, the unit refuses swing until the fan runs)
+//      → Split_BueroHerwig_SwingHorizontal ON → OFF OFFICE_DOOR_SWEEP_MS after the unit confirms ON →
+//      left/right louvers at the door stop. Per-axis switch only; up/down stays at the unit default
+//      (never commanded), never the climate swing_mode (it writes both axes). Measured 2026-10-26,
+//      home-IT docs projects/samsung-split-nasa.md "Ergebnis Türausrichtung Büro": switch-on centres
+//      L/R, the unit remembers the sweep direction, one sweep ~15.5 s, OFF freezes the louver. Ending at
+//      the door stop makes the next start go wall-first (self-stabilising); remote swing in between can
+//      end one cycle at the wall (accepted).
 //   2  ergant/heat/<room> on → off → off, only if the split is in heat.
 //   3  ergant/heat/<room>/event {"event":"manual_off"} → off, only if the split is in heat.
 //   O  ergant/status offline (change, any command update while offline, 60 s after start) → off for
@@ -31,8 +38,10 @@
 //      same message again, or restart openHAB → no second question; "ts":1001 → asked again
 //   1  mosquitto_pub ... -r -t ergant/heat/buero/state -m '{"state":"on","reason":"heating","setpoint_c":25}'
 //      mosquitto_pub ... -r -t ergant/heat/buero -m off   then   ... -m on
-//        → Split_BueroHerwig_Mode heat, setpoint 25 °C; after 10 s swing horizontal (both if vertical
-//          was on), after 6 s more off (vertical); log "heat buero: confirmed"; Wohnzimmer: swing untouched
+//        → Split_BueroHerwig_Mode heat, setpoint 25 °C; log "heat buero: confirmed"; Wohnzimmer: swing untouched
+//   D  ~3 min after "confirmed": Split_BueroHerwig_SwingHorizontal ON (confirmed by the unit), 23.5 s later
+//      OFF → louvers at the door stop; Split_BueroHerwig_SwingVertical unchanged. Three cycles in a row
+//      (command off/on) must each end at the door. Command off during the 3 min wait → no swing
 //   NULL → on: leave ergant/heat/buero retained "on", restart openHAB → no command to the split
 //   2  mosquitto_pub ... -r -t ergant/heat/buero -m off → split off (and auto-clean, samsung_split.rules);
 //      put the split in cool by hand, publish on/off again → on switches it to heat (ergant decides);
@@ -67,10 +76,14 @@ val double HEAT_SETPOINT_DEFAULT = 25.0   // only if ergant/heat/<room>/state ha
 // for the day — accepted (safe side), the Telegram on failure covers it.
 val int    HEAT_VERIFY_S     = 30
 val int    HEAT_ON_TRIES     = 4
-// Office door swing (measured 2026-10-26, ergant planner.md): louvers return to the middle on every
-// switch-on; start the horizontal swing 10 s after it, stop after 6 s (middle → door position).
-val int    OFFICE_HSWING_DELAY_S = 10
-val int    OFFICE_HSWING_S       = 6
+// Office door sequence (D). Pre-warm measured 2:00–2:37 min (warm unit, room 25 °C, outside 12 °C;
+// a cold start is likely longer). TODO: replace the fixed wait once the fan start is visible on the bus,
+// and check whether the unit accepts a swing during pre-warm (untested, the remote refuses it).
+val int    OFFICE_DOOR_WAIT_S    = 180
+val long   OFFICE_DOOR_SWEEP_MS  = 23500       // after the unit confirms ON: centre → door stop
+val int    OFFICE_DOOR_CONFIRM_S = 10          // no ON confirmation within this → OFF, door skipped
+var Timer  doorTimer = null
+var String doorPhase = "idle"                  // idle | wait | confirm | sweep
 
 // ergant room → split item prefix / ESP item prefix (items/Samsung_Split.items)
 val Map<String, String> HEAT_SPLIT = newHashMap("wohnzimmer" -> "Split_Wohnzimmer", "buero" -> "Split_BueroHerwig")
@@ -98,37 +111,14 @@ val Functions$Function1<String, String> roomPart = [ String itemName |
     itemName.replace("Ergant_Heat", "").replace("_Cmd", "").replace("_Offer", "")
 ]
 
-// Mode heat, then (3 s later, the unit ignores a setpoint while off) the setpoint. No swing command
-// in general (contract: the up/down swing is not touched). Office (hswingS > 0): timed horizontal
-// swing hswingDelayS after the switch-on, stopped after hswingS — the louvers stay at the door.
-// Swing is ONE setting on these units (off/vertical/horizontal/both = two bits in one NASA request):
-// "horizontal" alone would stop a running up/down swing and "off" stops both, so an active
-// vertical component is kept: vertical/both → "both", then back to "vertical"; off/horizontal →
-// "horizontal", then "off". Skipped when the unit is not (yet) in heat — the verify step re-sends
-// the whole sequence then.
-// withMode false: the split is already in heat, only the setpoint is re-sent (the louvers return
-// to the middle only on a switch-on, so the timed swing is not repeated).
-val Procedures$Procedure5<String, Double, Integer, Integer, Boolean> sendHeat = [ String split, Double setpoint, Integer hswingDelayS, Integer hswingS, Boolean withMode |
+// Mode heat, then (3 s later, the unit ignores a setpoint while off) the setpoint. No swing here: the
+// up/down swing is never touched, the office door sequence (D) starts once heat is confirmed.
+// withMode false: the split is already in heat, only the setpoint is re-sent.
+val Procedures$Procedure3<String, Double, Boolean> sendHeat = [ String split, Double setpoint, Boolean withMode |
     val String sp = String.format(Locale.ROOT, "%.1f °C", setpoint)
     if (withMode) {
         sendCommand(split + "_Mode", "heat")
         createTimer(now.plusSeconds(3), [ | sendCommand(split + "_Setpoint", sp) ])
-        if (hswingS > 0) {
-            createTimer(now.plusSeconds(hswingDelayS), [ |
-                val reg = ScriptServiceUtil.getItemRegistry
-                val String mode  = reg.getItem(split + "_Mode").state.toString
-                val String swing = reg.getItem(split + "_Swing").state.toString
-                if (mode != "heat") {
-                    logInfo("ergant_heat", "{}: mode {} after {} s, door swing skipped", split, mode, hswingDelayS)
-                } else {
-                    val boolean vertical = swing == "vertical" || swing == "both"
-                    val String stopTo = if (vertical) "vertical" else "off"
-                    logInfo("ergant_heat", "{}: door swing for {} s (swing was {})", split, hswingS, swing)
-                    sendCommand(split + "_Swing", if (vertical) "both" else "horizontal")
-                    createTimer(now.plusSeconds(hswingS), [ | sendCommand(split + "_Swing", stopTo) ])
-                }
-            ])
-        }
     } else {
         sendCommand(split + "_Setpoint", sp)
     }
@@ -308,7 +298,6 @@ then
     if (setpoint < 16.0) setpoint = 16.0
     if (setpoint > 30.0) setpoint = 30.0
     val double sp = setpoint
-    val int hswing = if (room == "buero") OFFICE_HSWING_S else 0
 
     // An on supersedes a pending off
     heatOffSince.remove(room)
@@ -318,7 +307,7 @@ then
 
     if (espReady.apply(HEAT_ESP.get(room))) {
         logInfo("ergant_heat", "heat {}: {} -> heat {} °C (was {})", room, split, sp, ScriptServiceUtil.getItemRegistry.getItem(split + "_Mode").state)
-        sendHeat.apply(split, sp, OFFICE_HSWING_DELAY_S, hswing, true)
+        sendHeat.apply(split, sp, true)
         heatOnTries.put(room, 1)
     } else {
         logInfo("ergant_heat", "heat {}: ESP of {} not ready, heat waits for the verify step", room, split)
@@ -339,6 +328,40 @@ then
         } else if (ready && mode == "heat" && spOk) {
             heatOnTimers.remove(room)
             logInfo("ergant_heat", "heat {}: confirmed heat {} °C", room, sp)
+            if (room == "buero") {
+                // D: wait for the pre-warm, then aim the left/right louvers at the door
+                if (doorTimer !== null) doorTimer.cancel()
+                doorPhase = "wait"
+                logInfo("ergant_heat", "heat buero: door swing in {} s", OFFICE_DOOR_WAIT_S)
+                doorTimer = createTimer(now.plusSeconds(OFFICE_DOOR_WAIT_S), [ |
+                    doorTimer = null
+                    if (Ergant_HeatBuero_Cmd.state.toString != "on" || Split_BueroHerwig_Mode.state.toString != "heat" || !espReady.apply("Split_Odu2")) {
+                        doorPhase = "idle"
+                        logInfo("ergant_heat", "heat buero: door swing skipped (command {}, mode {})", Ergant_HeatBuero_Cmd.state, Split_BueroHerwig_Mode.state)
+                    } else if (Split_BueroHerwig_SwingHorizontal.state == ON) {
+                        // Already sweeping (remote): stop one sweep window from now, direction unknown
+                        doorPhase = "sweep"
+                        logInfo("ergant_heat", "heat buero: left/right swing already on, OFF in {} ms", OFFICE_DOOR_SWEEP_MS)
+                        doorTimer = createTimer(now.plusNanos(OFFICE_DOOR_SWEEP_MS * 1000000L), [ |
+                            doorTimer = null
+                            doorPhase = "idle"
+                            Split_BueroHerwig_SwingHorizontal.sendCommand(OFF)
+                        ])
+                    } else {
+                        doorPhase = "confirm"
+                        logInfo("ergant_heat", "heat buero: door swing, left/right swing ON")
+                        Split_BueroHerwig_SwingHorizontal.sendCommand(ON)
+                        doorTimer = createTimer(now.plusSeconds(OFFICE_DOOR_CONFIRM_S), [ |
+                            doorTimer = null
+                            if (doorPhase == "confirm") {
+                                doorPhase = "idle"
+                                logWarn("ergant_heat", "heat buero: left/right swing ON not confirmed within {} s, OFF, door skipped", OFFICE_DOOR_CONFIRM_S)
+                                Split_BueroHerwig_SwingHorizontal.sendCommand(OFF)
+                            }
+                        ])
+                    }
+                ])
+            }
         } else if (tries >= HEAT_ON_TRIES) {
             heatOnTimers.remove(room)
             logWarn("ergant_heat", "heat {}: {} not in heat {} °C after {} tries (mode {}, setpoint {}, ESP ready {})", room, split, sp, tries, mode, spState, ready)
@@ -347,7 +370,7 @@ then
         } else {
             if (ready) {
                 logInfo("ergant_heat", "heat {}: not confirmed (mode {}, setpoint {}), re-sending (try {})", room, mode, spState, tries + 1)
-                sendHeat.apply(split, sp, OFFICE_HSWING_DELAY_S, hswing, mode != "heat")
+                sendHeat.apply(split, sp, mode != "heat")
                 heatOnTries.put(room, tries + 1)
             } else {
                 logInfo("ergant_heat", "heat {}: ESP of {} not ready, waiting", room, split)
@@ -465,4 +488,36 @@ then
     for (String room : new ArrayList<String>(heatOffSince.keySet)) {
         processOff.apply(room, HEAT_SPLIT.get(room), espReady.apply(HEAT_ESP.get(room)), heatOffSince, heatOffTries)
     }
+end
+
+
+// ─── D: office door sequence — ON confirmed → OFF after one measured sweep ─
+// The item has autoupdate="false", so this change is the unit's own confirmation.
+rule "ergant heat office door swing confirmed"
+when
+    Item Split_BueroHerwig_SwingHorizontal changed to ON
+then
+    if (doorPhase != "confirm") return;
+    if (doorTimer !== null) doorTimer.cancel()
+    doorPhase = "sweep"
+    logInfo("ergant_heat", "heat buero: left/right swing confirmed, OFF in {} ms", OFFICE_DOOR_SWEEP_MS)
+    doorTimer = createTimer(now.plusNanos(OFFICE_DOOR_SWEEP_MS * 1000000L), [ |
+        doorTimer = null
+        doorPhase = "idle"
+        logInfo("ergant_heat", "heat buero: left/right swing OFF (door position)")
+        Split_BueroHerwig_SwingHorizontal.sendCommand(OFF)
+    ])
+end
+
+// Leaving heat during the pre-warm wait cancels the door sequence (any off path, or a person).
+// A running sweep (confirm/sweep) always finishes with its OFF, so the swing never keeps running.
+rule "ergant heat office door swing cancel"
+when
+    Item Split_BueroHerwig_Mode changed from "heat"
+then
+    if (doorPhase != "wait") return;
+    if (doorTimer !== null) doorTimer.cancel()
+    doorTimer = null
+    doorPhase = "idle"
+    logInfo("ergant_heat", "heat buero: left heat ({}), door swing cancelled", Split_BueroHerwig_Mode.state)
 end
