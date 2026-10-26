@@ -10,7 +10,8 @@
 //   Q  Offer ergant/heat/<room>/offer non-empty with a new ts → Telegram "Ja" / "Nein (heute nicht)";
 //      answer → ergant/heat/<room>/answer yes/no (not retained). Ergant_Heat<Room>_AskedTs is persisted.
 //   1  ergant/heat/<room> off → on while ergant/status is online → mode heat, then setpoint_c from
-//      ergant/heat/<room>/state, swing off (office: horizontal for OFFICE_HSWING_S, then off).
+//      ergant/heat/<room>/state; no swing command, except office: horizontal swing
+//      OFFICE_HSWING_DELAY_S after the switch-on for OFFICE_HSWING_S (louvers to the door).
 //      Verified every HEAT_VERIFY_S, re-sent up to HEAT_ON_TRIES times, then Telegram.
 //   2  ergant/heat/<room> on → off → off, only if the split is in heat.
 //   3  ergant/heat/<room>/event {"event":"manual_off"} → off, only if the split is in heat.
@@ -30,7 +31,8 @@
 //      same message again, or restart openHAB → no second question; "ts":1001 → asked again
 //   1  mosquitto_pub ... -r -t ergant/heat/buero/state -m '{"state":"on","reason":"heating","setpoint_c":25}'
 //      mosquitto_pub ... -r -t ergant/heat/buero -m off   then   ... -m on
-//        → Split_BueroHerwig_Mode heat, setpoint 25 °C, swing off; log "heat buero: confirmed"
+//        → Split_BueroHerwig_Mode heat, setpoint 25 °C; after 10 s swing horizontal (both if vertical
+//          was on), after 6 s more off (vertical); log "heat buero: confirmed"; Wohnzimmer: swing untouched
 //   NULL → on: leave ergant/heat/buero retained "on", restart openHAB → no command to the split
 //   2  mosquitto_pub ... -r -t ergant/heat/buero -m off → split off (and auto-clean, samsung_split.rules);
 //      put the split in cool by hand, publish on/off again → on switches it to heat (ergant decides);
@@ -65,8 +67,10 @@ val double HEAT_SETPOINT_DEFAULT = 25.0   // only if ergant/heat/<room>/state ha
 // for the day — accepted (safe side), the Telegram on failure covers it.
 val int    HEAT_VERIFY_S     = 30
 val int    HEAT_ON_TRIES     = 4
-// TODO: measure T (s) — horizontal swing from power-on until the louvers point to the door. 0 = no swing.
-val int    OFFICE_HSWING_S   = 0
+// Office door swing (measured 2026-10-26, ergant planner.md): louvers return to the middle on every
+// switch-on; start the horizontal swing 10 s after it, stop after 6 s (middle → door position).
+val int    OFFICE_HSWING_DELAY_S = 10
+val int    OFFICE_HSWING_S       = 6
 
 // ergant room → split item prefix / ESP item prefix (items/Samsung_Split.items)
 val Map<String, String> HEAT_SPLIT = newHashMap("wohnzimmer" -> "Split_Wohnzimmer", "buero" -> "Split_BueroHerwig")
@@ -94,22 +98,37 @@ val Functions$Function1<String, String> roomPart = [ String itemName |
     itemName.replace("Ergant_Heat", "").replace("_Cmd", "").replace("_Offer", "")
 ]
 
-// Mode heat, then (3 s later, the unit ignores a setpoint while off) setpoint + swing.
-// withMode false: the split is already in heat, only the setpoint is re-sent (the swing timing
-// counts from power-on, so it is not repeated).
-val Procedures$Procedure4<String, Double, Integer, Boolean> sendHeat = [ String split, Double setpoint, Integer hswingS, Boolean withMode |
+// Mode heat, then (3 s later, the unit ignores a setpoint while off) the setpoint. No swing command
+// in general (contract: the up/down swing is not touched). Office (hswingS > 0): timed horizontal
+// swing hswingDelayS after the switch-on, stopped after hswingS — the louvers stay at the door.
+// Swing is ONE setting on these units (off/vertical/horizontal/both = two bits in one NASA request):
+// "horizontal" alone would stop a running up/down swing and "off" stops both, so an active
+// vertical component is kept: vertical/both → "both", then back to "vertical"; off/horizontal →
+// "horizontal", then "off". Skipped when the unit is not (yet) in heat — the verify step re-sends
+// the whole sequence then.
+// withMode false: the split is already in heat, only the setpoint is re-sent (the louvers return
+// to the middle only on a switch-on, so the timed swing is not repeated).
+val Procedures$Procedure5<String, Double, Integer, Integer, Boolean> sendHeat = [ String split, Double setpoint, Integer hswingDelayS, Integer hswingS, Boolean withMode |
     val String sp = String.format(Locale.ROOT, "%.1f °C", setpoint)
     if (withMode) {
         sendCommand(split + "_Mode", "heat")
-        createTimer(now.plusSeconds(3), [ |
-            sendCommand(split + "_Setpoint", sp)
-            if (hswingS > 0) {
-                sendCommand(split + "_Swing", "horizontal")
-                createTimer(now.plusSeconds(hswingS), [ | sendCommand(split + "_Swing", "off") ])
-            } else {
-                sendCommand(split + "_Swing", "off")
-            }
-        ])
+        createTimer(now.plusSeconds(3), [ | sendCommand(split + "_Setpoint", sp) ])
+        if (hswingS > 0) {
+            createTimer(now.plusSeconds(hswingDelayS), [ |
+                val reg = ScriptServiceUtil.getItemRegistry
+                val String mode  = reg.getItem(split + "_Mode").state.toString
+                val String swing = reg.getItem(split + "_Swing").state.toString
+                if (mode != "heat") {
+                    logInfo("ergant_heat", "{}: mode {} after {} s, door swing skipped", split, mode, hswingDelayS)
+                } else {
+                    val boolean vertical = swing == "vertical" || swing == "both"
+                    val String stopTo = if (vertical) "vertical" else "off"
+                    logInfo("ergant_heat", "{}: door swing for {} s (swing was {})", split, hswingS, swing)
+                    sendCommand(split + "_Swing", if (vertical) "both" else "horizontal")
+                    createTimer(now.plusSeconds(hswingS), [ | sendCommand(split + "_Swing", stopTo) ])
+                }
+            ])
+        }
     } else {
         sendCommand(split + "_Setpoint", sp)
     }
@@ -299,7 +318,7 @@ then
 
     if (espReady.apply(HEAT_ESP.get(room))) {
         logInfo("ergant_heat", "heat {}: {} -> heat {} °C (was {})", room, split, sp, ScriptServiceUtil.getItemRegistry.getItem(split + "_Mode").state)
-        sendHeat.apply(split, sp, hswing, true)
+        sendHeat.apply(split, sp, OFFICE_HSWING_DELAY_S, hswing, true)
         heatOnTries.put(room, 1)
     } else {
         logInfo("ergant_heat", "heat {}: ESP of {} not ready, heat waits for the verify step", room, split)
@@ -328,7 +347,7 @@ then
         } else {
             if (ready) {
                 logInfo("ergant_heat", "heat {}: not confirmed (mode {}, setpoint {}), re-sending (try {})", room, mode, spState, tries + 1)
-                sendHeat.apply(split, sp, hswing, mode != "heat")
+                sendHeat.apply(split, sp, OFFICE_HSWING_DELAY_S, hswing, mode != "heat")
                 heatOnTries.put(room, tries + 1)
             } else {
                 logInfo("ergant_heat", "heat {}: ESP of {} not ready, waiting", room, split)
