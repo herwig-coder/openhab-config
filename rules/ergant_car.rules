@@ -9,6 +9,15 @@
 //   B  Socket OFF → ON while charge is "off" and A sent nothing in the last 10 s → ergant/car/override "urgent".
 //   C  Once per session (state charging/paused, soc_hint null, new `since`) a Telegram query for the
 //      charge level → ergant/car/soc_hint. Ergant_CarSocAskedSince is persisted, so a restart asks nothing.
+//      Also mirrors override_mode into Ergant_CarSurplusSwitch (postUpdate, no command).
+//   D  Question from ergant (retained ergant/car/question, new `ts`): kind "override" → Telegram query
+//      "Laden" / "Override behalten" with reply_id eo_<ts>; kinds "plug" / "level" → rule C's
+//      charge-level query (same buttons and answer handler → soc_hint). Ergant_CarQuestionTs is persisted.
+//   E  Answer to D's override query → ergant/car/answer "charge" / "keep" (not retained), only if the
+//      reply's ts equals Ergant_CarQuestionTs; a button of an older question gets "Frage ist nicht
+//      mehr aktuell" and publishes nothing.
+//   F  Ergant_CarSurplusSwitch command ON / OFF → ergant/car/override "surplus" / "auto" (not retained).
+// Contract: ergant docs/planner.md "C-Zero charging" (surplus-only override, questions G4/G6/G7).
 //
 // Test (retained topics — ergant republishes its real values; afterwards check with
 // mosquitto_sub -h 10.1.0.10 -u <user> -P <pw> -v -t 'ergant/car/#' that charge/state are ergant's again):
@@ -19,6 +28,15 @@
 //   mosquitto_pub ... -r -t ergant/car/state -m '{"state":"charging","since":"2026-10-20T18:00:00+02:00","energy_kwh":0,"soc_hint":null,"override":null,"reason":"test","deadline_guard":false,"to_full":null,"windows_used":0,"hold_until":null}'
 //     → one Telegram "C-Zero angesteckt – wie voll?"; answer ½ → ergant/car/soc_hint 50 (mosquitto_sub ... -t ergant/car/soc_hint)
 //   restart openHAB → no second query; with ergant stopped > 2 min the socket goes ON (fallback)
+//   D/E (watch: mosquitto_sub ... -v -t ergant/car/answer -t ergant/car/soc_hint):
+//   mosquitto_pub ... -r -t ergant/car/question -m '{"ts":1,"kind":"override","text":"Test: C-Zero morgen unter 50 %","expected_soc":0.3,"departure":1}'
+//     → one Telegram query "Laden" / "Override behalten"; "Laden" → ergant/car/answer charge
+//   mosquitto_pub ... -r -t ergant/car/question -m '{"ts":2,"kind":"override","text":"Test 2","expected_soc":0.3,"departure":1}'
+//     → second query; a button of the first one → "Frage ist nicht mehr aktuell", nothing published
+//   mosquitto_pub ... -r -t ergant/car/question -m '{"ts":3,"kind":"plug","text":"Test: C-Zero ist nicht angesteckt – morgen Schule.","expected_soc":null,"departure":1}'
+//     → charge-level query; ½ → ergant/car/soc_hint 50
+//   restart openHAB → no repeated question. Clear afterwards: mosquitto_pub ... -r -n -t ergant/car/question
+//   F  Ergant_CarSurplusSwitch ON in the UI → ergant/car/override surplus (mosquitto_sub ... -t ergant/car/override)
 
 // File-level state
 var ZonedDateTime lastCarCmd        = null   // last command rule A sent (rule B ignores 10 s after it)
@@ -26,9 +44,11 @@ var Timer         carFallbackTimer  = null
 var boolean       carFallbackActive = false
 var Timer         carResyncTimer    = null
 var String        carAskedSince     = null   // guards against two JSON updates before the item update lands
+var String        carQuestionTs     = null   // same for rule D (before Ergant_CarQuestionTs lands)
 
 val String ERGANT_BROKER = "mqtt:broker:9a73e5895e"
 val String SOC_REPLY_ID  = "ergant_soc"
+val String OVERRIDE_REPLY_PREFIX = "eo_"   // + question ts (integer s); Telegram callback data max 64 bytes
 
 // JSON field or null (missing path, JSON null, bad JSON)
 val Functions$Function2<String, String, String> jsonField = [ String json, String path |
@@ -164,8 +184,10 @@ then
     val String soc      = jsonField.apply(json, "$.soc_hint")
     val String deadline = jsonField.apply(json, "$.deadline_guard")
     val String since    = jsonField.apply(json, "$.since")
+    val String ovMode   = jsonField.apply(json, "$.override_mode")
 
     Ergant_CarState.postUpdate(state)
+    Ergant_CarSurplusSwitch.postUpdate(if (ovMode == "surplus") ON else OFF)
     if (reason === null) Ergant_CarReason.postUpdate(UNDEF) else Ergant_CarReason.postUpdate(reason)
     if (soc === null) Ergant_CarSocHint.postUpdate(UNDEF) else Ergant_CarSocHint.postUpdate(soc)
     if (deadline === null) Ergant_CarDeadlineGuard.postUpdate(UNDEF) else Ergant_CarDeadlineGuard.postUpdate(deadline)
@@ -232,4 +254,108 @@ then
     if (telegram !== null && chatId !== null) {
         telegram.sendTelegramAnswer(Long.parseLong(chatId), SOC_REPLY_ID, "Danke – Ladestand " + answer + " an ergant gemeldet.")
     }
+end
+
+// ─── D: question from ergant → Telegram ────────────────────────────────────
+// Retained JSON {"ts","kind","text","expected_soc","departure"}; empty payload = no open question.
+// A new ts is a new (or hourly repeated) question; the persisted ts stops a restart repeating it.
+// System started: the retained question may arrive before the rules are loaded.
+rule "ergant car question"
+when
+    Item Ergant_CarQuestion changed or
+    System started
+then
+    if (Ergant_CarQuestion.state == NULL || Ergant_CarQuestion.state == UNDEF) return;
+    val String json = Ergant_CarQuestion.state.toString
+    if (json.trim == "") return;
+    val String ts   = jsonField.apply(json, "$.ts")
+    val String kind = jsonField.apply(json, "$.kind")
+    val String text = jsonField.apply(json, "$.text")
+    if (ts === null || kind === null || text === null) {
+        logWarn("ergant", "car question without ts/kind/text: {}", json)
+        return;
+    }
+    if (ts == carQuestionTs || ts == Ergant_CarQuestionTs.state.toString) return;
+    if (kind != "override" && kind != "plug" && kind != "level") {
+        logWarn("ergant", "car question of unknown kind '{}', ignored", kind)
+        return;
+    }
+    val telegram = getActions("telegram", "telegram:telegramBot:Telegram_Bot")
+    if (telegram === null) {
+        // Not remembered: ergant repeats the question with a new ts, the next one is asked
+        logError("ergant", "car question: Telegram bot thing telegram:telegramBot:Telegram_Bot not available")
+        return;
+    }
+    // Remember first: a restart right after the query must not ask again, and rule E compares against it
+    carQuestionTs = ts
+    Ergant_CarQuestionTs.postUpdate(ts)
+    logInfo("ergant", "car question {} ({}): {}", ts, kind, text)
+    if (kind == "override") {
+        telegram.sendTelegramQuery(text, OVERRIDE_REPLY_PREFIX + ts, "Laden", "Override behalten")
+    } else {
+        // Same buttons and answer handler as rule C
+        telegram.sendTelegramQuery(text, SOC_REPLY_ID, "fast leer", "¼", "½", "¾", "fast voll")
+    }
+end
+
+// ─── E: answer to the override question → ergant/car/answer ─────────────────
+rule "ergant car override answer"
+when
+    Channel "telegram:telegramBot:Telegram_Bot:callbackEvent" triggered
+then
+    var json = receivedEvent.toString
+    if (!json.startsWith("{") && json.indexOf("{") >= 0) {
+        json = json.substring(json.indexOf("{"))
+    }
+    val String replyId = jsonField.apply(json, "$.reply_id")
+    if (replyId === null || !replyId.startsWith(OVERRIDE_REPLY_PREFIX)) return;
+    val String replyTs = replyId.substring(OVERRIDE_REPLY_PREFIX.length)
+    val String answer  = jsonField.apply(json, "$.text")
+    val String chatId  = jsonField.apply(json, "$.chat_id")
+    val telegram = getActions("telegram", "telegram:telegramBot:Telegram_Bot")
+
+    // A button of an older question must not answer the current one
+    if (replyTs != Ergant_CarQuestionTs.state.toString) {
+        logInfo("ergant", "car override answer for old question {} (current {}), ignored", replyTs, Ergant_CarQuestionTs.state)
+        if (telegram !== null && chatId !== null) {
+            telegram.sendTelegramAnswer(Long.parseLong(chatId), replyId, "Frage ist nicht mehr aktuell")
+        }
+        return;
+    }
+    val String payload = switch (answer) {
+        case "Laden":             "charge"
+        case "Override behalten": "keep"
+        default:                  null
+    }
+    if (payload === null) {
+        logWarn("ergant", "car override answer not understood: {}", json)
+        return;
+    }
+    val mqtt = getActions("mqtt", ERGANT_BROKER)
+    if (mqtt === null) {
+        logError("ergant", "car override answer: MQTT broker {} not available", ERGANT_BROKER)
+        return;
+    }
+    logInfo("ergant", "car override answer '{}' -> {}", answer, payload)
+    mqtt.publishMQTT("ergant/car/answer", payload, false)
+    if (telegram !== null && chatId !== null) {
+        val String thanks = if (payload == "charge") "Danke – C-Zero lädt wieder normal." else "Danke – Override bleibt, kein Sicherheitsladen."
+        telegram.sendTelegramAnswer(Long.parseLong(chatId), replyId, thanks)
+    }
+end
+
+// ─── F: surplus-only override from openHAB ─────────────────────────────────
+// "received command" (not "changed"): rule C mirrors ergant's state into the item with postUpdate.
+rule "ergant car surplus override"
+when
+    Item Ergant_CarSurplusSwitch received command
+then
+    val mqtt = getActions("mqtt", ERGANT_BROKER)
+    if (mqtt === null) {
+        logError("ergant", "car surplus override: MQTT broker {} not available", ERGANT_BROKER)
+        return;
+    }
+    val String payload = if (receivedCommand == ON) "surplus" else "auto"
+    logInfo("ergant", "car surplus override -> {}", payload)
+    mqtt.publishMQTT("ergant/car/override", payload, false)
 end

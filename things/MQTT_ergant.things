@@ -6,7 +6,7 @@
 // (capacity tariff not billed yet). Items: items/ergant.items.
 // C-Zero charging: ergant decides (ergant/car/*), rules/ergant_car.rules switches Garage_SmartPlug.
 // PV heating: ergant decides (ergant/heat/*), rules/ergant_heat.rules switches the Wohnzimmer and Büro splits.
-// The inputs ergant/car/soc_hint and ergant/car/override are published by the rules via the MQTT
+// The inputs ergant/car/soc_hint, ergant/car/override and ergant/car/answer are published by the rules via the MQTT
 // action (one-shot, never retained) — no command channels for them.
 // No availabilityTopic on purpose: ergant/status is a normal channel so the offline rules can
 // time it; the thing stays ONLINE while ergant is down.
@@ -24,6 +24,7 @@ Thing mqtt:topic:mqtt_ergant "MQTT ergant" (mqtt:broker:9a73e5895e) {
     Type string        : car_charge            "Auto laden (Soll)"  [ stateTopic="ergant/car/charge"]
     Type string        : car_state             "Auto Ladezustand"   [ stateTopic="ergant/car/state"]
     Type string        : car_plan              "Auto Ladeplan"      [ stateTopic="ergant/car/plan"]
+    Type string        : car_question          "Auto Frage"         [ stateTopic="ergant/car/question"]
     // PV heating (rules/ergant_heat.rules). <room> = ergant room name: wohnzimmer (ODU 1), buero (ODU 2).
     // ergant/heat/<room>/answer and ergant/input/room_temp/* are published by the rules via the MQTT action.
     Type string        : heat_wohnzimmer       "Heizen Wohnzimmer (Soll)"   [ stateTopic="ergant/heat/wohnzimmer"]

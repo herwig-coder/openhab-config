@@ -34,7 +34,7 @@ String                  Ergant_Status                   "ergant [%s]"           
 // ---------------------------------------------------------------------------------------------
 // C-Zero charging (rules/ergant_car.rules switches Garage_SmartPlug, items/Gosund.items)
 // Display items are virtual: the rule fills them from ergant/car/state (JSON null → UNDEF).
-// Not in the energy groups on purpose: Ergant_CarSocAskedSince must be persisted on every change
+// Not in the energy groups on purpose: Ergant_CarSocAskedSince and Ergant_CarQuestionTs must be persisted on every change
 // (default * strategy, restoreOnStartup) or a restart could ask the same session twice.
 // ---------------------------------------------------------------------------------------------
 Group                   gErgantCar                      "E-Auto Laden"                      <if:mdi:car-electric>           (gGarage)           ["Equipment"]
@@ -44,11 +44,18 @@ String                  Ergant_CarState                 "Ladezustand [%s]"      
 String                  Ergant_CarReason                "Grund [%s]"                        <if:mdi:information-outline>    (gErgantCar)        ["Status"]
 Number                  Ergant_CarSocHint               "Ladestand (geschätzt) [%d %%]"     <if:mdi:battery-medium>         (gErgantCar)        ["Measurement","Level"]
 String                  Ergant_CarDeadlineGuard         "Abfahrtsschutz [%s]"               <if:mdi:clock-alert-outline>    (gErgantCar)        ["Status"]
+// Surplus-only override: a command publishes surplus/auto (rule F), rule C mirrors ergant's state with postUpdate
+Switch                  Ergant_CarSurplusSwitch         "Nur Überschuss laden"              <if:mdi:solar-power-variant>    (gErgantCar)        ["Control"]
 
 String                  Ergant_CarCharge                "Laden Soll [%s]"                   <if:mdi:power-plug>             (gErgantCarDiag)    {channel="mqtt:topic:mqtt_ergant:car_charge", stateDescription=""[options="on=Ein,off=Aus"]}
 String                  Ergant_CarStateJson             "Ladezustand JSON [%s]"             <if:mdi:code-json>              (gErgantCarDiag)    {channel="mqtt:topic:mqtt_ergant:car_state"}
 String                  Ergant_CarPlan                  "Ladeplan JSON [%s]"                <if:mdi:code-json>              (gErgantCarDiag)    {channel="mqtt:topic:mqtt_ergant:car_plan"}
 String                  Ergant_CarSocAskedSince         "Ladestand gefragt für [%s]"        <if:mdi:help-circle-outline>    (gErgantCarDiag)
+// ergant/car/question (retained JSON ts/kind/text/expected_soc/departure; empty = no open question).
+// Ergant_CarQuestionTs: persisted on every change + restoreOnStartup (mapdb * line) — rule D dedupes
+// against it and rule E accepts an override answer only for this ts.
+String                  Ergant_CarQuestion              "Frage JSON [%s]"                   <if:mdi:code-json>              (gErgantCarDiag)    {channel="mqtt:topic:mqtt_ergant:car_question"}
+String                  Ergant_CarQuestionTs            "Frage gestellt (ts) [%s]"          <if:mdi:help-circle-outline>    (gErgantCarDiag)
 
 
 // ---------------------------------------------------------------------------------------------
