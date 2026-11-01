@@ -1,6 +1,6 @@
 # Runbook: Bad-Lüftung v2 (Controller)
 
-Stand: 2026-10-01 (v3: Kosten-Nutzen statt Wetterfenster) · openHAB 5.1.0 · Rule: `rules/bathroomAiringController.rules`
+Stand: 2026-11-01 (Temperaturgrenze raus, Alarm an das Ziel gekoppelt) · openHAB 5.1.0 · Rule: `rules/bathroomAiringController.rules`
 
 | Schritt | Inhalt | Status |
 |---------|--------|--------|
@@ -30,6 +30,38 @@ Eine Entscheidung alle 5 min (`cron 30 */5`), genau ein Modus in `Bathroom_Airin
 | **SHOWER** (Vorrang) | rF steigt ≥ 8 %-Punkte in 15 min (Erkennung) → geöffnet erst wenn **Duschen vorbei**: rF ≥ 3 Punkte unter dem Spitzenwert, kein Licht in den letzten 45 min eingeschaltet, kein Sturm, außen ≥ 5 °C — **auch nachts**; nach 90 min ohne Ende verworfen | — | rF ≤ Wert vor dem Duschen +3, oder Taupunkt innen ≤ außen +1 °C, oder max. 45 min (außen < 12 °C) / 90 min, oder Bad unter 19 °C (harte Grenze). Bei FAIR-Wetter Übergabe an FAIR statt Schließen |
 | **MANUAL_OPEN / MANUAL_CLOSED** | KNX-Taster `Bathroom_Window_Open` ON/OFF | 120 min Automatik-Pause | danach Neubewertung |
 | **OFF** | Master-Schalter `Bathroom_Airing_Automation` aus | — | nach Einschalten 3 min warten, dann Schließfahrt als Resync |
+
+### Harte Temperaturgrenze entfernt (2026-11-01)
+
+**Befund:** Seit 27.10. hat der Controller nur noch geschlossen, Begründung jedes Mal
+„bathroom cooled to 20.9 / 20.5 °C". Das unbeheizte Bad liegt im Herbst bei 20,5 °C, also unter der
+Grenze von 21/21,5 °C — **Lüften war damit über eine Woche komplett gesperrt**, während die Feuchte auf
+87 % und der Taupunkt auf 18,3 °C stieg. Der Feuchtealarm stand seit 25.10. durchgehend an.
+
+**Die Grenze ist raus.** Der Bremseffekt steckt jetzt im Preis: jedes Grad, das der Raum **unter der
+Komfortschwelle** liegt, erhöht den Preis (`CTL_COLD_PENALTY_*` K je K Abweichung). Ein kühler Raum
+braucht also ein größeres Feuchteproblem, um Lüften zu rechtfertigen — statt eines Schalters, der bei
+20,9 °C alles blockiert. Der Zuschlag ist bei **laufender Heizung kleiner (4)** als ohne (6), weil sich
+der Raum dann von selbst erholt. Geblieben ist nur ein **harter Notstopp bei 16 °C** für Sensorfehler.
+
+Verhalten mit den aktuellen Werten (außen 6 °C, Taupunkt außen 4 °C):
+
+| Situation | bisher | jetzt |
+|---|---|---|
+| Bad 20,5 °C, Taupunkt 18,3 °C (Zustand am 01.11.) | gesperrt | **lüftet** (Preis 2,6 von 3,0) |
+| dasselbe, Heizung ein | gesperrt | **lüftet** (2,4 von 3,0) |
+| Lüften kühlt den Raum weiter | gesperrt ab 21 °C | stoppt bei ~19,6 °C (Heizung aus) bzw. ~19,4 °C (ein) |
+| Bad 20,5 °C, Taupunkt nur 15 °C | gesperrt | bleibt zu — Problem zu klein für den Preis |
+
+Sommer- und Winterverhalten bleiben unverändert (Mittag im Sommer zu, Sommernacht offen, Winter bei
+hoher Feuchte offen, trockener Winter zu).
+
+### Feuchtealarm an das Ziel gekoppelt (2026-11-01)
+
+Der Alarm ging bisher erst bei rF ≤ 70 % wieder aus. Vom 25.10. bis 01.11. blinkte die KNX-Lampe
+deshalb **sieben Tage durch** — richtig im Befund, nutzlos als Signal. Er endet jetzt bei **rF ≤ 78 %
+oder sobald der Taupunkt wieder am Schimmelziel ist** (`need ≤ 0`), je nachdem, was zuerst eintritt.
+Da `ctlAlert` beim Reload auf false startet, räumt der erste Tick nach dem Deploy den alten Zustand auf.
 
 ### Die DRYING-Entscheidung: ein Preis, kein Wetterfenster (seit 2026-10-01)
 

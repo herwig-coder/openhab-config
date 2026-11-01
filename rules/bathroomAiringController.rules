@@ -41,9 +41,14 @@ val Number CTL_PRICE_PER_K            = 0.5   // ... plus this much per °C of n
 val Number CTL_PRICE_CAP              = 3.0   // ... never more than this
 val Number CTL_COMFORT_HEATING        = 23.0  // °C comfort pivot while Heating_Active is ON
 val Number CTL_COMFORT_OFF            = 22.0  // °C comfort pivot while it is OFF
-val Number CTL_TIN_MIN_OPEN           = 21.5  // °C bathroom must be at least this warm to start drying
-val Number CTL_TIN_MIN_KEEP           = 21.0  // °C drying stops when the bathroom cools below this
-val Number CTL_TIN_MIN_SHOWER         = 19.0  // °C hard floor: even shower airing stops here
+// No fixed temperature floor any more (removed 2026-11-01): in an unheated autumn bathroom at
+// 20.5 °C the old 21/21.5 °C floor blocked every airing for days while humidity sat at 87 %.
+// The brake is now part of the price: every degree the room sits below comfort adds to it, so a
+// cool room needs a bigger moisture problem to justify airing. Gentler while the heating runs,
+// because the room recovers on its own then.
+val Number CTL_COLD_PENALTY_HEATING   = 4.0   // K of price per K below comfort, heating ON
+val Number CTL_COLD_PENALTY_OFF       = 6.0   // ... and heating OFF (dip is not recovered quickly)
+val Number CTL_TIN_HARD_MIN           = 16.0  // °C last-resort stop (sensor fault, forgotten window)
 val Number CTL_NIGHT_START_HOUR       = 22    // night window (noise / sleeping with the window open)
 val Number CTL_NIGHT_END_HOUR         = 6
 val Number CTL_NIGHT_MAX_OPENS        = 2     // at most this many openings per night
@@ -69,7 +74,7 @@ val Number CTL_STALE_OUTDOOR_MINUTES  = 30    // weather station temperature
 val Number CTL_STALE_INDOOR_MINUTES   = 90    // BLE bathroom sensor
 val Number CTL_STALE_OWM_MINUTES      = 180   // OpenWeatherMap (hourly)
 val Number CTL_ALERT_RH_ON            = 80.0  // % RH sustained for CTL_ALERT_MINUTES -> humidity alert
-val Number CTL_ALERT_RH_OFF           = 70.0
+val Number CTL_ALERT_RH_OFF           = 78.0  // ... or earlier, once the mould target is reached
 val Number CTL_ALERT_MINUTES          = 120
 
 // Sample buffers, filled once per tick (5-min spacing, oldest first). Lost on file reload,
@@ -220,42 +225,7 @@ then
         (Bathroom_Mirror_Light.state == ON && (Bathroom_Mirror_Light.lastStateChange === null ||
             Bathroom_Mirror_Light.lastStateChange.isAfter(now.minusMinutes(CTL_LIGHT_RECENT_MINUTES.intValue))))
 
-    // 4) Humidity alert: RH >= 80 % for 2 h -> alert (KNX indicator, Ulanzi) + one Telegram.
-    if (rh >= CTL_ALERT_RH_ON.doubleValue) {
-        if (ctlRhHighSince === null) ctlRhHighSince = now
-    } else {
-        ctlRhHighSince = null
-    }
-    if (!ctlAlert && ctlRhHighSince !== null && ctlRhHighSince.isBefore(now.minusMinutes(CTL_ALERT_MINUTES.intValue))) {
-        ctlAlert = true
-        val String msg = "Bad: Luftfeuchte seit über " + CTL_ALERT_MINUTES.intValue + " min über " + CTL_ALERT_RH_ON.intValue + " % (jetzt " + String.format("%.0f", rh) +
-            " %, Modus " + mode + "). Lüften reicht nicht — Ventilator/Entfeuchter prüfen."
-        if (Bathroom_Airing_Shadow.state == ON) {
-            logInfo("bathroom_airing_ctl", "SHADOW humidity alert ON: {}", msg)
-        } else {
-            logInfo("bathroom_airing_ctl", "humidity alert ON: {}", msg)
-            Bathroom_DewPoint_Alert.postUpdate(ON)
-            getActions("telegram", "telegram:telegramBot:Telegram_Bot").sendTelegram(msg)
-        }
-    } else if (ctlAlert && rh <= CTL_ALERT_RH_OFF.doubleValue) {
-        ctlAlert = false
-        if (Bathroom_Airing_Shadow.state == ON) {
-            logInfo("bathroom_airing_ctl", "SHADOW humidity alert OFF (RH {} %)", rh)
-        } else {
-            logInfo("bathroom_airing_ctl", "humidity alert OFF (RH {} %)", rh)
-        }
-    }
-    // The alert item is ours now: keep it in sync (it may be stale from the removed v1 rule
-    // or from a restart). Telegram is only sent on the ON transition above.
-    if (Bathroom_Airing_Shadow.state != ON) {
-        val wanted = if (ctlAlert) ON else OFF
-        if (Bathroom_DewPoint_Alert.state != wanted) {
-            logInfo("bathroom_airing_ctl", "humidity alert item -> {} (RH {} %)", wanted, rh)
-            Bathroom_DewPoint_Alert.postUpdate(wanted)
-        }
-    }
-
-    // 5) Conditions: storm, night budget, and the need/benefit/price trade-off.
+    // 4) Conditions: storm, night budget, and the need/benefit/price trade-off.
     val boolean storm = rain >= CTL_RAIN_HEAVY.doubleValue || gust >= CTL_GUST_STORM.doubleValue || (condId.length == 3 && condId.startsWith("2"))
     if (storm) ctlLastStorm = now
     val boolean calm = ctlLastStorm === null || ctlLastStorm.isBefore(now.minusMinutes(CTL_STORM_CALM_MINUTES.intValue))
@@ -283,19 +253,64 @@ then
     // Price: only drift in the unwanted direction counts. Above comfort, warming costs and cooling
     // is free; at or below comfort, cooling costs.
     val double comfort = if (Heating_Active.state == ON) CTL_COMFORT_HEATING.doubleValue else CTL_COMFORT_OFF.doubleValue
+    val double coldPenalty = if (Heating_Active.state == ON) CTL_COLD_PENALTY_HEATING.doubleValue else CTL_COLD_PENALTY_OFF.doubleValue
     var double price = 0.0
-    if (tin > comfort) { if (tout > tin) price = tout - tin } else { if (tout < tin) price = tin - tout }
+    if (tin > comfort) {
+        if (tout > tin) price = tout - tin                     // too warm already: warming costs
+    } else {
+        if (tout < tin) price = tin - tout                     // heat leaving the room ...
+        price = price + coldPenalty * (comfort - tin)          // ... plus the comfort deficit itself
+    }
     val double ratio  = price / Math.max(benefit, 0.1)
     var double budget = CTL_PRICE_BASE.doubleValue + CTL_PRICE_PER_K.doubleValue * Math.max(need, 0.0)
     if (budget > CTL_PRICE_CAP.doubleValue) budget = CTL_PRICE_CAP.doubleValue
 
+    // 5) Humidity alert: RH >= 80 % for 2 h -> alert (KNX indicator, Ulanzi) + one Telegram on the way in.
+    // Clears at CTL_ALERT_RH_OFF or as soon as the dewpoint is back at the mould target — a fixed
+    // low RH threshold left the KNX lamp blinking for a week (2026-10-25 .. 11-01) while airing
+    // was blocked, which told nobody anything.
+    if (rh >= CTL_ALERT_RH_ON.doubleValue) {
+        if (ctlRhHighSince === null) ctlRhHighSince = now
+    } else {
+        ctlRhHighSince = null
+    }
+    if (!ctlAlert && ctlRhHighSince !== null && ctlRhHighSince.isBefore(now.minusMinutes(CTL_ALERT_MINUTES.intValue))) {
+        ctlAlert = true
+        val String msg = "Bad: Luftfeuchte seit über " + CTL_ALERT_MINUTES.intValue + " min über " + CTL_ALERT_RH_ON.intValue + " % (jetzt " + String.format("%.0f", rh) +
+            " %, Modus " + mode + "). Lüften reicht nicht — Ventilator/Entfeuchter prüfen."
+        if (Bathroom_Airing_Shadow.state == ON) {
+            logInfo("bathroom_airing_ctl", "SHADOW humidity alert ON: {}", msg)
+        } else {
+            logInfo("bathroom_airing_ctl", "humidity alert ON: {}", msg)
+            Bathroom_DewPoint_Alert.postUpdate(ON)
+            getActions("telegram", "telegram:telegramBot:Telegram_Bot").sendTelegram(msg)
+        }
+    } else if (ctlAlert && (rh <= CTL_ALERT_RH_OFF.doubleValue || need <= 0)) {
+        ctlAlert = false
+        if (Bathroom_Airing_Shadow.state == ON) {
+            logInfo("bathroom_airing_ctl", "SHADOW humidity alert OFF (RH {} %)", rh)
+        } else {
+            logInfo("bathroom_airing_ctl", "humidity alert OFF (RH {} %, need {} °C)", rh, need)
+        }
+    }
+    // The alert item is ours now: keep it in sync (it may be stale from the removed v1 rule
+    // or from a restart). Telegram is only sent on the ON transition above.
+    if (Bathroom_Airing_Shadow.state != ON) {
+        val wanted = if (ctlAlert) ON else OFF
+        if (Bathroom_DewPoint_Alert.state != wanted) {
+            logInfo("bathroom_airing_ctl", "humidity alert item -> {} (RH {} %)", wanted, rh)
+            Bathroom_DewPoint_Alert.postUpdate(wanted)
+        }
+    }
+
+
     val boolean nightOk = !night || ctlNightOpens < CTL_NIGHT_MAX_OPENS.intValue
     val boolean dryStart = need >= CTL_NEED_START.doubleValue && benefit >= CTL_BENEFIT_START.doubleValue &&
                            ratio <= budget && calm && gust < CTL_GUST_OPEN_MAX.doubleValue &&
-                           tin >= CTL_TIN_MIN_OPEN.doubleValue &&
+                           tin >= CTL_TIN_HARD_MIN.doubleValue &&
                            ctlShowerAt === null && !rhRising && !lightRecent && nightOk
     val boolean dryKeep  = need > 0 && benefit >= CTL_BENEFIT_KEEP.doubleValue && ratio <= budget &&
-                           !storm && tin >= CTL_TIN_MIN_KEEP.doubleValue
+                           !storm && tin >= CTL_TIN_HARD_MIN.doubleValue
     // Handle locked or tilted by hand: the motor must not drive (same guard as the motor layer).
     val boolean handleBlocked = Bathroom_Alarm_Tilted.state == ON || Bathroom_Alarm_Locked.state == ON
     val long sinceMove = ctlMinutesSince.apply(Bathroom_Airing_Last_Move.state)
@@ -319,7 +334,7 @@ then
     else if (mode == "SHOWER") {
         val long cap = if (tout < CTL_SHOWER_COLD_BELOW.doubleValue) CTL_SHOWER_MAX_COLD_MINUTES.longValue else CTL_SHOWER_MAX_MINUTES.longValue
         val boolean dry = (ctlShowerBase !== null && rh <= ctlShowerBase + CTL_SHOWER_DONE_MARGIN.doubleValue) || need <= 0 || benefit < CTL_BENEFIT_KEEP.doubleValue
-        if (tin < CTL_TIN_MIN_SHOWER.doubleValue) {
+        if (tin < CTL_TIN_HARD_MIN.doubleValue) {
             ctlShowerAt = null
             ctlMove.apply(false, "CLOSED", String.format("bathroom cooled to %.1f °C", tin))
         } else if (dry || inMode >= cap) {
@@ -336,7 +351,7 @@ then
         } else if (!dryKeep && !nightHold && sinceMove >= CTL_MIN_DWELL_MINUTES.intValue) {
             val String why =
                 if (need <= 0) String.format("dewpoint %.1f °C at target %.1f °C", dpin, dpTarget)
-                else if (tin < CTL_TIN_MIN_KEEP.doubleValue) String.format("bathroom cooled to %.1f °C", tin)
+                else if (tin < CTL_TIN_HARD_MIN.doubleValue) String.format("bathroom cooled to %.1f °C", tin)
                 else if (benefit < CTL_BENEFIT_KEEP.doubleValue) String.format("outside air no longer drier (%.1f g/m³)", benefit)
                 else String.format("too expensive: %.1f K per g/m³, budget %.1f (need %.1f °C)", ratio, budget, need)
             ctlMove.apply(false, "CLOSED", why)
