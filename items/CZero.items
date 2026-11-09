@@ -1,0 +1,31 @@
+// Filename: CZero.items
+// Citroën C-Zero via MeatPi WiCAN (OBD, passive: CAN broadcast 0x374 over the WiCAN MQTT filter, no polling)
+// — things: things/MQTT_WiCAN.things
+// Charging control stays with ergant (items/ergant.items, gErgantCar); this file is only the car's own data.
+//
+// Structure:
+//   Tier 1 — semantic car equipment under Garage: SOC + age of the last value
+//   Tier 2 — non-semantic gCZeroDiag: WiCAN connection
+//
+// SOC keeps its last value while the car is off (WiCAN asleep) — always check CZero_Soc_Updated before using it.
+// Updates every 10–20 s while READY or charging; 0.5 % resolution.
+// Persistence: default * lines (everyChange, restoreOnStartup) — not in gEnergySystem on purpose.
+
+// ---------------------------------------------------------------------------------------------
+// Groups
+// ---------------------------------------------------------------------------------------------
+Group                   gCZero                          "Citroën C-Zero"                    <if:mdi:car-electric>           (gGarage)           ["Car"]
+Group                   gCZeroDiag                      "C-Zero WiCAN Diagnose"             <if:mdi:lan-connect>
+
+
+// ---------------------------------------------------------------------------------------------
+// Tier 1 — car
+// ---------------------------------------------------------------------------------------------
+Number:Dimensionless    CZero_Soc                       "Ladestand [%.1f %%]"          <if:mdi:battery-medium>         (gCZero)            ["Measurement","Level"]     {unit="%", channel="mqtt:topic:wican_czero:soc"}
+DateTime                CZero_Soc_Updated               "Ladestand gemeldet [%1$td.%1$tm. %1$tH:%1$tM]"  <if:mdi:clock-outline>  (gCZero)  ["Status","Timestamp"]  {channel="mqtt:topic:wican_czero:soc"[profile="timestamp-update"]}
+
+
+// ---------------------------------------------------------------------------------------------
+// Tier 2 — diagnostics
+// ---------------------------------------------------------------------------------------------
+Switch                  CZero_Wican_Online              "WiCAN online [%s]"                 <if:mdi:lan-connect>            (gCZeroDiag)        {channel="mqtt:topic:wican_czero:status"}

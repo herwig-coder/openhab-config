@@ -1,0 +1,21 @@
+// MeatPi WiCAN OBD adapter in the Citroën C-Zero — device ID 48f6ee25c6f5, 10.1.100.100 (VLAN 200), main broker.
+// Firmware 4.13, PASSIVE: CAN mode silent (never transmits), protocol slcan, AutoPID/polling/vehicle profile off.
+// Active polling (2101 to BMU 0x761) caused warning lights and blocked locking via the key fob — never re-enable.
+//
+// Topics:   wican/48f6ee25c6f5/can/rx       JSON {"SOC_CAN":70.5}  from broadcast frame 0x374 (byte 0, (raw-10)/2),
+//                                           0.5 % steps, every 10–20 s, only while READY or charging (WiCAN CAN filter "canflt")
+//           wican/48f6ee25c6f5/can/status   JSON {"status":"online"|"offline"} (retained LWT)
+//
+// Sleep mode: ~5 min after switching off → "offline", WiCAN asleep; wakes when the car goes READY.
+// While asleep there are no can/rx messages, SOC keeps its last value.
+// Age of the value: CZero_Soc_Updated (timestamp-update profile, items/CZero.items).
+// No availabilityTopic on purpose: "offline" is the normal parked state, not a fault, and the thing
+// must stay ONLINE so the last SOC is kept.
+// New values: add a filter entry on the WiCAN (config JSON, "canflt" — mind the config size limit, see
+// docs projects/c-zero-wican), then one channel per JSON key (JSONPATH:$.<key>) + one item in items/CZero.items.
+// Same file-based broker bridge as Samsung and Gosund; no credentials here.
+Thing mqtt:topic:wican_czero "WiCAN C-Zero" (mqtt:broker:mqttbroker) @ "Garage" {
+    Channels:
+    Type number : soc        "SOC"            [ stateTopic="wican/48f6ee25c6f5/can/rx", transformationPattern="JSONPATH:$.SOC_CAN", unit="%" ]
+    Type switch : status     "WiCAN online"   [ stateTopic="wican/48f6ee25c6f5/can/status", transformationPattern="JSONPATH:$.status", on="online", off="offline" ]
+}
