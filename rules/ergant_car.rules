@@ -7,8 +7,10 @@
 //   A  Socket follows ergant/car/charge (command only if it differs). Fallback: ergant/status
 //      offline > 2 min → socket ON; back online → socket follows ergant/car/charge again (after 30 s).
 //   B  Socket OFF → ON while charge is "off" and A sent nothing in the last 10 s → ergant/car/override "urgent".
-//   C  Once per session (state charging/paused, soc_hint null, new `since`) a Telegram query for the
-//      charge level → ergant/car/soc_hint. Ergant_CarSocAskedSince is persisted, so a restart asks nothing.
+//   C  Once per session (state charging/paused, soc_ask true, new `since`) a Telegram query for the
+//      charge level → ergant/car/soc_hint. ergant sets soc_ask only when no level came within 10 min
+//      of plug-in (no WiCAN reading from rule G, no answer). Ergant_CarSocAskedSince is persisted, so a
+//      restart asks nothing. Needs ergant ≥ 06e3b41 — older ergant sends no soc_ask, then nobody asks.
 //      Also mirrors override_mode into Ergant_CarSurplusSwitch (postUpdate, no command).
 //   D  Question from ergant (retained ergant/car/question, new `ts`): kind "override" → Telegram query
 //      "Laden" / "Override behalten" with reply_id eo_<ts>; kinds "plug" / "level" → rule C's
@@ -17,6 +19,8 @@
 //      reply's ts equals Ergant_CarQuestionTs; a button of an older question gets "Frage ist nicht
 //      mehr aktuell" and publishes nothing.
 //   F  Ergant_CarSurplusSwitch command ON / OFF → ergant/car/override "surplus" / "auto" (not retained).
+//   G  WiCAN reading (CZero_Soc, items/CZero.items) → ergant/input/car/soc, RETAINED,
+//      {"soc": <0..100>, "ts": <Unix s>}, only readings < 60 s old (never a value restored at startup).
 // Contract: ergant docs/planner.md "C-Zero charging" (surplus-only override, questions G4/G6/G7).
 //
 // Test (retained topics — ergant republishes its real values; afterwards check with
@@ -25,8 +29,9 @@
 //   mosquitto_pub ... -r -t ergant/car/charge -m on                                 → Garage_SmartPlug ON
 //   charge off, then switch the socket on by hand (button or UI)                    → ergant/car/override "urgent"
 //     (watch: mosquitto_sub ... -v -t ergant/car/override)
-//   mosquitto_pub ... -r -t ergant/car/state -m '{"state":"charging","since":"2026-10-20T18:00:00+02:00","energy_kwh":0,"soc_hint":null,"override":null,"reason":"test","deadline_guard":false,"to_full":null,"windows_used":0,"hold_until":null}'
+//   mosquitto_pub ... -r -t ergant/car/state -m '{"state":"charging","since":"2026-10-20T18:00:00+02:00","energy_kwh":0,"soc_hint":null,"override":null,"reason":"test","deadline_guard":false,"to_full":null,"windows_used":0,"hold_until":null,"soc_ask":true}'
 //     → one Telegram "C-Zero angesteckt – wie voll?"; answer ½ → ergant/car/soc_hint 50 (mosquitto_sub ... -t ergant/car/soc_hint)
+//     same JSON with "soc_ask":false and a new since → no query
 //   restart openHAB → no second query; with ergant stopped > 2 min the socket goes ON (fallback)
 //   D/E (watch: mosquitto_sub ... -v -t ergant/car/answer -t ergant/car/soc_hint):
 //   mosquitto_pub ... -r -t ergant/car/question -m '{"ts":1,"kind":"override","text":"Test: C-Zero morgen unter 50 %","expected_soc":0.3,"departure":1}'
@@ -37,6 +42,8 @@
 //     → charge-level query; ½ → ergant/car/soc_hint 50
 //   restart openHAB → no repeated question. Clear afterwards: mosquitto_pub ... -r -n -t ergant/car/question
 //   F  Ergant_CarSurplusSwitch ON in the UI → ergant/car/override surplus (mosquitto_sub ... -t ergant/car/override)
+//   G  car READY or charging: mosquitto_sub ... -v -t ergant/input/car/soc → one retained JSON per WiCAN
+//     reading (~every 10 s), soc in % (70.5, not 0.705); restart openHAB → nothing new sent until the next reading
 
 // File-level state
 var ZonedDateTime lastCarCmd        = null   // last command rule A sent (rule B ignores 10 s after it)
@@ -45,6 +52,7 @@ var boolean       carFallbackActive = false
 var Timer         carResyncTimer    = null
 var String        carAskedSince     = null   // guards against two JSON updates before the item update lands
 var String        carQuestionTs     = null   // same for rule D (before Ergant_CarQuestionTs lands)
+var Timer         carSocTimer       = null   // rule G: reads CZero_Soc shortly after its timestamp changed
 
 val String ERGANT_BROKER = "mqtt:broker:9a73e5895e"
 val String SOC_REPLY_ID  = "ergant_soc"
@@ -193,7 +201,8 @@ then
     if (deadline === null) Ergant_CarDeadlineGuard.postUpdate(UNDEF) else Ergant_CarDeadlineGuard.postUpdate(deadline)
 
     if (state != "charging" && state != "paused") return;
-    if (soc !== null) return;
+    // soc_ask: ergant waited 10 min after plug-in for a measured level or a hint and got none
+    if (jsonField.apply(json, "$.soc_ask") != "true") return;
     if (since === null) {
         logWarn("ergant", "car state {} without since, cannot ask for the charge level", state)
         return;
@@ -358,4 +367,40 @@ then
     val String payload = if (receivedCommand == ON) "surplus" else "auto"
     logInfo("ergant", "car surplus override -> {}", payload)
     mqtt.publishMQTT("ergant/car/override", payload, false)
+end
+
+// ─── G: WiCAN charge level → ergant ────────────────────────────────────────
+// Every new reading, retained, with its measurement time: ergant judges the age by ts, so the
+// retained copy after an ergant restart is not taken as fresh. No System started trigger: a
+// restored value must not go out as a new reading (the 60 s check stops it as well).
+// CZero_Soc and CZero_Soc_Updated come from the same channel event in no fixed order — read the
+// value 1 s after the timestamp changed, so a new ts never goes out with the previous SOC.
+rule "ergant car measured soc"
+when
+    Item CZero_Soc_Updated changed
+then
+    if (carSocTimer !== null) { carSocTimer.cancel(); carSocTimer = null }
+    carSocTimer = createTimer(now.plusSeconds(1), [ |
+        carSocTimer = null
+        if (CZero_Soc.state == NULL || CZero_Soc.state == UNDEF) return;
+        if (!(CZero_Soc_Updated.state instanceof DateTimeType)) return;
+        val long ts  = (CZero_Soc_Updated.state as DateTimeType).getInstant.getEpochSecond
+        val long age = now.toEpochSecond - ts
+        if (age > 60 || age < -60) {
+            logInfo("ergant", "car soc reading {} s old, not sent", age)
+            return;
+        }
+        // Number:Dimensionless with unit="%": doubleValue is in % (70.5), not a fraction (0.705)
+        val double soc = (CZero_Soc.state as Number).doubleValue
+        if (soc < 0 || soc > 100) {
+            logWarn("ergant", "car soc {} outside 0..100, not sent", soc)
+            return;
+        }
+        val mqtt = getActions("mqtt", ERGANT_BROKER)
+        if (mqtt === null) {
+            logError("ergant", "car soc: MQTT broker {} not available", ERGANT_BROKER)
+            return;
+        }
+        mqtt.publishMQTT("ergant/input/car/soc", "{\"soc\": " + soc + ", \"ts\": " + ts + "}", true)
+    ])
 end
