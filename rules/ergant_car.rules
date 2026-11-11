@@ -21,6 +21,18 @@
 //   F  Ergant_CarSurplusSwitch command ON / OFF → ergant/car/override "surplus" / "auto" (not retained).
 //   G  WiCAN reading (CZero_Soc, items/CZero.items) → ergant/input/car/soc, RETAINED,
 //      {"soc": <0..100>, "ts": <Unix s>}, only readings < 60 s old (never a value restored at startup).
+//   H  Plugged-in status CZero_Plugged (no sensor sees the cable — derived from the socket):
+//        yes      Garage_SmartPlug_Power > 300 W (stays yes down to 150 W, taper at the end of a charge)
+//        unknown  WiCAN woke up / new reading while paused with the socket off → car probably in use
+//                 (cleared when power flows, the socket goes on or ergant's state changes)
+//        probably ergant state paused (socket off between windows, nobody sees the car)
+//        no       ergant idle/full/ended, socket (Garage_SmartPlug + KNX Garage_CarCharger) on ≥ 2 min,
+//                 power < 150 W for ≥ 2 min, CZero_Soc < PLUG_TEST_MAX_SOC — a plugged C-Zero below
+//                 that always draws (assumes the car's own charge timer is not used)
+//        unknown  everything else (full and plugged looks the same as unplugged)
+//      Re-evaluated on every input change and every minute (2-min holds). On change: CZero_Plugged_Since,
+//      CZero_Plugged_LastDraw (entering/leaving yes) and ergant/input/car/plugged RETAINED
+//      {"plugged": "yes"|"probably"|"no"|"unknown", "ts": <Unix s>} — ergant only displays it.
 // Contract: ergant docs/planner.md "C-Zero charging" (surplus-only override, questions G4/G6/G7).
 //
 // Test (retained topics — ergant republishes its real values; afterwards check with
@@ -44,6 +56,9 @@
 //   F  Ergant_CarSurplusSwitch ON in the UI → ergant/car/override surplus (mosquitto_sub ... -t ergant/car/override)
 //   G  car READY or charging: mosquitto_sub ... -v -t ergant/input/car/soc → one retained JSON per WiCAN
 //     reading (~every 10 s), soc in % (70.5, not 0.705); restart openHAB → nothing new sent until the next reading
+//   H  (watch: mosquitto_sub ... -v -t ergant/input/car/plugged, CZero_Plugged in the UI)
+//     charging → yes; ergant pauses → probably; car unplugged, state full, socket on > 2 min, SOC < 85 % → no
+//     while paused and socket off: car goes READY (WiCAN online) → unknown
 
 // File-level state
 var ZonedDateTime lastCarCmd        = null   // last command rule A sent (rule B ignores 10 s after it)
@@ -53,10 +68,17 @@ var Timer         carResyncTimer    = null
 var String        carAskedSince     = null   // guards against two JSON updates before the item update lands
 var String        carQuestionTs     = null   // same for rule D (before Ergant_CarQuestionTs lands)
 var Timer         carSocTimer       = null   // rule G: reads CZero_Soc shortly after its timestamp changed
+var ZonedDateTime plugSocketOnSince = null   // rule H: socket (both switches) on since; null = off
+var ZonedDateTime plugLowPowerSince = null   // rule H: power < PLUG_IDLE_W since; null = above
+var boolean       plugCarInUse      = false  // rule H: car woke up while paused with the socket off
+var Timer         plugEvalTimer     = null   // rule H: one evaluation per burst of events
 
 val String ERGANT_BROKER = "mqtt:broker:9a73e5895e"
 val String SOC_REPLY_ID  = "ergant_soc"
 val String OVERRIDE_REPLY_PREFIX = "eo_"   // + question ts (integer s); Telegram callback data max 64 bytes
+val double PLUG_CHARGING_W    = 300   // rule H: above → charging
+val double PLUG_IDLE_W        = 150   // rule H: below → not drawing (socket standby 2–4 W)
+val double PLUG_TEST_MAX_SOC  = 85    // rule H: below this a plugged C-Zero always draws — confirm with a calibration charge
 
 // JSON field or null (missing path, JSON null, bad JSON)
 val Functions$Function2<String, String, String> jsonField = [ String json, String path |
@@ -194,10 +216,14 @@ then
     val String since    = jsonField.apply(json, "$.since")
     val String ovMode   = jsonField.apply(json, "$.override_mode")
 
+    if (Ergant_CarState.state.toString != state) Ergant_CarState_Since.postUpdate(new DateTimeType())
     Ergant_CarState.postUpdate(state)
     Ergant_CarSurplusSwitch.postUpdate(if (ovMode == "surplus") ON else OFF)
     if (reason === null) Ergant_CarReason.postUpdate(UNDEF) else Ergant_CarReason.postUpdate(reason)
-    if (soc === null) Ergant_CarSocHint.postUpdate(UNDEF) else Ergant_CarSocHint.postUpdate(soc)
+    // ergant's estimate (0..1) as %, only while a session is open — outside one it is stale, the
+    // measured level is CZero_Soc
+    if (soc === null || (state != "charging" && state != "paused")) Ergant_CarSocHint.postUpdate(UNDEF)
+    else Ergant_CarSocHint.postUpdate(Double.parseDouble(soc) * 100)
     if (deadline === null) Ergant_CarDeadlineGuard.postUpdate(UNDEF) else Ergant_CarDeadlineGuard.postUpdate(deadline)
 
     if (state != "charging" && state != "paused") return;
@@ -402,5 +428,87 @@ then
             return;
         }
         mqtt.publishMQTT("ergant/input/car/soc", "{\"soc\": " + soc + ", \"ts\": " + ts + "}", true)
+    ])
+end
+
+// ─── H: plugged-in status ──────────────────────────────────────────────────
+// Trackers for the 2-min holds; at startup "since" starts now (conservative: no "no" for 2 min).
+rule "czero plugged trackers"
+when
+    Item Garage_SmartPlug changed or
+    Item Garage_CarCharger changed or
+    Item Garage_SmartPlug_Power changed or
+    System started
+then
+    val boolean socketOn = Garage_SmartPlug.state == ON && Garage_CarCharger.state == ON
+    if (!socketOn) plugSocketOnSince = null
+    else if (plugSocketOnSince === null) plugSocketOnSince = now
+    // Socket on again (ergant's own check after a wake-up) → the power tells, not the wake-up
+    if (socketOn) plugCarInUse = false
+
+    val double power = if (Garage_SmartPlug_Power.state instanceof Number) (Garage_SmartPlug_Power.state as Number).doubleValue else -1
+    if (power < 0 || power >= PLUG_IDLE_W) plugLowPowerSince = null
+    else if (plugLowPowerSince === null) plugLowPowerSince = now
+    if (power > PLUG_CHARGING_W) plugCarInUse = false
+end
+
+// Car woke up while paused with the socket off: READY, probably driving away
+rule "czero plugged car in use"
+when
+    Item CZero_Wican_Online changed to ON or
+    Item CZero_Soc_Updated changed
+then
+    if (Garage_SmartPlug.state != OFF) return;
+    if (Ergant_CarState.state.toString != "paused") return;
+    if (!plugCarInUse) logInfo("ergant", "car plugged: WiCAN active while paused and socket off -> car probably in use")
+    plugCarInUse = true
+end
+
+rule "czero plugged evaluate"
+when
+    Item Garage_SmartPlug_Power changed or
+    Item Garage_SmartPlug changed or
+    Item Garage_CarCharger changed or
+    Item Ergant_CarState changed or
+    Item CZero_Soc changed or
+    Item CZero_Wican_Online changed or
+    Item CZero_Soc_Updated changed or
+    Time cron "0 * * * * ?"
+then
+    // Let the trackers above run first for the same event; one timer, so two events can't publish twice
+    if (plugEvalTimer !== null) { plugEvalTimer.cancel(); plugEvalTimer = null }
+    plugEvalTimer = createTimer(now.plusSeconds(1), [ |
+        plugEvalTimer = null
+        val String carState = Ergant_CarState.state.toString
+        val double power = if (Garage_SmartPlug_Power.state instanceof Number) (Garage_SmartPlug_Power.state as Number).doubleValue else -1
+        val String prev = CZero_Plugged.state.toString
+        var String plugged = "unknown"
+        if (power > PLUG_CHARGING_W || (prev == "yes" && power >= PLUG_IDLE_W)) {
+            plugged = "yes"
+        } else if (plugCarInUse) {
+            plugged = "unknown"
+        } else if (carState == "paused") {
+            plugged = "probably"
+        } else if ((carState == "idle" || carState == "full" || carState == "ended")
+                && plugSocketOnSince !== null && plugSocketOnSince.isBefore(now.minusMinutes(2))
+                && plugLowPowerSince !== null && plugLowPowerSince.isBefore(now.minusMinutes(2))
+                && CZero_Soc.state instanceof Number
+                && (CZero_Soc.state as Number).doubleValue < PLUG_TEST_MAX_SOC) {
+            plugged = "no"
+        }
+        if (plugged == prev) return;
+
+        // Entering or leaving "yes": the car was seen drawing now
+        if (plugged == "yes" || prev == "yes") CZero_Plugged_LastDraw.postUpdate(new DateTimeType())
+        CZero_Plugged_Since.postUpdate(new DateTimeType())
+        CZero_Plugged.postUpdate(plugged)
+        logInfo("ergant", "car plugged: {} -> {} (state {}, power {} W)", prev, plugged, carState, power)
+
+        val mqtt = getActions("mqtt", ERGANT_BROKER)
+        if (mqtt === null) {
+            logError("ergant", "car plugged: MQTT broker {} not available", ERGANT_BROKER)
+            return;
+        }
+        mqtt.publishMQTT("ergant/input/car/plugged", "{\"plugged\": \"" + plugged + "\", \"ts\": " + now.toEpochSecond + "}", true)
     ])
 end

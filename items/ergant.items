@@ -41,8 +41,10 @@ Group                   gErgantCar                      "E-Auto Laden"          
 Group                   gErgantCarDiag                  "ergant Auto Diagnose"              <if:mdi:car-electric>
 
 String                  Ergant_CarState                 "Ladezustand [%s]"                  <if:mdi:ev-station>             (gErgantCar)        ["Status"]                  {stateDescription=""[options="idle=Nicht angesteckt,charging=Lädt,paused=Pausiert,full=Voll,ended=Beendet"]}
+DateTime                Ergant_CarState_Since           "Ladezustand seit [%1$td.%1$tm. %1$tH:%1$tM]"  <if:mdi:clock-outline>  (gErgantCar)  ["Status","Timestamp"]
 String                  Ergant_CarReason                "Grund [%s]"                        <if:mdi:information-outline>    (gErgantCar)        ["Status"]
-Number                  Ergant_CarSocHint               "Ladestand (geschätzt) [%d %%]"     <if:mdi:battery-medium>         (gErgantCar)        ["Measurement","Level"]
+// Ergant_CarSocHint: in %, only while a session is open (charging/paused), else UNDEF — rule C
+Number                  Ergant_CarSocHint               "ergant-Stand (nur beim Laden) [%.0f %%]"   <if:mdi:battery-medium>         (gErgantCar)        ["Measurement","Level"]
 String                  Ergant_CarDeadlineGuard         "Abfahrtsschutz [%s]"               <if:mdi:clock-alert-outline>    (gErgantCar)        ["Status"]
 // Surplus-only override: a command publishes surplus/auto (rule F), rule C mirrors ergant's state with postUpdate
 Switch                  Ergant_CarSurplusSwitch         "Nur Überschuss laden"              <if:mdi:solar-power-variant>    (gErgantCar)        ["Control"]

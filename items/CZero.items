@@ -4,12 +4,14 @@
 // Charging control stays with ergant (items/ergant.items, gErgantCar); this file is only the car's own data.
 //
 // Structure:
-//   Tier 1 — semantic car equipment under Garage: SOC + age of the last value
+//   Tier 1 — semantic car equipment under Garage: SOC + age of the last value, plugged-in status
 //   Tier 2 — non-semantic gCZeroDiag: WiCAN connection
 //
 // SOC keeps its last value while the car is off (WiCAN asleep) — always check CZero_Soc_Updated before using it.
 // Updates every 10–20 s while READY or charging; 0.5 % resolution.
 // Persistence: default * lines (everyChange, restoreOnStartup) — not in gEnergySystem on purpose.
+// CZero_Plugged*: computed by rule H in rules/ergant_car.rules from socket power, socket state, ergant state
+// and SOC (no sensor sees the cable) — yes / probably / no / unknown, published to ergant/input/car/plugged.
 
 // ---------------------------------------------------------------------------------------------
 // Groups
@@ -22,7 +24,10 @@ Group                   gCZeroDiag                      "C-Zero WiCAN Diagnose" 
 // Tier 1 — car
 // ---------------------------------------------------------------------------------------------
 Number:Dimensionless    CZero_Soc                       "Ladestand [%.1f %%]"          <if:mdi:battery-medium>         (gCZero)            ["Measurement","Level"]     {unit="%", channel="mqtt:topic:wican_czero:soc"}
-DateTime                CZero_Soc_Updated               "Ladestand gemeldet [%1$td.%1$tm. %1$tH:%1$tM]"  <if:mdi:clock-outline>  (gCZero)  ["Status","Timestamp"]  {channel="mqtt:topic:wican_czero:soc"[profile="timestamp-update"]}
+DateTime                CZero_Soc_Updated               "Ladestand gemessen [%1$td.%1$tm. %1$tH:%1$tM]"  <if:mdi:clock-outline>  (gCZero)  ["Status","Timestamp"]  {channel="mqtt:topic:wican_czero:soc"[profile="timestamp-update"]}
+String                  CZero_Plugged                   "Angesteckt [%s]"                   <if:mdi:power-plug>             (gCZero)            ["Status"]                  {stateDescription=""[options="yes=Ja (lädt),probably=Wahrscheinlich (Ladepause),no=Nein,unknown=Unbekannt"]}
+DateTime                CZero_Plugged_Since             "Angesteckt-Status seit [%1$td.%1$tm. %1$tH:%1$tM]"  <if:mdi:clock-outline>  (gCZero)  ["Status","Timestamp"]
+DateTime                CZero_Plugged_LastDraw          "Zuletzt Strom gezogen [%1$td.%1$tm. %1$tH:%1$tM]"  <if:mdi:clock-outline>  (gCZero)  ["Status","Timestamp"]
 
 
 // ---------------------------------------------------------------------------------------------
