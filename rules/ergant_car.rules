@@ -20,7 +20,9 @@
 //      mehr aktuell" and publishes nothing.
 //   F  Ergant_CarSurplusSwitch command ON / OFF → ergant/car/override "surplus" / "auto" (not retained).
 //   G  WiCAN reading (CZero_Soc, items/CZero.items) → ergant/input/car/soc, RETAINED,
-//      {"soc": <0..100>, "ts": <Unix s>}, only readings < 60 s old (never a value restored at startup).
+//      {"soc": <0..100>, "ts": <Unix s>, "odo_km": <km>}, only readings < 60 s old (never a value restored
+//      at startup). odo_km = current CZero_Odometer, left out unless a positive number (NULL until the
+//      first 0x412 frame, ~60 s after the WiCAN starts).
 //   H  Plugged-in status CZero_Plugged (no sensor sees the cable — derived from the socket):
 //        yes      Garage_SmartPlug_Power > 300 W (stays yes down to 150 W, taper at the end of a charge).
 //                 Battery current is no charging signal on its own (can fall below 1 A while balancing).
@@ -430,7 +432,13 @@ then
             logError("ergant", "car soc: MQTT broker {} not available", ERGANT_BROKER)
             return;
         }
-        mqtt.publishMQTT("ergant/input/car/soc", "{\"soc\": " + soc + ", \"ts\": " + ts + "}", true)
+        // odo_km: ergant rejects the whole reading on a string, negative or NaN — leave it out instead
+        var String payload = "{\"soc\": " + soc + ", \"ts\": " + ts
+        if (CZero_Odometer.state instanceof Number) {
+            val double odo = (CZero_Odometer.state as Number).doubleValue
+            if (!Double.isNaN(odo) && odo > 0) payload = payload + ", \"odo_km\": " + Math.round(odo)
+        }
+        mqtt.publishMQTT("ergant/input/car/soc", payload + "}", true)
     ])
 end
 
