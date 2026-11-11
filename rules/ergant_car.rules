@@ -22,11 +22,13 @@
 //   G  WiCAN reading (CZero_Soc, items/CZero.items) → ergant/input/car/soc, RETAINED,
 //      {"soc": <0..100>, "ts": <Unix s>}, only readings < 60 s old (never a value restored at startup).
 //   H  Plugged-in status CZero_Plugged (no sensor sees the cable — derived from the socket):
-//        yes      Garage_SmartPlug_Power > 300 W (stays yes down to 150 W, taper at the end of a charge)
-//        unknown  WiCAN woke up / new reading while paused with the socket off → car probably in use
+//        yes      Garage_SmartPlug_Power > 300 W (stays yes down to 150 W, taper at the end of a charge).
+//                 Battery current is no charging signal on its own (can fall below 1 A while balancing).
+//        unknown  car probably in use: WiCAN woke up / new reading while paused with the socket off,
+//                 CZero_Odometer changed while paused, or CZero_Battery_Current < -1 A (driving)
 //                 (cleared when power flows, the socket goes on or ergant's state changes)
 //        probably ergant state paused (socket off between windows, nobody sees the car)
-//        no       ergant idle/full/ended, socket (Garage_SmartPlug + KNX Garage_CarCharger) on ≥ 2 min,
+//        no       ergant idle/full/ended, socket Garage_SmartPlug on ≥ 2 min,
 //                 power < 150 W for ≥ 2 min, CZero_Soc < PLUG_TEST_MAX_SOC — a plugged C-Zero below
 //                 that always draws (assumes the car's own charge timer is not used)
 //        unknown  everything else (full and plugged looks the same as unplugged)
@@ -79,6 +81,7 @@ val String OVERRIDE_REPLY_PREFIX = "eo_"   // + question ts (integer s); Telegra
 val double PLUG_CHARGING_W    = 300   // rule H: above → charging
 val double PLUG_IDLE_W        = 150   // rule H: below → not drawing (socket standby 2–4 W)
 val double PLUG_TEST_MAX_SOC  = 85    // rule H: below this a plugged C-Zero always draws — confirm with a calibration charge
+val double PLUG_BAT_A         = 1     // rule H: battery current below minus this → driving
 
 // JSON field or null (missing path, JSON null, bad JSON)
 val Functions$Function2<String, String, String> jsonField = [ String json, String path |
@@ -436,11 +439,10 @@ end
 rule "czero plugged trackers"
 when
     Item Garage_SmartPlug changed or
-    Item Garage_CarCharger changed or
     Item Garage_SmartPlug_Power changed or
     System started
 then
-    val boolean socketOn = Garage_SmartPlug.state == ON && Garage_CarCharger.state == ON
+    val boolean socketOn = Garage_SmartPlug.state == ON
     if (!socketOn) plugSocketOnSince = null
     else if (plugSocketOnSince === null) plugSocketOnSince = now
     // Socket on again (ergant's own check after a wake-up) → the power tells, not the wake-up
@@ -464,15 +466,33 @@ then
     plugCarInUse = true
 end
 
+// Odometer moved while paused, or the battery is discharging: the car is being driven
+rule "czero plugged car driving"
+when
+    Item CZero_Odometer changed or
+    Item CZero_Battery_Current changed
+then
+    var boolean driving = false
+    if (triggeringItemName == "CZero_Odometer") {
+        // previousState NULL/UNDEF = first value after a restart, not a drive
+        driving = previousState instanceof Number && Ergant_CarState.state.toString == "paused"
+    } else if (CZero_Battery_Current.state instanceof Number) {
+        driving = (CZero_Battery_Current.state as Number).doubleValue < -PLUG_BAT_A
+    }
+    if (!driving) return;
+    if (!plugCarInUse) logInfo("ergant", "car plugged: {} {} -> car in use", triggeringItemName, triggeringItem.state)
+    plugCarInUse = true
+end
+
 rule "czero plugged evaluate"
 when
     Item Garage_SmartPlug_Power changed or
     Item Garage_SmartPlug changed or
-    Item Garage_CarCharger changed or
     Item Ergant_CarState changed or
     Item CZero_Soc changed or
     Item CZero_Wican_Online changed or
     Item CZero_Soc_Updated changed or
+    Item CZero_Odometer changed or
     Time cron "0 * * * * ?"
 then
     // Let the trackers above run first for the same event; one timer, so two events can't publish twice

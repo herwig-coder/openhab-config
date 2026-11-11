@@ -1,0 +1,36 @@
+// C-Zero car data from the WiCAN (items/CZero.items, things/MQTT_WiCAN.things).
+// Charging control and the plugged-in status live in rules/ergant_car.rules.
+//
+// Battery power = CZero_Battery_Voltage × CZero_Battery_Current (both from frame 0x373, same 10 s cycle,
+// separate MQTT messages a few ms apart) → computed 1 s after either changed. Positive = charging,
+// negative = driving. UNDEF when the WiCAN goes offline: voltage and current keep their last value,
+// a stale power would look like a running charge.
+//
+// Test: car READY or charging → CZero_Battery_Power follows ~every 10 s, sign positive while charging;
+// WiCAN offline (~5–25 min after switch-off / charge end) → CZero_Battery_Power UNDEF.
+
+var Timer czeroPowerTimer = null
+
+rule "czero battery power"
+when
+    Item CZero_Battery_Voltage changed or
+    Item CZero_Battery_Current changed
+then
+    if (czeroPowerTimer !== null) { czeroPowerTimer.cancel(); czeroPowerTimer = null }
+    czeroPowerTimer = createTimer(now.plusSeconds(1), [ |
+        czeroPowerTimer = null
+        if (!(CZero_Battery_Voltage.state instanceof Number) || !(CZero_Battery_Current.state instanceof Number)) return;
+        // Items carry unit="V" / unit="A": doubleValue is in V and A
+        val double volt = (CZero_Battery_Voltage.state as Number).doubleValue
+        val double amp  = (CZero_Battery_Current.state as Number).doubleValue
+        CZero_Battery_Power.postUpdate(Math.round(volt * amp) + " W")
+    ])
+end
+
+rule "czero battery power offline"
+when
+    Item CZero_Wican_Online changed to OFF
+then
+    if (czeroPowerTimer !== null) { czeroPowerTimer.cancel(); czeroPowerTimer = null }
+    CZero_Battery_Power.postUpdate(UNDEF)
+end

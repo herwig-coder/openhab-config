@@ -2,22 +2,38 @@
 // Firmware 4.13, PASSIVE: CAN mode silent (never transmits), protocol slcan, AutoPID/polling/vehicle profile off.
 // Active polling (2101 to BMU 0x761) caused warning lights and blocked locking via the key fob — never re-enable.
 //
-// Topics:   wican/48f6ee25c6f5/can/rx       JSON {"SOC_CAN":70.5}  from broadcast frame 0x374 (byte 0, (raw-10)/2),
-//                                           0.5 % steps, every 10–20 s, only while READY or charging (WiCAN CAN filter "canflt")
+// Topics:   wican/48f6ee25c6f5/can/rx       one JSON message per value, e.g. {"SOC_CAN":70.5}, from the WiCAN CAN
+//                                           filter "canflt", only while READY or charging:
+//             SOC_CAN   %   0x374 byte 0, (raw-10)/2, 0.5 % steps                     10 s
+//             SOC_DISP  %   0x374 byte 1, (raw-10)/2 (dashboard value)                 9.9 s
+//             BAT_V     V   0x373 bytes 4–5, raw*0.1                                   10 s
+//             BAT_A     A   0x373 bytes 2–3, (raw-32768)*0.01, negative = discharge    9.9 s
+//             RANGE_KM  km  0x346 byte 7                                               30 s
+//             ODO_KM    km  0x412 bytes 2–4                                            60 s
 //           wican/48f6ee25c6f5/can/status   JSON {"status":"online"|"offline"} (retained LWT)
+//           wican/48f6ee25c6f5/cmd          {"cmd":"reboot"} / {"cmd":"get_vbatt"}, answer on the same topic (not used here)
 //
-// 0x374 byte 0 = 0 for a few seconds after a BMU start (car back to READY) → -5 %; min/max on the soc channel
-// drop it (no state update, no timestamp). Real 0 % is raw 10.
+// All values share one topic: each channel puts a REGEX in front of its JSONPATH, so the other messages
+// don't match (no state update, no JSONPATH warning).
+// Raw 0 for a few seconds after a BMU start (car back to READY): 0x374 → -5 %, 0x373 → 0 V / -327.68 A.
+// min/max on the channels drop these (no state update, no timestamp). Real 0 % SOC is raw 10.
+// Battery power (V × A): rules/czero.rules → CZero_Battery_Power.
 // Sleep mode: ~5 min after switching off → "offline", WiCAN asleep; wakes when the car goes READY.
 // While asleep there are no can/rx messages, SOC keeps its last value.
 // Age of the value: CZero_Soc_Updated (timestamp-update profile, items/CZero.items).
 // No availabilityTopic on purpose: "offline" is the normal parked state, not a fault, and the thing
 // must stay ONLINE so the last SOC is kept.
-// New values: add a filter entry on the WiCAN (config JSON, "canflt" — mind the config size limit, see
-// docs projects/c-zero-wican), then one channel per JSON key (JSONPATH:$.<key>) + one item in items/CZero.items.
+// New values: add a filter entry on the WiCAN (canflt-only JSON upload + reboot — max ~7–8 filters; a later
+// entry for the same CAN ID needs a 100 ms shorter cycle, see docs projects/c-zero-wican), then one channel per JSON key
+// (REGEX:(.*\"<key>\".*)∩JSONPATH:$.<key>) + one item in items/CZero.items.
 // Same file-based broker bridge as Samsung and Gosund; no credentials here.
 Thing mqtt:topic:wican_czero "WiCAN C-Zero" (mqtt:broker:mqttbroker) @ "Garage" {
     Channels:
-    Type number : soc        "SOC"            [ stateTopic="wican/48f6ee25c6f5/can/rx", transformationPattern="JSONPATH:$.SOC_CAN", unit="%", min=0, max=100 ]
-    Type switch : status     "WiCAN online"   [ stateTopic="wican/48f6ee25c6f5/can/status", transformationPattern="JSONPATH:$.status", on="online", off="offline" ]
+    Type number : soc              "SOC"              [ stateTopic="wican/48f6ee25c6f5/can/rx", transformationPattern="REGEX:(.*\"SOC_CAN\".*)∩JSONPATH:$.SOC_CAN", unit="%", min=0, max=100 ]
+    Type number : soc_display      "SOC Anzeige"      [ stateTopic="wican/48f6ee25c6f5/can/rx", transformationPattern="REGEX:(.*\"SOC_DISP\".*)∩JSONPATH:$.SOC_DISP", unit="%", min=0, max=100 ]
+    Type number : battery_voltage  "Batteriespannung" [ stateTopic="wican/48f6ee25c6f5/can/rx", transformationPattern="REGEX:(.*\"BAT_V\".*)∩JSONPATH:$.BAT_V", unit="V", min=150, max=400 ]
+    Type number : battery_current  "Batteriestrom"    [ stateTopic="wican/48f6ee25c6f5/can/rx", transformationPattern="REGEX:(.*\"BAT_A\".*)∩JSONPATH:$.BAT_A", unit="A", min=-250, max=250 ]
+    Type number : range            "Reichweite"       [ stateTopic="wican/48f6ee25c6f5/can/rx", transformationPattern="REGEX:(.*\"RANGE_KM\".*)∩JSONPATH:$.RANGE_KM", unit="km", min=0, max=254 ]
+    Type number : odometer         "Kilometerstand"   [ stateTopic="wican/48f6ee25c6f5/can/rx", transformationPattern="REGEX:(.*\"ODO_KM\".*)∩JSONPATH:$.ODO_KM", unit="km", min=1 ]
+    Type switch : status           "WiCAN online"     [ stateTopic="wican/48f6ee25c6f5/can/status", transformationPattern="JSONPATH:$.status", on="online", off="offline" ]
 }
