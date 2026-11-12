@@ -92,9 +92,9 @@ end
 
 
 // ============================================================================
-// RULE 2: Enable ACL at 20:00 + Internet_Minutes delay, then reset counter
+// RULE 2: Enable ACL at 19:30 + Internet_Minutes delay, then reset counter
 //
-// At 20:00 the current value of Internet_Minutes is read.  A timer is
+// At 19:30 the current value of Internet_Minutes is read.  A timer is
 // scheduled for that many minutes in the future.  When it fires:
 //   • Router_MacACL is switched ON (ACL enabled, internet blocked)
 //   • Internet_Minutes is reduced:
@@ -102,9 +102,9 @@ end
 //       ≤ 60 min  →  0
 // ============================================================================
 
-rule "Router MAC ACL - enable at 20:00 + Internet_Minutes delay"
+rule "Router MAC ACL - enable at 19:30 + Internet_Minutes delay"
 when
-    Time cron "0 0 20 * * ?"
+    Time cron "0 30 19 * * ?"
 then
     val int total = if (Internet_Minutes.state instanceof Number)
         (Internet_Minutes.state as Number).intValue
